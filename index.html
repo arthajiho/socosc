@@ -17,6 +17,7 @@
   <meta property="og:url" content="https://thesocsoc.com">
 
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="recipes_data.js"></script>
   <style>
     input[type="number"]::-webkit-inner-spin-button,
@@ -212,14 +213,37 @@
           </div>
 
           <!-- The Exact Authentic Original Content Body -->
-          <div class="bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-sm">
-            <div class="pb-3 border-b border-slate-100 mb-6">
-              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">가이드 처방</span>
+          <div class="bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-sm relative">
+            <div class="pb-3 border-b border-slate-100 mb-6 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">가이드 처방 상세</span>
+                <span id="articleEditBadge" class="hidden text-[10px] text-amber-700 bg-amber-50 border border-amber-200 font-bold px-1.5 py-0.5 rounded">수정됨</span>
+              </div>
             </div>
 
             <!-- Rendered Raw HTML -->
             <div id="originalContentContainer" class="original-content-body text-slate-800 leading-relaxed text-sm">
               <!-- Injected by JavaScript -->
+            </div>
+
+            <!-- 글 오른쪽 하단 수정 & 삭제 탭 (시스템 관리자에게만 노출) -->
+            <div id="recipeBottomEditSection" class="hidden mt-8 pt-5 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button id="recipeBottomDeleteBtn" onclick="deleteCurrentGuideRecipe()"
+                class="px-3.5 py-2 text-xs font-bold bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 rounded-xl shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                title="이 처방 글 영구 삭제 (관리자 전용)">
+                <svg class="w-3.5 h-3.5 stroke-current fill-none stroke-2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                <span>삭제</span>
+              </button>
+              <button id="recipeBottomEditTabBtn" onclick="openEditRecipeModal()"
+                class="px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all flex items-center gap-1.5 active:scale-95 hover:shadow-indigo-200"
+                title="처방 수정 (관리자 전용)">
+                <svg class="w-3.5 h-3.5 stroke-current fill-none stroke-2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span>처방 수정</span>
+              </button>
             </div>
           </div>
 
@@ -508,8 +532,8 @@
         <!-- Normal Login Form -->
         <form onsubmit="handleNormalLogin(event)" class="space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">아이디</label>
-            <input type="text" id="loginIdInput" required placeholder="아이디를 입력하세요"
+            <label class="block text-xs font-bold text-slate-600 mb-1">아이디 또는 이메일</label>
+            <input type="text" id="loginIdInput" required placeholder="아이디 또는 이메일 주소 입력"
               class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
           </div>
           <div>
@@ -1019,6 +1043,152 @@
     </div>
   </div>
 
+  <!-- ======================================================== -->
+  <!-- MODAL 6: EDIT RECIPE MODAL (처방 글 내용 수정 모달)       -->
+  <!-- ======================================================== -->
+  <div id="editRecipeModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+      
+      <!-- Modal Header -->
+      <div class="p-5 pb-3 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/70">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">처방 글 수정</span>
+            <span id="editRecipeAdminBadge" class="bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded border border-rose-200">관리자 편집 권한</span>
+            <h3 class="font-extrabold text-slate-900 text-base" id="editRecipeModalHeaderTitle">처방 글 내용 수정</h3>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">처방의 제목, 제공사, 본문 글 내용, 배합비 및 공정을 직접 수정하여 실시간 업데이트합니다.</p>
+        </div>
+        <button onclick="closeEditRecipeModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
+      </div>
+
+      <!-- Modal Body -->
+      <form id="editRecipeForm" onsubmit="handleEditRecipeSubmit(event)" class="p-5 space-y-4 overflow-y-auto custom-scrollbar flex-1 text-xs">
+        
+        <!-- Basic Recipe Details -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="md:col-span-2">
+            <label class="block font-bold text-slate-700 mb-1">처방명 <span class="text-rose-500">*</span></label>
+            <input type="text" id="editRecTitle" required
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-800 text-xs">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">카테고리 <span class="text-rose-500">*</span></label>
+            <select id="editRecCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-white text-xs">
+              <option value="sun care">Sun Care</option>
+              <option value="skin care">Skin Care</option>
+              <option value="body">Body</option>
+              <option value="hair">Hair</option>
+              <option value="make up">Make up</option>
+              <option value="etc">ETC</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">제공사 (Supplier) <span class="text-rose-500">*</span></label>
+            <input type="text" id="editRecSupplier" required
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-xs">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">처방번호 / 코드</label>
+            <input type="text" id="editRecFormulaCode"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">이메일</label>
+            <input type="email" id="editRecEmail"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">제형 설명 (Description)</label>
+          <textarea id="editRecDescription" rows="2" placeholder="제형의 외관, 사용감, 주요 기능성 및 컨셉 설명"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed text-xs"></textarea>
+        </div>
+
+        <!-- Rich Content Body Editor (본문 글 내용 직접 수정) -->
+        <div class="pt-2">
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center gap-2">
+              <label class="font-bold text-slate-800 text-xs">처방 본문 글 내용 (Content Body)</label>
+              <span class="text-[11px] text-slate-400">아래 에디터에서 글자 및 표를 직접 클릭하여 바로 편집할 수 있습니다.</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="toggleEditSourceMode()" id="editToggleSourceBtn"
+                class="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-300">
+                HTML 소스 편집
+              </button>
+            </div>
+          </div>
+
+          <!-- Editor Toolbar -->
+          <div id="editVisualToolbar" class="flex flex-wrap items-center gap-1 p-1.5 bg-slate-100 rounded-t-xl border border-b-0 border-slate-300 text-xs">
+            <button type="button" onclick="execEditFormat('bold')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 font-bold border border-slate-200 text-slate-700" title="굵게">B</button>
+            <button type="button" onclick="execEditFormat('italic')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 italic font-serif border border-slate-200 text-slate-700" title="기울임">I</button>
+            <button type="button" onclick="execEditFormat('underline')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 underline border border-slate-200 text-slate-700" title="밑줄">U</button>
+            <button type="button" onclick="execEditFormat('strikeThrough')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 line-through border border-slate-200 text-slate-700" title="취소선">S</button>
+            <span class="text-slate-300">|</span>
+            <button type="button" onclick="execEditFormat('formatBlock', '<h3>')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 font-bold border border-slate-200 text-slate-700 text-[11px]" title="제목3">H3</button>
+            <button type="button" onclick="execEditFormat('formatBlock', '<h4>')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 font-bold border border-slate-200 text-slate-700 text-[11px]" title="제목4">H4</button>
+            <button type="button" onclick="execEditFormat('formatBlock', '<p>')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 text-[11px]" title="본문">P</button>
+            <span class="text-slate-300">|</span>
+            <button type="button" onclick="execEditFormat('insertUnorderedList')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 text-[11px]" title="글머리 기호">• 목록</button>
+            <button type="button" onclick="execEditFormat('insertOrderedList')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 text-[11px]" title="번호 매기기">1. 목록</button>
+            <span class="text-slate-300">|</span>
+            <button type="button" onclick="execEditFormat('removeFormat')" class="px-2 py-1 rounded bg-white hover:bg-slate-200 border border-slate-200 text-slate-600 text-[11px]" title="서식 지우기">서식 지우기</button>
+          </div>
+
+          <!-- Visual Editable Content Area -->
+          <div id="editRecContentVisual" contenteditable="true"
+            class="w-full min-h-[260px] max-h-[420px] overflow-y-auto p-4 border border-slate-300 rounded-b-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-800 text-xs leading-relaxed original-content-body custom-scrollbar">
+          </div>
+
+          <!-- Raw HTML Textarea (Toggled) -->
+          <textarea id="editRecContentRaw" rows="12"
+            class="hidden w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-900 text-emerald-400 font-mono text-xs leading-relaxed custom-scrollbar"></textarea>
+        </div>
+
+        <!-- Manufacturing Procedure -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">제조공정 (Manufacturing Procedure)</label>
+          <textarea id="editRecProcedure" rows="3" placeholder="제조공정을 입력하세요."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs leading-relaxed"></textarea>
+        </div>
+
+        <!-- Specification & Properties -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">규격 및 특성 (Specification)</label>
+          <textarea id="editRecSpecification" rows="2" placeholder="규격 및 특성을 입력하세요."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs leading-relaxed"></textarea>
+        </div>
+
+        <!-- Additional Notes / Etc -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">기타 (Additional Notes)</label>
+          <textarea id="editRecEtc" rows="2" placeholder="기타 참고사항을 입력하세요."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs leading-relaxed"></textarea>
+        </div>
+
+        <div id="editRecipeErrorMsg" class="hidden text-xs text-rose-600 font-medium"></div>
+
+        <!-- Submit & Actions -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+          <button type="button" onclick="closeEditRecipeModal()" class="px-4 py-2 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl transition">
+            취소
+          </button>
+          <button type="submit" class="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95">
+            <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+            <span>처방 수정사항 저장 (완료)</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
   <script>
     const allRecipes = (window.SOCSOC_RECIPES && window.SOCSOC_RECIPES.length) ? window.SOCSOC_RECIPES : [];
 
@@ -1068,10 +1238,30 @@
     ];
 
     // ==========================================
-    // AUTH & MEMBER SYSTEM (Local Storage Persistence)
+    // SUPABASE CLOUD CLIENT & AUTH SYSTEM
     // ==========================================
+    const SUPABASE_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
+    
+    let sbClient = null;
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (e) {
+      console.warn('Supabase client initialization warning:', e);
+    }
+
     const STORAGE_USERS_KEY = 'socsoc_users_db';
     const STORAGE_SESSION_KEY = 'socsoc_current_user';
+
+    // 최고 관리자 계정 목록 (기본 관리자 admin 및 사용자 지정 socsoc)
+    const ADMIN_USERNAMES = ['admin', 'socsoc'];
+    function checkIsAdmin(val) {
+      if (!val) return false;
+      const str = String(val).trim().toLowerCase();
+      return ADMIN_USERNAMES.includes(str) || str === 'admin' || str === 'socsoc';
+    }
 
     let usersDb = [];
     try {
@@ -1099,10 +1289,120 @@
       }
     }
 
+    async function syncSupabaseData() {
+      if (!sbClient) return;
+
+      try {
+        // 1. Cloud Recipes 불러오기 (모든 사용자가 등록한 신규 가이드 처방 실시간 공유)
+        const { data: cloudRecipes, error: recErr } = await sbClient
+          .from('recipes')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!recErr && Array.isArray(cloudRecipes) && cloudRecipes.length > 0) {
+          let hasNew = false;
+          cloudRecipes.forEach(r => {
+            const recObj = {
+              uid: r.uid,
+              title: r.title,
+              category: r.category || 'ETC',
+              supplier: r.supplier || '',
+              formulaCode: r.formula_code || '처방코드 미기재',
+              email: r.email || '',
+              description: r.description || '',
+              ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
+              procedure: r.procedure || '',
+              specification: r.specification || '',
+              etc: r.etc || '',
+              contentHtml: r.content_html || '',
+              sourceUrl: r.source_url || window.location.href,
+              author: r.author_nickname || '연구원',
+              isCustomCreated: true
+            };
+            extractRecipeMetadata(recObj);
+            if (!allRecipes.some(existing => existing.uid === recObj.uid)) {
+              allRecipes.unshift(recObj);
+              hasNew = true;
+            }
+          });
+
+          if (hasNew) {
+            updateCategoryPillCounts();
+            renderRecipeList(allRecipes);
+          }
+        }
+
+        // 2. 로그인 세션 확인 및 복원
+        const { data: sessionData } = await sbClient.auth.getSession();
+        const session = sessionData?.session;
+
+        if (session && session.user) {
+          const user = session.user;
+
+          const [profRes, guidesRes, formulasRes] = await Promise.all([
+            sbClient.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+            sbClient.from('saved_guides').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+            sbClient.from('saved_formulas').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+          ]);
+
+          const profile = profRes.data;
+          const dbGuides = guidesRes.data || [];
+          const dbFormulas = formulasRes.data || [];
+
+          const uname = profile?.username || user.user_metadata?.username || (user.email ? user.email.split('@')[0] : 'user');
+          const isUserAdmin = checkIsAdmin(uname) || checkIsAdmin(profile?.username);
+          const finalRole = isUserAdmin ? 'admin' : (profile?.role || 'member');
+
+          currentUser = {
+            id: user.id,
+            username: uname,
+            name: profile?.name || user.user_metadata?.name || '',
+            nickname: profile?.nickname || user.user_metadata?.nickname || profile?.username || '연구원',
+            email: user.email,
+            phone: profile?.phone || '',
+            companyType: profile?.company_type || '제조사',
+            role: finalRole,
+            provider: 'normal',
+            savedGuides: dbGuides.map(g => ({
+              uid: g.recipe_uid,
+              title: g.title,
+              category: g.category,
+              formulaCode: g.formula_code,
+              supplier: g.supplier,
+              savedAt: g.created_at
+            })),
+            savedFormulas: dbFormulas.map(f => ({
+              id: f.id,
+              title: f.title,
+              batchSize: f.batch_size,
+              formula: f.formula,
+              totalPercent: f.total_percent,
+              savedAt: f.created_at
+            }))
+          };
+
+          if (isUserAdmin && profile?.role !== 'admin') {
+            try {
+              sbClient.from('profiles').update({ role: 'admin' }).eq('id', user.id).then();
+            } catch (e) {}
+          }
+
+          saveUsersDb();
+          renderAuthHeader();
+          if (currentRecipe) {
+            updateSaveGuideRecipeBtnState(currentRecipe);
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase sync warning:', err);
+      }
+    }
+
     function initAuth() {
       // Ensure default admin account exists
       if (!usersDb.some(u => u.username === 'admin')) {
         usersDb.push({
+          id: 'admin_local',
           username: 'admin',
           password: 'admin',
           name: '관리자',
@@ -1116,6 +1416,24 @@
           savedFormulas: [],
           createdAt: new Date().toISOString()
         });
+        saveUsersDb();
+      }
+
+      // 최고 관리자(socsoc 및 admin) 권한 자동 부여 및 동기화
+      let userDbChanged = false;
+      usersDb.forEach(u => {
+        if (checkIsAdmin(u.username) && u.role !== 'admin') {
+          u.role = 'admin';
+          userDbChanged = true;
+        }
+      });
+
+      if (currentUser && checkIsAdmin(currentUser.username) && currentUser.role !== 'admin') {
+        currentUser.role = 'admin';
+        userDbChanged = true;
+      }
+
+      if (userDbChanged) {
         saveUsersDb();
       }
 
@@ -1134,10 +1452,43 @@
         console.warn('Error loading custom admin recipes:', e);
       }
 
+      // Load modified recipes from localStorage (처방 글 수정 내역 영구 보존)
+      try {
+        const editedMap = JSON.parse(localStorage.getItem('socsoc_edited_recipes') || '{}');
+        for (const uid in editedMap) {
+          const edRec = editedMap[uid];
+          const foundIdx = allRecipes.findIndex(r => r.uid === uid);
+          if (foundIdx !== -1) {
+            allRecipes[foundIdx] = Object.assign(allRecipes[foundIdx], edRec);
+          } else {
+            allRecipes.unshift(edRec);
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading edited recipes:', e);
+      }
+
+      // Filter out permanently deleted recipes (삭제된 처방 영구 제외)
+      try {
+        const deletedList = JSON.parse(localStorage.getItem('socsoc_deleted_recipes') || '[]');
+        if (Array.isArray(deletedList) && deletedList.length > 0) {
+          for (let i = allRecipes.length - 1; i >= 0; i--) {
+            if (deletedList.includes(allRecipes[i].uid)) {
+              allRecipes.splice(i, 1);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Error filtering deleted recipes:', e);
+      }
+
       renderAuthHeader();
       if (currentRecipe) {
         updateSaveGuideRecipeBtnState(currentRecipe);
       }
+
+      // Supabase 클라우드 데이터 동기화
+      syncSupabaseData();
     }
 
     function updateCategoryPillCounts() {
@@ -1322,6 +1673,19 @@
         }
         container.innerHTML = html;
       }
+
+      // 수정된 처방인지 여부에 따라 상단 배지 갱신
+      const editBadge = document.getElementById('articleEditBadge');
+      if (editBadge) {
+        if (recipe.isCustomEdited) {
+          editBadge.classList.remove('hidden');
+        } else {
+          editBadge.classList.add('hidden');
+        }
+      }
+
+      // 시스템 관리자에게만 처방 수정 탭/버튼 노출
+      updateRecipeEditButtonVisibility();
 
       renderRecipeList(allRecipes.filter(r => {
         const q = document.getElementById('searchInput').value.trim().toLowerCase();
@@ -1703,18 +2067,35 @@
     // ==========================================
     let pendingSocialProvider = null;
 
+    // 처방 수정 및 삭제 탭(버튼)은 시스템 관리자(socsoc, admin)에게만 보이도록 제어
+    function updateRecipeEditButtonVisibility() {
+      const isManager = currentUser && (currentUser.role === 'admin' || checkIsAdmin(currentUser.username));
+      const bottomSec = document.getElementById('recipeBottomEditSection');
+
+      if (bottomSec) {
+        if (isManager) bottomSec.classList.remove('hidden');
+        else bottomSec.classList.add('hidden');
+      }
+    }
+
     function renderAuthHeader() {
       const area = document.getElementById('authHeaderArea');
       if (!area) return;
+
+      updateRecipeEditButtonVisibility();
 
       if (currentUser) {
         const savedGuidesCount = (currentUser.savedGuides || []).length;
         const savedFormulasCount = (currentUser.savedFormulas || []).length;
         const totalSaved = savedGuidesCount + savedFormulasCount;
-        const roleBadge = currentUser.role === 'admin' 
+        const isAdminUser = currentUser.role === 'admin' || checkIsAdmin(currentUser.username);
+        const roleBadge = isAdminUser
           ? '[관리자]' 
           : (currentUser.companyType ? `[${currentUser.companyType}]` : '[연구원]');
         const displayName = currentUser.nickname || currentUser.name || currentUser.username;
+        const roleClass = isAdminUser
+          ? 'text-rose-600 bg-rose-50 border-rose-200 font-extrabold'
+          : 'text-indigo-600 bg-indigo-50 border-indigo-100 font-bold';
 
         area.innerHTML = `
           <button onclick="openSavedItemsModal('guide')" class="px-2.5 py-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95" title="내 처방 보관함 열기">
@@ -1726,13 +2107,13 @@
           </button>
           <div class="flex items-center gap-2 pl-1 border-l border-slate-200">
             <div class="flex items-center gap-1.5 text-xs">
-              <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[11px]">
+              <span class="w-6 h-6 rounded-full ${isAdminUser ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700'} font-bold flex items-center justify-center text-[11px]">
                 ${displayName.charAt(0).toUpperCase()}
               </span>
               <span class="font-bold text-slate-800 text-xs hidden sm:inline">
                 ${displayName}
               </span>
-              <span class="text-[10px] text-indigo-600 bg-indigo-50 font-bold px-1.5 py-0.5 rounded border border-indigo-100 hidden md:inline">
+              <span class="text-[10px] ${roleClass} px-1.5 py-0.5 rounded border hidden md:inline">
                 ${roleBadge}
               </span>
             </div>
@@ -1826,32 +2207,138 @@
       checks.forEach(c => c.checked = master.checked);
     }
 
-    function handleNormalLogin(e) {
+    async function handleNormalLogin(e) {
       e.preventDefault();
-      const id = document.getElementById('loginIdInput').value.trim();
+      const idInput = document.getElementById('loginIdInput').value.trim();
       const pw = document.getElementById('loginPwInput').value;
       const errMsg = document.getElementById('loginErrorMessage');
+      const submitBtn = e.target.querySelector('button[type="submit"]');
 
-      const found = usersDb.find(u => u.username === id && u.password === pw);
+      if (errMsg) errMsg.classList.add('hidden');
+      const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>로그인 중...</span>';
+      }
 
-      if (found) {
-        currentUser = found;
-        if (!currentUser.savedGuides) currentUser.savedGuides = [];
-        if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
-        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+      try {
+        let loggedInUser = null;
 
-        closeAuthModal();
-        renderAuthHeader();
-        updateSaveGuideRecipeBtnState(currentRecipe);
-        showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
-      } else {
-        errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. (회원가입 후 이용해주세요)';
+        if (sbClient) {
+          let emailToLogin = idInput;
+
+          // 만약 사용자가 아이디(username)를 입력했다면 profiles 테이블에서 이메일 조회
+          if (!idInput.includes('@')) {
+            const { data: prof } = await sbClient
+              .from('profiles')
+              .select('email, id, username')
+              .eq('username', idInput)
+              .maybeSingle();
+
+            if (prof && prof.email) {
+              emailToLogin = prof.email;
+            }
+          }
+
+          // Supabase Auth로 로그인 시도
+          const { data: authData, error: authErr } = await sbClient.auth.signInWithPassword({
+            email: emailToLogin,
+            password: pw
+          });
+
+          if (!authErr && authData && authData.user) {
+            const user = authData.user;
+
+            const [profRes, guidesRes, formulasRes] = await Promise.all([
+              sbClient.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+              sbClient.from('saved_guides').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+              sbClient.from('saved_formulas').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+            ]);
+
+            const profile = profRes.data;
+            const dbGuides = guidesRes.data || [];
+            const dbFormulas = formulasRes.data || [];
+
+            const uname = profile?.username || user.user_metadata?.username || (user.email ? user.email.split('@')[0] : 'user');
+            const isUserAdmin = checkIsAdmin(uname) || checkIsAdmin(profile?.username) || checkIsAdmin(idInput);
+            const finalRole = isUserAdmin ? 'admin' : (profile?.role || 'member');
+
+            loggedInUser = {
+              id: user.id,
+              username: uname,
+              name: profile?.name || user.user_metadata?.name || '',
+              nickname: profile?.nickname || user.user_metadata?.nickname || profile?.username || '연구원',
+              email: user.email,
+              phone: profile?.phone || '',
+              companyType: profile?.company_type || '제조사',
+              role: finalRole,
+              provider: 'normal',
+              password: pw,
+              savedGuides: dbGuides.map(g => ({
+                uid: g.recipe_uid,
+                title: g.title,
+                category: g.category,
+                formulaCode: g.formula_code,
+                supplier: g.supplier,
+                savedAt: g.created_at
+              })),
+              savedFormulas: dbFormulas.map(f => ({
+                id: f.id,
+                title: f.title,
+                batchSize: f.batch_size,
+                formula: f.formula,
+                totalPercent: f.total_percent,
+                savedAt: f.created_at
+              }))
+            };
+
+            if (isUserAdmin && profile?.role !== 'admin') {
+              try {
+                sbClient.from('profiles').update({ role: 'admin' }).eq('id', user.id).then();
+              } catch (e) {}
+            }
+          }
+        }
+
+        // Supabase 로그인 실패 시 로컬 usersDb fallback 확인 (오프라인/로컬 계정)
+        if (!loggedInUser) {
+          const foundLocal = usersDb.find(u => (u.username === idInput || u.email === idInput) && u.password === pw);
+          if (foundLocal) {
+            loggedInUser = foundLocal;
+          }
+        }
+
+        if (loggedInUser) {
+          if (checkIsAdmin(loggedInUser.username) || checkIsAdmin(idInput)) {
+            loggedInUser.role = 'admin';
+          }
+          currentUser = loggedInUser;
+          if (!currentUser.savedGuides) currentUser.savedGuides = [];
+          if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
+          saveUsersDb();
+
+          closeAuthModal();
+          renderAuthHeader();
+          updateSaveGuideRecipeBtnState(currentRecipe);
+          showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
+        } else {
+          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. (회원가입 후 이용해주세요)';
+          errMsg.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        errMsg.textContent = '로그인 중 오류가 발생했습니다: ' + (err.message || '');
         errMsg.classList.remove('hidden');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnText;
+        }
       }
     }
 
     // 일반 회원가입 처리
-    function handleNormalSignup(e) {
+    async function handleNormalSignup(e) {
       e.preventDefault();
       const id = document.getElementById('signupIdInput').value.trim();
       const pw = document.getElementById('signupPwInput').value;
@@ -1867,9 +2354,18 @@
       const agreeService = document.getElementById('agreeTermService').checked;
       const agreePrivacy = document.getElementById('agreeTermPrivacy').checked;
       const errMsg = document.getElementById('signupErrorMessage');
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+
+      if (errMsg) errMsg.classList.add('hidden');
 
       if (pw !== pwCfm) {
         errMsg.textContent = '비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      if (pw.length < 6) {
+        errMsg.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
         errMsg.classList.remove('hidden');
         return;
       }
@@ -1887,42 +2383,126 @@
         return;
       }
 
-      const existing = usersDb.find(u => u.username === id);
-      if (existing) {
-        errMsg.textContent = '이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.';
-        errMsg.classList.remove('hidden');
-        return;
+      const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>가입 처리 중...</span>';
       }
 
-      const newUser = {
-        username: id,
-        password: pw,
-        name: name,
-        nickname: nickname,
-        email: email,
-        phone: phone,
-        companyType: companyType,
-        provider: 'normal',
-        role: id === 'admin' ? 'admin' : 'member',
-        savedGuides: [],
-        savedFormulas: [],
-        createdAt: new Date().toISOString()
-      };
+      try {
+        let authUserId = null;
 
-      usersDb.push(newUser);
-      currentUser = newUser;
-      saveUsersDb();
+        if (sbClient) {
+          // 1. 아이디 중복 체크 (Supabase profiles 테이블)
+          const { data: existingUser } = await sbClient
+            .from('profiles')
+            .select('id')
+            .eq('username', id)
+            .maybeSingle();
 
-      closeAuthModal();
-      renderAuthHeader();
-      updateSaveGuideRecipeBtnState(currentRecipe);
-      showToast(`회원가입이 완료되었습니다! 환영합니다, ${nickname}님.`);
+          if (existingUser) {
+            errMsg.textContent = '이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.';
+            errMsg.classList.remove('hidden');
+            return;
+          }
+
+          // 2. Supabase Auth 계정 생성
+          const { data: authData, error: authErr } = await sbClient.auth.signUp({
+            email: email,
+            password: pw,
+            options: {
+              data: {
+                username: id,
+                name: name,
+                nickname: nickname,
+                phone: phone,
+                company_type: companyType
+              }
+            }
+          });
+
+          if (authErr) {
+            if (authErr.message.includes('already registered') || authErr.message.includes('already exists')) {
+              errMsg.textContent = '이미 등록된 이메일 주소입니다. 다른 이메일을 사용해주세요.';
+            } else {
+              errMsg.textContent = '회원가입 오류: ' + authErr.message;
+            }
+            errMsg.classList.remove('hidden');
+            return;
+          }
+
+          if (authData && authData.user) {
+            authUserId = authData.user.id;
+
+            // 3. profiles 테이블에 사용자 프로필 저장
+            const { error: profErr } = await sbClient.from('profiles').upsert({
+              id: authUserId,
+              username: id,
+              name: name,
+              nickname: nickname,
+              email: email,
+              phone: phone,
+              company_type: companyType,
+              role: checkIsAdmin(id) ? 'admin' : 'member'
+            });
+
+            if (profErr) {
+              console.warn('Profile upsert warning:', profErr);
+            }
+          }
+        }
+
+        const newUser = {
+          id: authUserId || ('local_' + Date.now()),
+          username: id,
+          password: pw,
+          name: name,
+          nickname: nickname,
+          email: email,
+          phone: phone,
+          companyType: companyType,
+          provider: 'normal',
+          role: checkIsAdmin(id) ? 'admin' : 'member',
+          savedGuides: [],
+          savedFormulas: [],
+          createdAt: new Date().toISOString()
+        };
+
+        const existIdx = usersDb.findIndex(u => u.username === id);
+        if (existIdx >= 0) usersDb[existIdx] = newUser;
+        else usersDb.push(newUser);
+
+        currentUser = newUser;
+        saveUsersDb();
+
+        closeAuthModal();
+        renderAuthHeader();
+        updateSaveGuideRecipeBtnState(currentRecipe);
+        showToast(`회원가입이 완료되었습니다! 환영합니다, ${nickname}님.`);
+      } catch (err) {
+        console.error('Signup error:', err);
+        errMsg.textContent = '회원가입 중 오류가 발생했습니다: ' + (err.message || '');
+        errMsg.classList.remove('hidden');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnText;
+        }
+      }
     }
 
-    function logoutUser() {
+    async function logoutUser() {
+      if (sbClient) {
+        try {
+          await sbClient.auth.signOut();
+        } catch (e) {
+          console.warn('Supabase signOut warning:', e);
+        }
+      }
       currentUser = null;
       localStorage.removeItem(STORAGE_SESSION_KEY);
       renderAuthHeader();
+      updateRecipeEditButtonVisibility();
       updateSaveGuideRecipeBtnState(currentRecipe);
       showToast('로그아웃 되었습니다.');
     }
@@ -1938,8 +2518,15 @@
 
       document.getElementById('myPageUsername').textContent = currentUser.username;
       
-      const roleText = currentUser.role === 'admin' ? '관리자' : '일반 회원';
-      document.getElementById('myPageRoleBadge').textContent = roleText;
+      const isUserAdmin = currentUser.role === 'admin' || checkIsAdmin(currentUser.username);
+      const roleText = isUserAdmin ? '최고 관리자 (Admin)' : '일반 회원';
+      const roleBadgeEl = document.getElementById('myPageRoleBadge');
+      roleBadgeEl.textContent = roleText;
+      if (isUserAdmin) {
+        roleBadgeEl.className = 'inline-block px-2 py-0.5 rounded font-black text-[10.5px] bg-rose-50 text-rose-700 border border-rose-200';
+      } else {
+        roleBadgeEl.className = 'inline-block px-2 py-0.5 rounded font-bold text-[10.5px] bg-indigo-50 text-indigo-700 border border-indigo-200';
+      }
 
       document.getElementById('myPageNameInput').value = currentUser.name || '';
       document.getElementById('myPageNicknameInput').value = currentUser.nickname || currentUser.name || '';
@@ -1975,7 +2562,7 @@
       document.getElementById('myPageModal').classList.add('hidden');
     }
 
-    function saveMyPageProfile(e) {
+    async function saveMyPageProfile(e) {
       e.preventDefault();
       if (!currentUser) return;
 
@@ -2007,13 +2594,13 @@
         const newPwCfm = document.getElementById('myPageNewPwCfmInput').value;
 
         if (currentPw || newPw || newPwCfm) {
-          if (currentPw !== currentUser.password) {
+          if (currentUser.password && currentPw !== currentUser.password) {
             errMsg.textContent = '현재 비밀번호가 일치하지 않습니다.';
             errMsg.classList.remove('hidden');
             return;
           }
-          if (newPw.length < 4) {
-            errMsg.textContent = '새 비밀번호는 최소 4자 이상이어야 합니다.';
+          if (newPw.length < 6) {
+            errMsg.textContent = '새 비밀번호는 최소 6자 이상이어야 합니다.';
             errMsg.classList.remove('hidden');
             return;
           }
@@ -2021,6 +2608,15 @@
             errMsg.textContent = '새 비밀번호 확인이 일치하지 않습니다.';
             errMsg.classList.remove('hidden');
             return;
+          }
+
+          if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+            const { error: pwErr } = await sbClient.auth.updateUser({ password: newPw });
+            if (pwErr) {
+              errMsg.textContent = '비밀번호 변경 실패: ' + pwErr.message;
+              errMsg.classList.remove('hidden');
+              return;
+            }
           }
           currentUser.password = newPw;
         }
@@ -2033,6 +2629,23 @@
       currentUser.companyType = companyType;
 
       saveUsersDb();
+
+      // Supabase profiles 테이블 업데이트
+      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+        try {
+          await sbClient.from('profiles').update({
+            name: name,
+            nickname: nickname,
+            email: email,
+            phone: phone,
+            company_type: companyType,
+            updated_at: new Date().toISOString()
+          }).eq('id', currentUser.id);
+        } catch (e) {
+          console.warn('Profile cloud update error:', e);
+        }
+      }
+
       renderAuthHeader();
       closeMyPageModal();
       showToast('회원 정보가 성공적으로 변경되었습니다.');
@@ -2045,7 +2658,13 @@
 
     function handleFloatingNewRecipeClick() {
       if (!currentUser) {
-        openAuthModal('login', '새 처방 작성을 이용하시려면 로그인이 필요합니다.');
+        openAuthModal('login', '새 처방 작성은 최고 관리자 전용 기능입니다. 관리자 계정으로 로그인해주세요.');
+        return;
+      }
+
+      const isManager = currentUser.role === 'admin' || checkIsAdmin(currentUser.username);
+      if (!isManager) {
+        showToast('새 처방 작성은 최고 관리자(socsoc, admin) 전용 권한입니다.');
         return;
       }
 
@@ -2175,7 +2794,7 @@
       }
     }
 
-    function handleNewRecipeSubmit(e) {
+    async function handleNewRecipeSubmit(e) {
       e.preventDefault();
       const title = document.getElementById('newRecTitle').value.trim();
       const category = document.getElementById('newRecCategory').value;
@@ -2302,7 +2921,7 @@
       // 1. 가이드 처방 전체 목록(allRecipes) 최상단에 즉시 등록
       allRecipes.unshift(newRec);
 
-      // 2. 브라우저 localStorage에 영구 저장 (새로고침 후에도 유지)
+      // 2. 브라우저 localStorage에 영구 저장 (새로고침/오프라인 fallback)
       try {
         let adminRecipes = JSON.parse(localStorage.getItem('socsoc_admin_recipes') || '[]');
         adminRecipes.unshift(newRec);
@@ -2311,7 +2930,33 @@
         console.warn('Failed to save to localStorage:', err);
       }
 
-      // 3. 작성자의 [내 보관함 - 저장한 가이드 처방]에도 자동 보관 저장
+      // 3. Supabase 클라우드 recipes 테이블에 등록 (모든 연구원에게 실시간 공유!)
+      if (sbClient) {
+        try {
+          await sbClient.from('recipes').insert({
+            uid: newRec.uid,
+            title: newRec.title,
+            category: newRec.category,
+            supplier: newRec.supplier,
+            formula_code: newRec.formulaCode,
+            email: newRec.email,
+            description: newRec.description,
+            ingredients: newRec.ingredients,
+            procedure: newRec.procedure,
+            specification: newRec.specification,
+            etc: newRec.etc,
+            content_html: newRec.contentHtml,
+            source_url: newRec.sourceUrl,
+            author_id: (currentUser && currentUser.id && !currentUser.id.startsWith('local_')) ? currentUser.id : null,
+            author_nickname: newRec.author,
+            is_custom_created: true
+          });
+        } catch (cloudErr) {
+          console.warn('Cloud recipe insert error:', cloudErr);
+        }
+      }
+
+      // 4. 작성자의 [내 보관함 - 저장한 가이드 처방]에도 자동 보관 저장
       if (currentUser) {
         if (!currentUser.savedGuides) currentUser.savedGuides = [];
         if (!currentUser.savedGuides.some(g => g.uid === newRec.uid)) {
@@ -2324,6 +2969,21 @@
             savedAt: new Date().toISOString()
           });
           saveUsersDb();
+
+          if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+            try {
+              await sbClient.from('saved_guides').upsert({
+                user_id: currentUser.id,
+                recipe_uid: newRec.uid,
+                title: newRec.title,
+                category: newRec.category,
+                supplier: newRec.supplier,
+                formula_code: newRec.formulaCode
+              });
+            } catch (gErr) {
+              console.warn('Cloud guide save error:', gErr);
+            }
+          }
         }
       }
 
@@ -2339,9 +2999,319 @@
     }
 
     // ==========================================
+    // EDIT RECIPE LOGIC (처방 글 내용 수정)
+    // ==========================================
+    function openEditRecipeModal() {
+      if (!currentRecipe) {
+        showToast('수정할 처방을 먼저 선택해주세요.');
+        return;
+      }
+
+      if (!currentUser) {
+        openAuthModal('login', '처방 수정은 최고 관리자 전용 기능입니다. 관리자 계정으로 로그인해주세요.');
+        return;
+      }
+
+      // Check Admin status
+      const isAdminUser = currentUser.role === 'admin' || checkIsAdmin(currentUser.username);
+      if (!isAdminUser) {
+        showToast('처방 수정은 최고 관리자(socsoc, admin) 전용 권한입니다.');
+        return;
+      }
+
+      const adminBadge = document.getElementById('editRecipeAdminBadge');
+      if (adminBadge) {
+        adminBadge.textContent = '최고 관리자 편집 권한';
+        adminBadge.className = 'bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded border border-rose-200';
+      }
+
+      // Fill in Form Fields
+      document.getElementById('editRecipeModalHeaderTitle').textContent = `[${currentRecipe.title}] 처방 수정`;
+      document.getElementById('editRecTitle').value = currentRecipe.title || '';
+      document.getElementById('editRecCategory').value = (currentRecipe.category || 'skin care').toLowerCase().includes('sun') ? 'sun care' :
+        (currentRecipe.category || 'skin care').toLowerCase().includes('skin') ? 'skin care' :
+        (currentRecipe.category || 'skin care').toLowerCase().includes('body') ? 'body' :
+        (currentRecipe.category || 'skin care').toLowerCase().includes('hair') ? 'hair' :
+        (currentRecipe.category || 'skin care').toLowerCase().includes('make') ? 'make up' : 'etc';
+
+      document.getElementById('editRecSupplier').value = currentRecipe.supplier || '';
+      document.getElementById('editRecFormulaCode').value = (currentRecipe.formulaCode && currentRecipe.formulaCode !== '처방코드 미기재') ? currentRecipe.formulaCode : '';
+      document.getElementById('editRecEmail').value = currentRecipe.email || '';
+      document.getElementById('editRecDescription').value = currentRecipe.description || '';
+
+      // Body Content HTML Editor Fill
+      let contentHtmlToEdit = '';
+      if (currentRecipe.contentHtml && currentRecipe.contentHtml.length > 30) {
+        contentHtmlToEdit = currentRecipe.contentHtml;
+      } else {
+        const origContainer = document.getElementById('originalContentContainer');
+        contentHtmlToEdit = origContainer ? origContainer.innerHTML : '';
+      }
+
+      // Clean print buttons if any
+      contentHtmlToEdit = contentHtmlToEdit.replace(/<div[^>]*class="[^"]*kboard-document-action[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>/gi, '');
+      contentHtmlToEdit = contentHtmlToEdit.replace(/<button[^>]*class="[^"]*kboard-button-print[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '');
+      contentHtmlToEdit = contentHtmlToEdit.replace(/<button[^>]*onclick="[^"]*print[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '');
+
+      const visual = document.getElementById('editRecContentVisual');
+      const raw = document.getElementById('editRecContentRaw');
+      const toolbar = document.getElementById('editVisualToolbar');
+      const btn = document.getElementById('editToggleSourceBtn');
+
+      visual.innerHTML = contentHtmlToEdit;
+      raw.value = contentHtmlToEdit;
+      visual.classList.remove('hidden');
+      raw.classList.add('hidden');
+      toolbar.classList.remove('hidden');
+      btn.textContent = 'HTML 소스 편집';
+      btn.className = 'px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-300';
+
+      document.getElementById('editRecProcedure').value = currentRecipe.procedure || '';
+      document.getElementById('editRecSpecification').value = currentRecipe.specification || '';
+      document.getElementById('editRecEtc').value = currentRecipe.etc || '';
+
+      const err = document.getElementById('editRecipeErrorMsg');
+      if (err) err.classList.add('hidden');
+
+      document.getElementById('editRecipeModal').classList.remove('hidden');
+    }
+
+    function closeEditRecipeModal() {
+      document.getElementById('editRecipeModal').classList.add('hidden');
+    }
+
+    function toggleEditSourceMode() {
+      const visual = document.getElementById('editRecContentVisual');
+      const raw = document.getElementById('editRecContentRaw');
+      const toolbar = document.getElementById('editVisualToolbar');
+      const btn = document.getElementById('editToggleSourceBtn');
+
+      if (visual.classList.contains('hidden')) {
+        // Switch to Visual
+        visual.innerHTML = raw.value;
+        visual.classList.remove('hidden');
+        raw.classList.add('hidden');
+        toolbar.classList.remove('hidden');
+        btn.textContent = 'HTML 소스 편집';
+        btn.className = 'px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-300';
+      } else {
+        // Switch to Raw
+        raw.value = visual.innerHTML;
+        visual.classList.add('hidden');
+        raw.classList.remove('hidden');
+        toolbar.classList.add('hidden');
+        btn.textContent = '일반 보기(위지윅) 전환';
+        btn.className = 'px-2.5 py-1 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition border border-indigo-300';
+      }
+    }
+
+    function execEditFormat(cmd, value = null) {
+      document.execCommand(cmd, false, value);
+      const visual = document.getElementById('editRecContentVisual');
+      if (visual) visual.focus();
+    }
+
+    async function handleEditRecipeSubmit(e) {
+      e.preventDefault();
+      if (!currentRecipe) return;
+
+      const title = document.getElementById('editRecTitle').value.trim();
+      const category = document.getElementById('editRecCategory').value;
+      const supplier = document.getElementById('editRecSupplier').value.trim();
+      const formulaCode = document.getElementById('editRecFormulaCode').value.trim();
+      const email = document.getElementById('editRecEmail').value.trim();
+      const description = document.getElementById('editRecDescription').value.trim();
+
+      const visual = document.getElementById('editRecContentVisual');
+      const raw = document.getElementById('editRecContentRaw');
+      const finalContentHtml = visual.classList.contains('hidden') ? raw.value : visual.innerHTML;
+
+      const procedure = document.getElementById('editRecProcedure').value.trim();
+      const specification = document.getElementById('editRecSpecification').value.trim();
+      const etc = document.getElementById('editRecEtc').value.trim();
+      const err = document.getElementById('editRecipeErrorMsg');
+
+      if (!title) {
+        if (err) {
+          err.textContent = '처방명을 입력해주세요.';
+          err.classList.remove('hidden');
+        }
+        return;
+      }
+
+      // Update currentRecipe in-place
+      currentRecipe.title = title;
+      currentRecipe.category = category;
+      currentRecipe.supplier = supplier || '속속 (thesocsoc.com)';
+      currentRecipe.formulaCode = formulaCode || '처방코드 미기재';
+      currentRecipe.email = email;
+      currentRecipe.description = description;
+      currentRecipe.contentHtml = finalContentHtml;
+      currentRecipe.procedure = procedure;
+      currentRecipe.specification = specification;
+      currentRecipe.etc = etc;
+      currentRecipe.isCustomEdited = true;
+      currentRecipe.updatedAt = new Date().toISOString();
+      currentRecipe.lastEditor = currentUser ? (currentUser.nickname || currentUser.name || currentUser.username) : '관리자';
+
+      // 1. Update in allRecipes
+      const recIdx = allRecipes.findIndex(r => r.uid === currentRecipe.uid);
+      if (recIdx !== -1) {
+        allRecipes[recIdx] = currentRecipe;
+      }
+
+      // 2. Save to localStorage (socsoc_edited_recipes)
+      try {
+        let editedMap = JSON.parse(localStorage.getItem('socsoc_edited_recipes') || '{}');
+        editedMap[currentRecipe.uid] = currentRecipe;
+        localStorage.setItem('socsoc_edited_recipes', JSON.stringify(editedMap));
+
+        // If also in socsoc_admin_recipes, update it too
+        let adminRecipes = JSON.parse(localStorage.getItem('socsoc_admin_recipes') || '[]');
+        const aIdx = adminRecipes.findIndex(r => r.uid === currentRecipe.uid);
+        if (aIdx !== -1) {
+          adminRecipes[aIdx] = currentRecipe;
+          localStorage.setItem('socsoc_admin_recipes', JSON.stringify(adminRecipes));
+        }
+      } catch (storageErr) {
+        console.warn('Failed to save to localStorage:', storageErr);
+      }
+
+      // 3. Sync to Supabase Cloud Database if available
+      if (sbClient) {
+        try {
+          await sbClient.from('recipes').upsert({
+            uid: currentRecipe.uid,
+            title: currentRecipe.title,
+            category: currentRecipe.category,
+            supplier: currentRecipe.supplier,
+            formula_code: currentRecipe.formulaCode,
+            email: currentRecipe.email,
+            description: currentRecipe.description,
+            procedure: currentRecipe.procedure,
+            specification: currentRecipe.specification,
+            etc: currentRecipe.etc,
+            content_html: currentRecipe.contentHtml,
+            author_nickname: currentRecipe.lastEditor,
+            updated_at: currentRecipe.updatedAt,
+            is_custom_created: true
+          });
+        } catch (cloudErr) {
+          console.warn('Supabase cloud recipe update error:', cloudErr);
+        }
+      }
+
+      // 4. Update bookmark if saved in currentUser
+      if (currentUser && currentUser.savedGuides) {
+        const bIdx = currentUser.savedGuides.findIndex(g => g.uid === currentRecipe.uid);
+        if (bIdx !== -1) {
+          currentUser.savedGuides[bIdx].title = currentRecipe.title;
+          currentUser.savedGuides[bIdx].category = currentRecipe.category;
+          currentUser.savedGuides[bIdx].supplier = currentRecipe.supplier;
+          currentUser.savedGuides[bIdx].formulaCode = currentRecipe.formulaCode;
+          saveUsersDb();
+        }
+      }
+
+      // 5. Re-render UI
+      updateCategoryPillCounts();
+      renderRecipeList(allRecipes);
+      showRecipeOriginalArticle(currentRecipe);
+      closeEditRecipeModal();
+      showToast(`처방 글 [${title}] 내용이 성공적으로 수정 및 저장되었습니다!`);
+    }
+
+    async function deleteCurrentGuideRecipe() {
+      if (!currentRecipe) {
+        showToast('삭제할 처방을 먼저 선택해주세요.');
+        return;
+      }
+
+      if (!currentUser) {
+        openAuthModal('login', '처방 삭제는 최고 관리자 전용 기능입니다. 관리자 계정으로 로그인해주세요.');
+        return;
+      }
+
+      const isManager = currentUser.role === 'admin' || checkIsAdmin(currentUser.username);
+      if (!isManager) {
+        showToast('처방 삭제는 최고 관리자(socsoc, admin) 전용 권한입니다.');
+        return;
+      }
+
+      const targetRecipe = currentRecipe;
+      const targetUid = targetRecipe.uid;
+      const targetTitle = targetRecipe.title;
+
+      const confirmDel = confirm(`[처방 삭제 확인]\n\n처방명: "${targetTitle}"\n\n정말로 이 처방을 완전히 삭제하시겠습니까?\n삭제 후에는 목록과 상세 화면에서 즉시 제거됩니다.`);
+      if (!confirmDel) return;
+
+      // 1. allRecipes 배열에서 즉시 제거
+      const delIdx = allRecipes.findIndex(r => r.uid === targetUid);
+      let nextRecipe = null;
+      if (delIdx !== -1) {
+        allRecipes.splice(delIdx, 1);
+        if (allRecipes.length > 0) {
+          nextRecipe = allRecipes[Math.min(delIdx, allRecipes.length - 1)];
+        }
+      }
+
+      // 2. 브라우저 localStorage에 삭제 반영 (영구 삭제 보존)
+      try {
+        let deletedList = JSON.parse(localStorage.getItem('socsoc_deleted_recipes') || '[]');
+        if (!deletedList.includes(targetUid)) {
+          deletedList.push(targetUid);
+          localStorage.setItem('socsoc_deleted_recipes', JSON.stringify(deletedList));
+        }
+
+        let editedMap = JSON.parse(localStorage.getItem('socsoc_edited_recipes') || '{}');
+        if (editedMap[targetUid]) {
+          delete editedMap[targetUid];
+          localStorage.setItem('socsoc_edited_recipes', JSON.stringify(editedMap));
+        }
+
+        let adminRecipes = JSON.parse(localStorage.getItem('socsoc_admin_recipes') || '[]');
+        adminRecipes = adminRecipes.filter(r => r.uid !== targetUid);
+        localStorage.setItem('socsoc_admin_recipes', JSON.stringify(adminRecipes));
+
+        if (currentUser && currentUser.savedGuides) {
+          currentUser.savedGuides = currentUser.savedGuides.filter(g => g.uid !== targetUid);
+          saveUsersDb();
+        }
+      } catch (err) {
+        console.warn('LocalStorage delete warning:', err);
+      }
+
+      // 3. Supabase Cloud DB에서 삭제
+      if (sbClient) {
+        try {
+          await sbClient.from('recipes').delete().eq('uid', targetUid);
+          await sbClient.from('saved_guides').delete().eq('recipe_uid', targetUid);
+        } catch (cloudErr) {
+          console.warn('Supabase cloud recipe delete error:', cloudErr);
+        }
+      }
+
+      // 4. UI 즉각 갱신
+      updateCategoryPillCounts();
+      renderRecipeList(allRecipes);
+
+      if (nextRecipe) {
+        showRecipeOriginalArticle(nextRecipe);
+      } else {
+        currentRecipe = null;
+        document.getElementById('articleTitle').textContent = '등록된 처방이 없습니다.';
+        document.getElementById('originalContentContainer').innerHTML = '<div class="py-16 text-center text-slate-400 font-semibold text-xs">표시할 처방 데이터가 없습니다.</div>';
+        const bSec = document.getElementById('recipeBottomEditSection');
+        if (bSec) bSec.classList.add('hidden');
+      }
+
+      showToast(`처방 [${targetTitle}]이(가) 성공적으로 삭제되었습니다.`);
+    }
+
+    // ==========================================
     // GUIDE RECIPE BOOKMARK LOGIC
     // ==========================================
-    function toggleSaveCurrentGuideRecipe() {
+    async function toggleSaveCurrentGuideRecipe() {
       if (!currentUser) {
         openAuthModal('login', '가이드 처방 저장은 회원 로그인 후 이용 가능합니다.');
         return;
@@ -2358,6 +3328,14 @@
         updateSaveGuideRecipeBtnState(currentRecipe);
         renderAuthHeader();
         showToast('가이드 처방 저장이 해제되었습니다.');
+
+        if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+          try {
+            await sbClient.from('saved_guides').delete().eq('user_id', currentUser.id).eq('recipe_uid', currentRecipe.uid);
+          } catch (e) {
+            console.warn('Cloud guide delete warning:', e);
+          }
+        }
       } else {
         currentUser.savedGuides.unshift({
           uid: currentRecipe.uid,
@@ -2371,6 +3349,21 @@
         updateSaveGuideRecipeBtnState(currentRecipe);
         renderAuthHeader();
         showToast('[내 보관함]에 가이드 처방이 저장되었습니다!');
+
+        if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+          try {
+            await sbClient.from('saved_guides').upsert({
+              user_id: currentUser.id,
+              recipe_uid: currentRecipe.uid,
+              title: currentRecipe.title,
+              category: currentRecipe.category || 'ETC',
+              supplier: currentRecipe.supplier || '',
+              formula_code: currentRecipe.formulaCode || ''
+            });
+          } catch (e) {
+            console.warn('Cloud guide save warning:', e);
+          }
+        }
       }
     }
 
@@ -2403,7 +3396,7 @@
     // ==========================================
     // CUSTOM FORMULA SAVE LOGIC (계산기 처방 저장)
     // ==========================================
-    function saveCurrentCustomFormula() {
+    async function saveCurrentCustomFormula() {
       if (!currentUser) {
         openAuthModal('login', '내 처방 저장은 회원 로그인 후 이용 가능합니다.');
         return;
@@ -2433,6 +3426,21 @@
       saveUsersDb();
       renderAuthHeader();
       showToast(`[내 보관함]에 "${title}" 처방이 저장되었습니다!`);
+
+      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+        try {
+          await sbClient.from('saved_formulas').upsert({
+            id: newRecord.id,
+            user_id: currentUser.id,
+            title: newRecord.title,
+            batch_size: newRecord.batchSize,
+            formula: newRecord.formula,
+            total_percent: newRecord.totalPercent
+          });
+        } catch (e) {
+          console.warn('Cloud save formula warning:', e);
+        }
+      }
     }
 
     // ==========================================
@@ -2596,7 +3604,7 @@
       }
     }
 
-    function removeGuideRecipeFromVault(uid) {
+    async function removeGuideRecipeFromVault(uid) {
       if (!currentUser || !currentUser.savedGuides) return;
       currentUser.savedGuides = currentUser.savedGuides.filter(g => g.uid !== uid);
       saveUsersDb();
@@ -2604,6 +3612,14 @@
       renderAuthHeader();
       updateSaveGuideRecipeBtnState(currentRecipe);
       showToast('보관함에서 가이드 처방이 삭제되었습니다.');
+
+      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+        try {
+          await sbClient.from('saved_guides').delete().eq('user_id', currentUser.id).eq('recipe_uid', uid);
+        } catch (e) {
+          console.warn('Cloud delete guide warning:', e);
+        }
+      }
     }
 
     function loadCustomFormulaFromVault(id) {
@@ -2622,13 +3638,21 @@
       showToast(`연구 처방 "${found.title}"을(를) 계산기로 불러왔습니다.`);
     }
 
-    function removeCustomFormulaFromVault(id) {
+    async function removeCustomFormulaFromVault(id) {
       if (!currentUser || !currentUser.savedFormulas) return;
       currentUser.savedFormulas = currentUser.savedFormulas.filter(f => f.id !== id);
       saveUsersDb();
       renderSavedCustomFormulas();
       renderAuthHeader();
       showToast('연구 처방이 삭제되었습니다.');
+
+      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+        try {
+          await sbClient.from('saved_formulas').delete().eq('user_id', currentUser.id).eq('id', id);
+        } catch (e) {
+          console.warn('Cloud delete formula warning:', e);
+        }
+      }
     }
 
     // ==========================================
