@@ -16,8 +16,8 @@
   <meta property="og:description" content="화장품 가이드 처방 열람, 원료 배합비 실시간 100% 정밀 계산 및 내 처방 보관함">
   <meta property="og:url" content="https://thesocsoc.com">
 
-  <!-- Kakao Official JavaScript SDK -->
-  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
+  <!-- Kakao Official JavaScript SDK (v1.43.0 with Auth.login popup support) -->
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/1.43.0/kakao.min.js"></script>
 
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <script src="recipes_data.js"></script>
@@ -1511,17 +1511,18 @@
         }
 
         try {
-          // Real Kakao Official Login Popup Call
+          // Real Kakao Official Login Popup Call (throughTalk: false ensures browser popup)
           window.Kakao.Auth.login({
-            scope: 'profile_nickname,account_email',
+            throughTalk: false,
             success: function(authObj) {
               window.Kakao.API.request({
                 url: '/v2/user/me',
                 success: function(res) {
                   const kakaoAccount = res.kakao_account || {};
                   const profile = kakaoAccount.profile || {};
+                  const properties = res.properties || {};
                   const kakaoId = `kakao_${res.id}`;
-                  const nickname = profile.nickname || '카카오 연구원';
+                  const nickname = profile.nickname || properties.nickname || '카카오 연구원';
                   const email = kakaoAccount.email || `${kakaoId}@thesocsoc.com`;
 
                   let user = usersDb.find(u => u.username === kakaoId);
