@@ -1,10 +1,24 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta name="naver-site-verification" content="7b3bfef6fed6d6513b7232d027b20aaf5bcfeb33" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>속속(SOCSOC) - 화장품 처방 포털 & 제형 개발 워크벤치</title>
+  
+  <!-- SEO & Search Engine Verification -->
+  <meta name="description" content="화장품 연구원을 위한 가이드 처방 공유 포털, 정밀 배합비 계산기 및 제형 개발 워크벤치 속속(SOCSOC)">
+  <meta name="keywords" content="화장품처방, 배합비계산기, 화장품연구원, 화장품원료, 가이드처방, 제형개발, 화장품연구소">
+  <meta name="naver-site-verification" content="네이버_서치어드바이저_코드_입력란">
+  
+  <!-- Open Graph / KakaoTalk Preview -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="속속(SOCSOC) - 화장품 처방 포털 & 제형 개발 워크벤치">
+  <meta property="og:description" content="화장품 가이드 처방 열람, 원료 배합비 실시간 100% 정밀 계산 및 내 처방 보관함">
+  <meta property="og:url" content="https://thesocsoc.com">
+
+  <!-- Kakao Official JavaScript SDK -->
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
+
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <script src="recipes_data.js"></script>
   <style>
@@ -97,10 +111,16 @@
 
     <!-- Top Right Actions -->
     <div class="flex items-center gap-2">
-      <button onclick="startFreshZeroCalculator()" class="px-3 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5">
-        <span>+</span> 새 제형 설계 시작
-      </button>
-      <button onclick="window.print()" class="px-3 py-1.5 text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5">
+      <!-- Auth Header Area (인쇄 좌측 로그인 아이콘 / 프로필) -->
+      <div id="authHeaderArea" class="flex items-center gap-2">
+        <button onclick="openAuthModal('login')" class="px-2.5 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer" title="로그인 / 회원가입">
+          <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+          <span>로그인</span>
+        </button>
+      </div>
+
+      <!-- Print Button (로그인 우측) -->
+      <button onclick="window.print()" class="px-2.5 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm transition flex items-center gap-1" title="화면 인쇄">
         <span>🖨️</span> 인쇄
       </button>
     </div>
@@ -130,14 +150,14 @@
           <div class="space-y-1.5" id="categoryPills">
             <button onclick="selectCategory('all')" data-cat="all" class="cat-pill w-full py-1.5 px-3 rounded-lg font-bold text-xs bg-indigo-600 text-white transition shadow-sm flex items-center justify-between">
               <span>전체</span>
-              <span class="bg-indigo-700/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">25</span>
+              <span id="catCountAll" class="bg-indigo-700/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">25</span>
             </button>
             <div class="grid grid-cols-5 gap-1 text-[11px]">
-              <button onclick="selectCategory('sun care')" data-cat="sun care" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Sun Care (5)</button>
-              <button onclick="selectCategory('skin care')" data-cat="skin care" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Skin Care (5)</button>
-              <button onclick="selectCategory('body')" data-cat="body" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Body (5)</button>
-              <button onclick="selectCategory('hair')" data-cat="hair" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Hair (5)</button>
-              <button onclick="selectCategory('make up')" data-cat="make up" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Make up (5)</button>
+              <button onclick="selectCategory('sun care')" data-cat="sun care" id="catBtnSun" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Sun Care</button>
+              <button onclick="selectCategory('skin care')" data-cat="skin care" id="catBtnSkin" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Skin Care</button>
+              <button onclick="selectCategory('body')" data-cat="body" id="catBtnBody" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Body</button>
+              <button onclick="selectCategory('hair')" data-cat="hair" id="catBtnHair" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Hair</button>
+              <button onclick="selectCategory('make up')" data-cat="make up" id="catBtnMakeup" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Make up</button>
             </div>
           </div>
 
@@ -172,10 +192,15 @@
               </div>
             </div>
 
-            <div>
-              <h1 id="articleTitle" class="text-xl md:text-2xl font-black text-slate-900 leading-snug">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 id="articleTitle" class="text-xl md:text-2xl font-black text-slate-900 leading-snug flex-1">
                 오일리 바디 스플래시 2상 (Oily Body Splash, 2-Phases with CORN PO4 PH "B")
               </h1>
+              <button id="saveGuideRecipeBtn" onclick="toggleSaveCurrentGuideRecipe()"
+                class="shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95">
+                <span id="saveGuideRecipeIcon">⭐</span>
+                <span id="saveGuideRecipeText">가이드 처방 저장</span>
+              </button>
             </div>
 
           </div>
@@ -191,6 +216,36 @@
               <!-- Injected by JavaScript -->
             </div>
           </div>
+
+          <!-- Global Company Footer -->
+          <footer class="mt-12 pt-8 pb-10 border-t border-slate-200 text-xs text-slate-500 space-y-3">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div class="space-y-0.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-extrabold text-slate-800 text-sm">속속(SOCSOC)</span>
+                  <span class="text-slate-400">|</span>
+                  <span class="text-slate-600 font-medium">화장품 처방 포털 & 제형 개발 워크벤치</span>
+                </div>
+                <p class="text-[11px] text-slate-400">Cosmetic Formulation & Raw Material Solution Platform</p>
+              </div>
+              <div class="flex items-center gap-3 text-xs font-medium text-slate-600">
+                <a href="javascript:void(0)" onclick="openTermsModal('service')" class="hover:underline">이용약관</a>
+                <span class="text-slate-300">|</span>
+                <a href="javascript:void(0)" onclick="openTermsModal('privacy')" class="hover:underline font-bold text-slate-700">개인정보처리방침</a>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11.5px] text-slate-500 pt-2.5 border-t border-slate-100">
+              <p><strong>상호명:</strong> 속속(SOCSOC)</p>
+              <p><strong>대표자:</strong> 관리자</p>
+              <p><strong>이메일:</strong> <a href="mailto:socsoc-contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc-contact@naver.com</a></p>
+            </div>
+
+            <div class="text-[10.5px] text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+              <p>본 사이트의 처방 데이터 및 배합비는 연구 가이드 목적으로 제공되며, 양산 전 안정성 테스트를 권장합니다.</p>
+              <p>© 2026 속속(SOCSOC). All rights reserved.</p>
+            </div>
+          </footer>
 
         </div>
       </main>
@@ -214,6 +269,9 @@
             <div class="flex items-center gap-2">
               <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1">
                 <span>🔄</span> 빈 시트로 초기화
+              </button>
+              <button onclick="saveCurrentCustomFormula()" class="px-3.5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                <span>💾</span> 내 처방으로 저장
               </button>
             </div>
           </div>
@@ -311,6 +369,36 @@
           </div>
         </div>
 
+        <!-- Global Company Footer -->
+        <footer class="mt-12 pt-8 pb-10 border-t border-slate-200 text-xs text-slate-500 space-y-3">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-slate-800 text-sm">속속(SOCSOC)</span>
+                <span class="text-slate-400">|</span>
+                <span class="text-slate-600 font-medium">화장품 처방 포털 & 제형 개발 워크벤치</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Cosmetic Formulation & Raw Material Solution Platform</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs font-medium text-slate-600">
+              <a href="javascript:void(0)" onclick="openTermsModal('service')" class="hover:underline">이용약관</a>
+              <span class="text-slate-300">|</span>
+              <a href="javascript:void(0)" onclick="openTermsModal('privacy')" class="hover:underline font-bold text-slate-700">개인정보처리방침</a>
+            </div>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11.5px] text-slate-500 pt-2.5 border-t border-slate-100">
+            <p><strong>상호명:</strong> 속속(SOCSOC)</p>
+            <p><strong>대표자:</strong> 관리자</p>
+            <p><strong>이메일:</strong> <a href="mailto:socsoc-contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc-contact@naver.com</a></p>
+          </div>
+
+          <div class="text-[10.5px] text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+            <p>본 사이트의 처방 데이터 및 배합비는 연구 가이드 목적으로 제공되며, 양산 전 안정성 테스트를 권장합니다.</p>
+            <p>© 2026 속속(SOCSOC). All rights reserved.</p>
+          </div>
+        </footer>
+
       </div>
     </div>
 
@@ -360,6 +448,311 @@
 
   </div>
 
+  <!-- Floating Action Button: 새 처방 작성 (회원, 비회원 누구나 상시 표출) -->
+  <button id="floatingNewRecipeBtn" onclick="handleFloatingNewRecipeClick()"
+    class="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-extrabold text-sm px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 transition-all duration-200 hover:scale-105 active:scale-95 border-2 border-white/40 cursor-pointer shadow-indigo-500/25"
+    title="새 제형 개발 처방 작성하기">
+    <span class="text-base">✨</span>
+    <span>새 처방 작성</span>
+  </button>
+
+  <!-- Global Toast Notification -->
+  <div id="toastNotification" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform -translate-y-12 opacity-0 pointer-events-none">
+    <div class="px-4 py-2.5 rounded-xl bg-slate-900/90 backdrop-blur-md text-white font-semibold text-xs shadow-2xl flex items-center gap-2 border border-slate-700">
+      <span id="toastIcon">✨</span>
+      <span id="toastMessage">알림 내용</span>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 1: AUTH MODAL (로그인 / 회원가입) -->
+  <!-- ======================================================== -->
+  <div id="authModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="p-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white font-black flex items-center justify-center text-sm">S</div>
+          <span class="font-extrabold text-slate-900 text-sm tracking-tight">속속 (SOCSOC) 멤버십</span>
+        </div>
+        <button onclick="closeAuthModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
+      </div>
+
+      <!-- Notice Banner (로그인 필요 시 알림) -->
+      <div id="authNoticeBanner" class="hidden mx-5 mt-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center gap-2">
+        <span>🔒</span>
+        <span id="authNoticeMessage">가이드 처방을 저장하려면 로그인이 필요합니다.</span>
+      </div>
+
+      <!-- Tab Switcher (로그인 vs 회원가입) -->
+      <div class="px-5 pt-4">
+        <div class="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+          <button id="authTabBtnLogin" onclick="switchAuthTab('login')" class="flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition">
+            로그인
+          </button>
+          <button id="authTabBtnSignup" onclick="switchAuthTab('signup')" class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition">
+            회원가입
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= FORM: LOGIN ================= -->
+      <div id="authViewLogin" class="p-5 space-y-4">
+        <!-- Social Login Buttons -->
+        <div class="space-y-2">
+          <button onclick="handleSocialAuth('kakao')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] transition flex items-center justify-center gap-2 shadow-sm">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.708 4.8 4.27 6.052l-.865 3.208c-.08.298.175.56.444.407l3.85-2.222c.427.047.863.07 1.301.07 4.97 0 9-3.186 9-7.115S16.97 3 12 3z"/></svg>
+            <span>카카오 1초 간편 로그인</span>
+          </button>
+          <button onclick="handleSocialAuth('naver')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#03C75A] hover:bg-[#02b350] text-white transition flex items-center justify-center gap-2 shadow-sm">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>
+            <span>네이버 간편 로그인</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 text-slate-300 text-xs">
+          <div class="flex-1 border-t border-slate-200"></div>
+          <span class="text-slate-400 text-[11px]">또는 일반 아이디 로그인</span>
+          <div class="flex-1 border-t border-slate-200"></div>
+        </div>
+
+        <!-- Normal Login Form -->
+        <form onsubmit="handleNormalLogin(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">아이디</label>
+            <input type="text" id="loginIdInput" required placeholder="아이디를 입력하세요"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">비밀번호</label>
+            <input type="password" id="loginPwInput" required placeholder="비밀번호를 입력하세요"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+          <div id="loginErrorMessage" class="hidden text-xs text-rose-600 font-medium"></div>
+
+          <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+            로그인하기
+          </button>
+        </form>
+
+        <div class="text-center text-xs text-slate-500 pt-1">
+          <span>아직 회원이 아니신가요?</span>
+          <button onclick="switchAuthTab('signup')" class="text-indigo-600 font-bold hover:underline ml-1">무료 회원가입</button>
+        </div>
+      </div>
+
+      <!-- ================= FORM: SIGN UP ================= -->
+      <div id="authViewSignup" class="hidden p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <!-- Social Sign-up Buttons -->
+        <div class="space-y-2">
+          <button onclick="handleSocialAuth('kakao')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] transition flex items-center justify-center gap-2 shadow-sm">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.708 4.8 4.27 6.052l-.865 3.208c-.08.298.175.56.444.407l3.85-2.222c.427.047.863.07 1.301.07 4.97 0 9-3.186 9-7.115S16.97 3 12 3z"/></svg>
+            <span>카카오 간편 회원가입</span>
+          </button>
+          <button onclick="handleSocialAuth('naver')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#03C75A] hover:bg-[#02b350] text-white transition flex items-center justify-center gap-2 shadow-sm">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>
+            <span>네이버 간편 회원가입</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 text-slate-300 text-xs">
+          <div class="flex-1 border-t border-slate-200"></div>
+          <span class="text-slate-400 text-[11px]">또는 일반 정보로 가입</span>
+          <div class="flex-1 border-t border-slate-200"></div>
+        </div>
+
+        <!-- Signup Form -->
+        <form onsubmit="handleNormalSignup(event)" class="space-y-3">
+          <!-- ID -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">아이디 <span class="text-rose-500">*</span></label>
+            <input type="text" id="signupIdInput" required placeholder="영문, 숫자 포함 4~16자"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <!-- Password 1 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">비밀번호 <span class="text-rose-500">*</span></label>
+            <input type="password" id="signupPwInput" required oninput="validatePasswordMatch()" placeholder="6자 이상 비밀번호"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <!-- Password 2 (Mismatch Prevention) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">비밀번호 확인 (오타 방지) <span class="text-rose-500">*</span></label>
+            <input type="password" id="signupPwCfmInput" required oninput="validatePasswordMatch()" placeholder="비밀번호를 한 번 더 입력하세요"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+            <p id="pwMatchMessage" class="hidden text-[11px] mt-1 font-medium"></p>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">이메일 주소 <span class="text-rose-500">*</span></label>
+            <input type="email" id="signupEmailInput" required placeholder="example@company.com"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <!-- Phone -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">핸드폰 번호 <span class="text-rose-500">*</span></label>
+            <input type="tel" id="signupPhoneInput" required placeholder="010-1234-5678"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <!-- Member Type Selection (제조사, 원료사, 브랜드사, 기타) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">회원 유형 선택 <span class="text-rose-500">*</span></label>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="companyType" value="제조사" checked class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">🏭 제조사</span>
+                  <span class="text-[10px] text-slate-400 block">OEM/ODM 연구소</span>
+                </div>
+              </label>
+
+              <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="companyType" value="원료사" class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">🧪 원료사</span>
+                  <span class="text-[10px] text-slate-400 block">원료 공급 및 처방 등록</span>
+                </div>
+              </label>
+
+              <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="companyType" value="브랜드사" class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">✨ 브랜드사</span>
+                  <span class="text-[10px] text-slate-400 block">화장품 브랜드 BM/기획</span>
+                </div>
+              </label>
+
+              <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="companyType" value="기타" class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">🔬 기타</span>
+                  <span class="text-[10px] text-slate-400 block">개인 연구원 / 학생</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Terms Agreement Section -->
+          <div class="pt-2 border-t border-slate-200 space-y-2 text-xs">
+            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+              <input type="checkbox" id="agreeAllTerms" onchange="toggleAllTerms(this)" class="w-4 h-4 text-indigo-600 rounded">
+              <label for="agreeAllTerms" class="font-bold text-slate-800 cursor-pointer">모든 약관에 전체 동의합니다</label>
+            </div>
+
+            <div class="space-y-1.5 px-1 text-[11px] text-slate-600">
+              <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="agreeTermService" required class="term-check text-indigo-600 rounded">
+                  <span>[필수] 서비스 이용약관 동의</span>
+                </label>
+                <button type="button" onclick="openTermsModal('service')" class="text-slate-400 hover:text-indigo-600 underline">내용보기</button>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="agreeTermPrivacy" required class="term-check text-indigo-600 rounded">
+                  <span>[필수] 개인정보 수집 및 이용 동의</span>
+                </label>
+                <button type="button" onclick="openTermsModal('privacy')" class="text-slate-400 hover:text-indigo-600 underline">내용보기</button>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="agreeTermMarketing" class="term-check text-indigo-600 rounded">
+                  <span class="text-slate-500">[선택] 신규 처방 및 원료 알림 수신 동의</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div id="signupErrorMessage" class="hidden text-xs text-rose-600 font-medium"></div>
+
+          <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+            회원가입 완료
+          </button>
+        </form>
+
+        <div class="text-center text-xs text-slate-500 pt-1">
+          <span>이미 계정이 있으신가요?</span>
+          <button onclick="switchAuthTab('login')" class="text-indigo-600 font-bold hover:underline ml-1">로그인하기</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 2: SAVED ITEMS MODAL (내 보관함 모아보기) -->
+  <!-- ======================================================== -->
+  <div id="savedItemsModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+      
+      <!-- Modal Header -->
+      <div class="p-5 pb-3 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/50">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">📁</span>
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-base">내 처방 보관함</h3>
+            <p class="text-xs text-slate-400">저장한 가이드 처방과 내가 연구한 처방을 한곳에서 모아봅니다.</p>
+          </div>
+        </div>
+        <button onclick="closeSavedItemsModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="px-5 pt-3 shrink-0">
+        <div class="flex border-b border-slate-200 gap-4 text-xs font-bold">
+          <button id="vaultTabBtnGuide" onclick="switchVaultTab('guide')" class="pb-2.5 border-b-2 border-indigo-600 text-indigo-700 flex items-center gap-1.5 transition">
+            <span>⭐ 저장한 가이드 처방</span>
+            <span id="vaultCountGuide" class="bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">0</span>
+          </button>
+          <button id="vaultTabBtnCustom" onclick="switchVaultTab('custom')" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition">
+            <span>🧪 내가 저장한 연구 처방</span>
+            <span id="vaultCountCustom" class="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-5">
+        <!-- View 1: Saved Guide Recipes -->
+        <div id="vaultViewGuide" class="space-y-2.5">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- View 2: My Custom Formulations -->
+        <div id="vaultViewCustom" class="hidden space-y-2.5">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 3: TERMS MODAL (약관 전문 팝업) -->
+  <!-- ======================================================== -->
+  <div id="termsModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[80vh]">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+        <h3 id="termsModalTitle" class="font-bold text-slate-900 text-sm">이용약관</h3>
+        <button onclick="closeTermsModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
+      </div>
+      <div id="termsModalBody" class="flex-1 overflow-y-auto custom-scrollbar p-5 text-xs text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50/50">
+        <!-- Injected by JS -->
+      </div>
+      <div class="p-3 border-t border-slate-200 flex justify-end">
+        <button onclick="closeTermsModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-sm">확인</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const allRecipes = (window.SOCSOC_RECIPES && window.SOCSOC_RECIPES.length) ? window.SOCSOC_RECIPES : [];
 
@@ -372,7 +765,96 @@
       { phase: 'Phase A', name: 'Water (정제수)', percent: 100.00, supplier: '-', isWater: true }
     ];
 
+    // ==========================================
+    // AUTH & MEMBER SYSTEM (Local Storage Persistence & Real Kakao SDK)
+    // ==========================================
+    const KAKAO_JS_KEY = '144d5111f8c196213382de1b1b74cb20';
+    const STORAGE_USERS_KEY = 'socsoc_users_db';
+    const STORAGE_SESSION_KEY = 'socsoc_current_user';
+
+    let usersDb = [];
+    try {
+      usersDb = JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]');
+    } catch (e) {
+      usersDb = [];
+    }
+
+    let currentUser = null;
+    try {
+      currentUser = JSON.parse(localStorage.getItem(STORAGE_SESSION_KEY) || 'null');
+    } catch (e) {
+      currentUser = null;
+    }
+
+    function saveUsersDb() {
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
+      if (currentUser) {
+        const idx = usersDb.findIndex(u => u.username === currentUser.username);
+        if (idx !== -1) {
+          usersDb[idx] = currentUser;
+          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
+        }
+        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+      }
+    }
+
+    function initAuth() {
+      // Initialize Kakao SDK with User's App Key
+      if (window.Kakao) {
+        try {
+          if (!window.Kakao.isInitialized()) {
+            window.Kakao.init(KAKAO_JS_KEY);
+            console.log('Kakao SDK successfully initialized with user key');
+          }
+        } catch (err) {
+          console.warn('Kakao SDK Init Notice:', err);
+        }
+      }
+
+      renderAuthHeader();
+      if (currentRecipe) {
+        updateSaveGuideRecipeBtnState(currentRecipe);
+      }
+    }
+
+    function updateCategoryPillCounts() {
+      const total = allRecipes.length;
+      const countAll = document.getElementById('catCountAll');
+      if (countAll) countAll.textContent = total;
+
+      const countFiltered = document.getElementById('filteredCount');
+      if (countFiltered) countFiltered.textContent = total;
+
+      const cats = {
+        'sun care': { id: 'catBtnSun', label: 'Sun Care' },
+        'skin care': { id: 'catBtnSkin', label: 'Skin Care' },
+        'body': { id: 'catBtnBody', label: 'Body' },
+        'hair': { id: 'catBtnHair', label: 'Hair' },
+        'make up': { id: 'catBtnMakeup', label: 'Make up' }
+      };
+
+      const counts = { 'sun care': 0, 'skin care': 0, 'body': 0, 'hair': 0, 'make up': 0 };
+      allRecipes.forEach(r => {
+        const c = (r.category || '').toLowerCase().trim();
+        if (c.includes('sun')) counts['sun care']++;
+        else if (c.includes('skin')) counts['skin care']++;
+        else if (c.includes('body')) counts['body']++;
+        else if (c.includes('hair')) counts['hair']++;
+        else if (c.includes('make')) counts['make up']++;
+      });
+
+      for (const k in cats) {
+        const btn = document.getElementById(cats[k].id);
+        if (btn) {
+          btn.textContent = `${cats[k].label} (${counts[k] || 0})`;
+        }
+      }
+    }
+
     function init() {
+      setAppMode('explorer');
+      initAuth();
+      updateCategoryPillCounts();
       renderRecipeList(allRecipes);
       if (allRecipes.length > 0) {
         showRecipeOriginalArticle(allRecipes[0]);
@@ -406,15 +888,18 @@
       const mCalc = document.getElementById('modeCalculator');
       const btnExp = document.getElementById('navBtnExplorer');
       const btnCalc = document.getElementById('navBtnCalculator');
+      const floatingBtn = document.getElementById('floatingNewRecipeBtn');
 
       if (mode === 'explorer') {
         mExplorer.classList.remove('hidden');
         mCalc.classList.add('hidden');
+        if (floatingBtn) floatingBtn.classList.remove('hidden');
         btnExp.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
         btnCalc.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition';
       } else {
         mExplorer.classList.add('hidden');
         mCalc.classList.remove('hidden');
+        if (floatingBtn) floatingBtn.classList.add('hidden');
         btnExp.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition';
         btnCalc.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
         renderCalculatorTable();
@@ -453,6 +938,7 @@
 
     function showRecipeOriginalArticle(recipe) {
       currentRecipe = recipe;
+      updateSaveGuideRecipeBtnState(recipe);
       document.getElementById('articleTitle').textContent = recipe.title;
       document.getElementById('articleCategoryBadge').textContent = (recipe.category || 'ETC').toUpperCase();
       document.getElementById('articleCategoryBadge').className = `px-2.5 py-0.5 rounded text-xs font-bold uppercase ${getCategoryColor(recipe.category)}`;
@@ -567,14 +1053,17 @@
 
     function selectCategory(cat) {
       currentCategoryFilter = cat;
+      const countBadge = document.getElementById('catCountAll');
       document.querySelectorAll('.cat-pill').forEach(btn => {
         const isSelected = (btn.getAttribute('data-cat') === cat);
         const isAll = (btn.getAttribute('data-cat') === 'all');
         if (isAll) {
           if (isSelected) {
             btn.className = 'cat-pill w-full py-1.5 px-3 rounded-lg font-bold text-xs bg-indigo-600 text-white transition shadow-sm flex items-center justify-between';
+            if (countBadge) countBadge.className = 'bg-indigo-700/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold';
           } else {
             btn.className = 'cat-pill w-full py-1.5 px-3 rounded-lg font-medium text-xs bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition flex items-center justify-between';
+            if (countBadge) countBadge.className = 'bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold';
           }
         } else {
           if (isSelected) {
@@ -858,6 +1347,691 @@
       a.href = url;
       a.download = `[SOCSOC]_${title}_배치계량표.csv`;
       a.click();
+    }
+
+    // ==========================================
+    // AUTH & MEMBER UI LOGIC
+    // ==========================================
+    function renderAuthHeader() {
+      const area = document.getElementById('authHeaderArea');
+      if (!area) return;
+
+      if (currentUser) {
+        const savedGuidesCount = (currentUser.savedGuides || []).length;
+        const savedFormulasCount = (currentUser.savedFormulas || []).length;
+        const totalSaved = savedGuidesCount + savedFormulasCount;
+        const roleBadge = currentUser.companyType ? `[${currentUser.companyType}]` : '[연구원]';
+
+        area.innerHTML = `
+          <button onclick="openSavedItemsModal('guide')" class="px-2.5 py-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95" title="내 처방 보관함 열기">
+            <span>⭐ 내 보관함</span>
+            <span class="bg-amber-200 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full">${totalSaved}</span>
+          </button>
+          <div class="flex items-center gap-2 pl-1 border-l border-slate-200">
+            <div class="flex items-center gap-1.5 text-xs">
+              <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[11px]">
+                ${(currentUser.name || currentUser.username || 'U').charAt(0).toUpperCase()}
+              </span>
+              <span class="font-bold text-slate-800 text-xs hidden sm:inline">
+                ${currentUser.name || currentUser.username}
+              </span>
+              <span class="text-[10px] text-indigo-600 bg-indigo-50 font-bold px-1.5 py-0.5 rounded border border-indigo-100 hidden md:inline">
+                ${roleBadge}
+              </span>
+            </div>
+            <button onclick="logoutUser()" class="px-2 py-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition" title="로그아웃">
+              로그아웃
+            </button>
+          </div>
+        `;
+      } else {
+        area.innerHTML = `
+          <button onclick="openAuthModal('login')" class="px-2.5 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95" title="로그인 / 회원가입">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+            <span>로그인</span>
+          </button>
+        `;
+      }
+    }
+
+    function openAuthModal(defaultTab = 'login', noticeMessage = '') {
+      const modal = document.getElementById('authModal');
+      const noticeBanner = document.getElementById('authNoticeBanner');
+      const noticeText = document.getElementById('authNoticeMessage');
+
+      if (noticeMessage) {
+        noticeText.textContent = noticeMessage;
+        noticeBanner.classList.remove('hidden');
+      } else {
+        noticeBanner.classList.add('hidden');
+      }
+
+      switchAuthTab(defaultTab);
+      modal.classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+      const loginErr = document.getElementById('loginErrorMessage');
+      if (loginErr) loginErr.classList.add('hidden');
+      const signupErr = document.getElementById('signupErrorMessage');
+      if (signupErr) signupErr.classList.add('hidden');
+    }
+
+    function switchAuthTab(tab) {
+      const btnLogin = document.getElementById('authTabBtnLogin');
+      const btnSignup = document.getElementById('authTabBtnSignup');
+      const viewLogin = document.getElementById('authViewLogin');
+      const viewSignup = document.getElementById('authViewSignup');
+
+      if (tab === 'login') {
+        btnLogin.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        btnSignup.className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition';
+        viewLogin.classList.remove('hidden');
+        viewSignup.classList.add('hidden');
+      } else {
+        btnLogin.className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition';
+        btnSignup.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        viewLogin.classList.add('hidden');
+        viewSignup.classList.remove('hidden');
+      }
+    }
+
+    function validatePasswordMatch() {
+      const pw1 = document.getElementById('signupPwInput').value;
+      const pw2 = document.getElementById('signupPwCfmInput').value;
+      const msg = document.getElementById('pwMatchMessage');
+
+      if (!pw2) {
+        msg.classList.add('hidden');
+        return true;
+      }
+
+      msg.classList.remove('hidden');
+      if (pw1 === pw2) {
+        msg.textContent = '✅ 비밀번호가 일치합니다.';
+        msg.className = 'text-[11px] mt-1 font-semibold text-emerald-600';
+        return true;
+      } else {
+        msg.textContent = '❌ 비밀번호가 일치하지 않습니다.';
+        msg.className = 'text-[11px] mt-1 font-semibold text-rose-600';
+        return false;
+      }
+    }
+
+    function toggleAllTerms(master) {
+      const checks = document.querySelectorAll('.term-check');
+      checks.forEach(c => c.checked = master.checked);
+    }
+
+    function handleNormalLogin(e) {
+      e.preventDefault();
+      const id = document.getElementById('loginIdInput').value.trim();
+      const pw = document.getElementById('loginPwInput').value;
+      const errMsg = document.getElementById('loginErrorMessage');
+
+      const found = usersDb.find(u => u.username === id && u.password === pw);
+
+      if (found) {
+        currentUser = found;
+        if (!currentUser.savedGuides) currentUser.savedGuides = [];
+        if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
+        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+
+        closeAuthModal();
+        renderAuthHeader();
+        updateSaveGuideRecipeBtnState(currentRecipe);
+        showToast(`환영합니다, ${currentUser.name || currentUser.username}님!`);
+      } else {
+        errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. (회원가입 후 이용해주세요)';
+        errMsg.classList.remove('hidden');
+      }
+    }
+
+    function handleSocialAuth(provider) {
+      if (provider === 'kakao') {
+        // 1. Check protocol
+        if (window.location.protocol === 'file:') {
+          alert('⚠️ [중요 안내]\n현재 브라우저가 "file:///" (파일 직접 열기)로 실행 중입니다.\n\n카카오 보안 정책상 file:// 주소에서는 카카오 로그인이 원천 차단됩니다.\n\n해결 방법:\n폴더 안에 있는 [run_server.bat] 파일을 더블클릭하시거나,\n웹서버(http://localhost:3000)를 통해 접속하셔야 카카오 로그인 창이 뜹니다!');
+          return;
+        }
+
+        if (!window.Kakao) {
+          alert('카카오 SDK를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.');
+          return;
+        }
+        if (!window.Kakao.isInitialized()) {
+          try {
+            window.Kakao.init(KAKAO_JS_KEY);
+          } catch(e) {
+            console.error('Kakao re-init error:', e);
+            alert('카카오 SDK 초기화 오류: ' + e.message);
+            return;
+          }
+        }
+
+        try {
+          // Real Kakao Official Login Popup Call
+          window.Kakao.Auth.login({
+            scope: 'profile_nickname,account_email',
+            success: function(authObj) {
+              window.Kakao.API.request({
+                url: '/v2/user/me',
+                success: function(res) {
+                  const kakaoAccount = res.kakao_account || {};
+                  const profile = kakaoAccount.profile || {};
+                  const kakaoId = `kakao_${res.id}`;
+                  const nickname = profile.nickname || '카카오 연구원';
+                  const email = kakaoAccount.email || `${kakaoId}@thesocsoc.com`;
+
+                  let user = usersDb.find(u => u.username === kakaoId);
+                  if (!user) {
+                    user = {
+                      username: kakaoId,
+                      name: nickname,
+                      email: email,
+                      phone: '카카오 간편인증',
+                      companyType: '브랜드사',
+                      provider: 'kakao',
+                      savedGuides: [],
+                      savedFormulas: [],
+                      createdAt: new Date().toISOString()
+                    };
+                    usersDb.push(user);
+                    saveUsersDb();
+                  } else {
+                    user.name = nickname;
+                    if (kakaoAccount.email) user.email = email;
+                    saveUsersDb();
+                  }
+
+                  currentUser = user;
+                  localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+                  closeAuthModal();
+                  renderAuthHeader();
+                  if (currentRecipe) updateSaveGuideRecipeBtnState(currentRecipe);
+                  showToast(`카카오 로그인 완료! 환영합니다, ${nickname}님!`, '🟡');
+                },
+                fail: function(error) {
+                  console.error('Kakao user info fetch error:', error);
+                  alert('카카오 계정 정보를 가져오지 못했습니다: ' + JSON.stringify(error));
+                }
+              });
+            },
+            fail: function(err) {
+              console.error('Kakao login error:', err);
+              if (err.error === 'access_denied') {
+                showToast('카카오 로그인이 취소되었습니다.');
+              } else {
+                alert('카카오 로그인 오류 안내:\n' + (err.error_description || err.msg || JSON.stringify(err)) + '\n\n* 카카오 개발자 센터의 플랫폼 도메인 설정(http://localhost:3000)을 확인해주세요.');
+              }
+            }
+          });
+        } catch (ex) {
+          alert('카카오 팝업 호출 실패: ' + ex.message);
+        }
+        return;
+      }
+
+      // Other providers (e.g. Naver - waiting for Naver Client ID)
+      const providerName = provider === 'kakao' ? '카카오' : '네이버';
+      const socialId = `${provider}_user`;
+      
+      let user = usersDb.find(u => u.username === socialId);
+      if (!user) {
+        user = {
+          username: socialId,
+          name: `${providerName} 연구원`,
+          email: `${socialId}@thesocsoc.com`,
+          phone: '010-0000-0000',
+          companyType: '브랜드사',
+          provider: provider,
+          savedGuides: [],
+          savedFormulas: [],
+          createdAt: new Date().toISOString()
+        };
+        usersDb.push(user);
+        saveUsersDb();
+      }
+
+      currentUser = user;
+      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+      closeAuthModal();
+      renderAuthHeader();
+      updateSaveGuideRecipeBtnState(currentRecipe);
+      showToast(`${providerName} 간편 로그인되었습니다!`);
+    }
+
+    function handleNormalSignup(e) {
+      e.preventDefault();
+      const id = document.getElementById('signupIdInput').value.trim();
+      const pw = document.getElementById('signupPwInput').value;
+      const pwCfm = document.getElementById('signupPwCfmInput').value;
+      const email = document.getElementById('signupEmailInput').value.trim();
+      const phone = document.getElementById('signupPhoneInput').value.trim();
+      
+      const companyTypeEl = document.querySelector('input[name="companyType"]:checked');
+      const companyType = companyTypeEl ? companyTypeEl.value : '기타';
+
+      const agreeService = document.getElementById('agreeTermService').checked;
+      const agreePrivacy = document.getElementById('agreeTermPrivacy').checked;
+      const errMsg = document.getElementById('signupErrorMessage');
+
+      if (pw !== pwCfm) {
+        errMsg.textContent = '비밀번호가 일치하지 않습니다. 오타 방지 입력을 확인해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      if (!agreeService || !agreePrivacy) {
+        errMsg.textContent = '서비스 이용약관 및 개인정보 수집 이용(필수)에 동의해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      const existing = usersDb.find(u => u.username === id);
+      if (existing) {
+        errMsg.textContent = '이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      const newUser = {
+        username: id,
+        password: pw,
+        name: id,
+        email: email,
+        phone: phone,
+        companyType: companyType,
+        provider: 'normal',
+        savedGuides: [],
+        savedFormulas: [],
+        createdAt: new Date().toISOString()
+      };
+
+      usersDb.push(newUser);
+      currentUser = newUser;
+      saveUsersDb();
+
+      closeAuthModal();
+      renderAuthHeader();
+      updateSaveGuideRecipeBtnState(currentRecipe);
+      showToast(`회원가입이 완료되었습니다! 환영합니다, ${id}님.`);
+    }
+
+    function logoutUser() {
+      currentUser = null;
+      localStorage.removeItem(STORAGE_SESSION_KEY);
+      renderAuthHeader();
+      updateSaveGuideRecipeBtnState(currentRecipe);
+      showToast('로그아웃 되었습니다.');
+    }
+
+    // ==========================================
+    // GUIDE RECIPE BOOKMARK LOGIC
+    // ==========================================
+    function toggleSaveCurrentGuideRecipe() {
+      if (!currentUser) {
+        openAuthModal('login', '가이드 처방 저장은 회원 로그인 후 이용 가능합니다.');
+        return;
+      }
+
+      if (!currentRecipe) return;
+
+      if (!currentUser.savedGuides) currentUser.savedGuides = [];
+      const idx = currentUser.savedGuides.findIndex(item => item.uid === currentRecipe.uid);
+
+      if (idx !== -1) {
+        currentUser.savedGuides.splice(idx, 1);
+        saveUsersDb();
+        updateSaveGuideRecipeBtnState(currentRecipe);
+        renderAuthHeader();
+        showToast('가이드 처방 저장이 해제되었습니다.');
+      } else {
+        currentUser.savedGuides.unshift({
+          uid: currentRecipe.uid,
+          title: currentRecipe.title,
+          category: currentRecipe.category || 'ETC',
+          formulaCode: currentRecipe.formulaCode || '',
+          supplier: currentRecipe.supplier || '',
+          savedAt: new Date().toISOString()
+        });
+        saveUsersDb();
+        updateSaveGuideRecipeBtnState(currentRecipe);
+        renderAuthHeader();
+        showToast('⭐ [내 보관함]에 가이드 처방이 저장되었습니다!');
+      }
+    }
+
+    function updateSaveGuideRecipeBtnState(recipe) {
+      const btn = document.getElementById('saveGuideRecipeBtn');
+      const icon = document.getElementById('saveGuideRecipeIcon');
+      const text = document.getElementById('saveGuideRecipeText');
+      if (!btn || !icon || !text) return;
+
+      if (!recipe) {
+        icon.textContent = '⭐';
+        text.textContent = '가이드 처방 저장';
+        btn.className = 'shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95';
+        return;
+      }
+
+      const isSaved = currentUser && currentUser.savedGuides && currentUser.savedGuides.some(g => g.uid === recipe.uid);
+
+      if (isSaved) {
+        icon.textContent = '⭐';
+        text.textContent = '저장됨 (보관함 확인)';
+        btn.className = 'shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-indigo-500 bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5 shadow-sm active:scale-95 ring-2 ring-indigo-300';
+      } else {
+        icon.textContent = '☆';
+        text.textContent = '가이드 처방 저장';
+        btn.className = 'shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95';
+      }
+    }
+
+    // ==========================================
+    // CUSTOM FORMULA SAVE LOGIC (계산기 처방 저장)
+    // ==========================================
+    function saveCurrentCustomFormula() {
+      if (!currentUser) {
+        openAuthModal('login', '내 처방 저장은 회원 로그인 후 이용 가능합니다.');
+        return;
+      }
+
+      const titleInput = document.getElementById('calcFormulaTitleInput');
+      const title = (titleInput && titleInput.value.trim()) || '신규 연구 처방';
+      const batchSize = parseFloat(document.getElementById('batchSize').value) || 100;
+
+      let totalPercent = 0;
+      activeFormula.forEach(item => {
+        totalPercent += (item.percent || 0);
+      });
+
+      if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
+
+      const newRecord = {
+        id: 'formula_' + Date.now(),
+        title: title,
+        batchSize: batchSize,
+        formula: JSON.parse(JSON.stringify(activeFormula)),
+        totalPercent: parseFloat(totalPercent.toFixed(2)),
+        savedAt: new Date().toISOString()
+      };
+
+      currentUser.savedFormulas.unshift(newRecord);
+      saveUsersDb();
+      renderAuthHeader();
+      showToast(`💾 [내 보관함]에 "${title}" 처방이 저장되었습니다!`);
+    }
+
+    // ==========================================
+    // SAVED ITEMS VAULT MODAL (모아보기 팝업)
+    // ==========================================
+    let currentVaultTab = 'guide';
+
+    function openSavedItemsModal(defaultTab = 'guide') {
+      if (!currentUser) {
+        openAuthModal('login', '보관함 열람은 회원 로그인 후 이용 가능합니다.');
+        return;
+      }
+
+      currentVaultTab = defaultTab;
+      document.getElementById('savedItemsModal').classList.remove('hidden');
+      switchVaultTab(defaultTab);
+    }
+
+    function closeSavedItemsModal() {
+      document.getElementById('savedItemsModal').classList.add('hidden');
+    }
+
+    function switchVaultTab(tab) {
+      currentVaultTab = tab;
+      const btnGuide = document.getElementById('vaultTabBtnGuide');
+      const btnCustom = document.getElementById('vaultTabBtnCustom');
+      const viewGuide = document.getElementById('vaultViewGuide');
+      const viewCustom = document.getElementById('vaultViewCustom');
+
+      const countGuide = (currentUser.savedGuides || []).length;
+      const countCustom = (currentUser.savedFormulas || []).length;
+
+      document.getElementById('vaultCountGuide').textContent = countGuide;
+      document.getElementById('vaultCountCustom').textContent = countCustom;
+
+      if (tab === 'guide') {
+        btnGuide.className = 'pb-2.5 border-b-2 border-indigo-600 text-indigo-700 flex items-center gap-1.5 transition';
+        btnCustom.className = 'pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition';
+        viewGuide.classList.remove('hidden');
+        viewCustom.classList.add('hidden');
+        renderSavedGuides();
+      } else {
+        btnGuide.className = 'pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition';
+        btnCustom.className = 'pb-2.5 border-b-2 border-indigo-600 text-indigo-700 flex items-center gap-1.5 transition';
+        viewGuide.classList.add('hidden');
+        viewCustom.classList.remove('hidden');
+        renderSavedCustomFormulas();
+      }
+    }
+
+    function renderSavedGuides() {
+      const container = document.getElementById('vaultViewGuide');
+      container.innerHTML = '';
+
+      const list = currentUser.savedGuides || [];
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-400">
+            <span class="text-3xl block mb-2">⭐</span>
+            <p class="font-bold text-slate-600 text-xs">저장된 가이드 처방이 없습니다.</p>
+            <p class="text-[11px] text-slate-400 mt-1">가이드 처방관에서 마음에 드는 처방을 [가이드 처방 저장] 해보세요!</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'p-3.5 bg-slate-50 hover:bg-indigo-50/40 rounded-xl border border-slate-200 transition flex items-center justify-between gap-3';
+        div.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getCategoryColor(item.category)}">
+                ${item.category}
+              </span>
+              <span class="text-[11px] font-mono text-slate-400">${item.formulaCode || ''}</span>
+            </div>
+            <h4 class="text-xs font-bold text-slate-900 truncate">${item.title}</h4>
+            <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+              <span>제공사: ${item.supplier || '-'}</span>
+              <span>•</span>
+              <span>저장일: ${(item.savedAt || '').substring(0, 10)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="loadGuideRecipeFromVault('${item.uid}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition">
+              원문 보기
+            </button>
+            <button onclick="removeGuideRecipeFromVault('${item.uid}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg text-xs transition" title="보관함에서 삭제">
+              🗑️
+            </button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderSavedCustomFormulas() {
+      const container = document.getElementById('vaultViewCustom');
+      container.innerHTML = '';
+
+      const list = currentUser.savedFormulas || [];
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-400">
+            <span class="text-3xl block mb-2">🧪</span>
+            <p class="font-bold text-slate-600 text-xs">저장된 연구 처방이 없습니다.</p>
+            <p class="text-[11px] text-slate-400 mt-1">제형 개발 계산기에서 [내 처방으로 저장] 버튼을 눌러 연구 처방을 보관하세요!</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'p-3.5 bg-slate-50 hover:bg-emerald-50/40 rounded-xl border border-slate-200 transition flex items-center justify-between gap-3';
+        div.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                연구 처방
+              </span>
+              <span class="text-[11px] font-bold text-slate-500">배치: ${item.batchSize || 100}g</span>
+              <span class="text-[11px] font-bold ${Math.abs(item.totalPercent - 100) < 0.005 ? 'text-emerald-600' : 'text-amber-600'}">
+                (${Number(item.totalPercent || 0).toFixed(2)}%)
+              </span>
+            </div>
+            <h4 class="text-xs font-bold text-slate-900 truncate">${item.title}</h4>
+            <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+              <span>원료 ${(item.formula || []).length}종 구성</span>
+              <span>•</span>
+              <span>저장일: ${(item.savedAt || '').substring(0, 10)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="loadCustomFormulaFromVault('${item.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition">
+              계산기로 불러오기
+            </button>
+            <button onclick="removeCustomFormulaFromVault('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg text-xs transition" title="처방 삭제">
+              🗑️
+            </button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function loadGuideRecipeFromVault(uid) {
+      const found = allRecipes.find(r => r.uid === uid);
+      if (found) {
+        showRecipeOriginalArticle(found);
+        setAppMode('explorer');
+        closeSavedItemsModal();
+        showToast(`가이드 처방 "${found.title}"을(를) 열었습니다.`);
+      }
+    }
+
+    function removeGuideRecipeFromVault(uid) {
+      if (!currentUser || !currentUser.savedGuides) return;
+      currentUser.savedGuides = currentUser.savedGuides.filter(g => g.uid !== uid);
+      saveUsersDb();
+      renderSavedGuides();
+      renderAuthHeader();
+      updateSaveGuideRecipeBtnState(currentRecipe);
+      showToast('보관함에서 가이드 처방이 삭제되었습니다.');
+    }
+
+    function loadCustomFormulaFromVault(id) {
+      if (!currentUser || !currentUser.savedFormulas) return;
+      const found = currentUser.savedFormulas.find(f => f.id === id);
+      if (!found) return;
+
+      document.getElementById('calcFormulaTitleInput').value = found.title;
+      document.getElementById('batchSize').value = found.batchSize || 100;
+      activeFormula = JSON.parse(JSON.stringify(found.formula || []));
+
+      setAppMode('calculator');
+      renderCalculatorTable();
+      updateCalculationsOnly();
+      closeSavedItemsModal();
+      showToast(`연구 처방 "${found.title}"을(를) 계산기로 불러왔습니다.`);
+    }
+
+    function removeCustomFormulaFromVault(id) {
+      if (!currentUser || !currentUser.savedFormulas) return;
+      currentUser.savedFormulas = currentUser.savedFormulas.filter(f => f.id !== id);
+      saveUsersDb();
+      renderSavedCustomFormulas();
+      renderAuthHeader();
+      showToast('연구 처방이 삭제되었습니다.');
+    }
+
+    // ==========================================
+    // FLOATING ACTION BUTTON
+    // ==========================================
+    function handleFloatingNewRecipeClick() {
+      startFreshZeroCalculator();
+      showToast('새 처방 작성을 위한 계산기 워크벤치가 준비되었습니다!');
+    }
+
+    // ==========================================
+    // TERMS MODAL
+    // ==========================================
+    const TERMS_CONTENT = {
+      service: `제1조 (목적)
+본 약관은 주식회사 속속(이하 "회사")이 제공하는 화장품 가이드 처방 및 R&D 플랫폼(이하 "서비스")의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
+
+제2조 (용어의 정의)
+1. "서비스"란 회사가 제공하는 화장품 가이드 처방 열람, 배합비 계산기, 처방 저장 및 관련 부가 서비스를 의미합니다.
+2. "회원"이란 본 약관에 동의하고 계정을 생성하여 서비스를 이용하는 고객을 말합니다.
+3. "가이드 처방"이란 화장품 연구개발을 위해 참고용으로 제공되는 원료 구성 및 배합비 정보를 의미합니다.
+
+제3조 (처방 정보의 성격 및 면책)
+본 서비스에서 제공되는 모든 가이드 처방 및 배합비 데이터는 연구 및 개발 참고용으로 제공됩니다. 화장품 양산 및 상용화 전에는 반드시 안정성, 방부력, 피부 자극성 등 관련 법규에 따른 적합성 테스트를 거쳐야 하며, 회사는 개별 제조 공정의 결과에 대해 보증하지 않습니다.`,
+
+      privacy: `1. 개인정보 수집 항목
+- 필수 항목: 아이디, 비밀번호, 이메일 주소, 핸드폰 번호, 회원 유형(제조사/원료사/브랜드사/기타)
+- 서비스 이용 과정에서 생성되는 정보: 접속 로그, 저장한 처방 데이터
+
+2. 개인정보의 수집 및 이용 목적
+- 회원 가입 의사 확인 및 본인 식별
+- 가이드 처방 저장 및 개인화된 연구 처방 보관함 서비스 제공
+- 연구소 맞춤형 원료 및 처방 추천(선택 동의 시)
+
+3. 개인정보의 보유 및 이용 기간
+- 회원 탈퇴 시까지 보유하며, 법령에 따른 보존 의무가 있는 경우 해당 기간 동안 안전하게 보관 후 파기합니다.`
+    };
+
+    function openTermsModal(type) {
+      const modal = document.getElementById('termsModal');
+      const title = document.getElementById('termsModalTitle');
+      const body = document.getElementById('termsModalBody');
+
+      if (type === 'privacy') {
+        title.textContent = '개인정보 수집 및 이용 동의';
+        body.textContent = TERMS_CONTENT.privacy;
+      } else {
+        title.textContent = '서비스 이용약관';
+        body.textContent = TERMS_CONTENT.service;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeTermsModal() {
+      document.getElementById('termsModal').classList.add('hidden');
+    }
+
+    // ==========================================
+    // TOAST NOTIFICATION UTILITY
+    // ==========================================
+    let toastTimeout = null;
+    function showToast(message, icon = '✨') {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIco = document.getElementById('toastIcon');
+
+      if (!toast) return;
+
+      toastMsg.textContent = message;
+      toastIco.textContent = icon;
+
+      toast.classList.remove('opacity-0', '-translate-y-12', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-12', 'pointer-events-none');
+      }, 2500);
     }
 
     window.addEventListener('DOMContentLoaded', init);
