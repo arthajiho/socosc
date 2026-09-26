@@ -486,10 +486,10 @@
     <span>새 처방 작성</span>
   </button>
 
-  <!-- Global Toast Notification -->
-  <div id="toastNotification" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform -translate-y-12 opacity-0 pointer-events-none">
-    <div class="px-4 py-2.5 rounded-xl bg-slate-900/90 backdrop-blur-md text-white font-semibold text-xs shadow-2xl flex items-center gap-2 border border-slate-700">
-      <span id="toastIcon" class="w-2 h-2 rounded-full bg-indigo-400 inline-block"></span>
+  <!-- Global Toast Notification (위치: 화면 시선 중심부인 top-[35vh]로 대폭 하향 이동) -->
+  <div id="toastNotification" class="fixed top-[35vh] left-1/2 -translate-x-1/2 z-[70] transition-all duration-300 transform -translate-y-8 opacity-0 pointer-events-none">
+    <div class="px-5 py-3 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white font-bold text-xs shadow-2xl flex items-center gap-2.5 border border-slate-700/80">
+      <span id="toastIcon" class="w-2.5 h-2.5 rounded-full bg-indigo-400 shrink-0 inline-block shadow-sm"></span>
       <span id="toastMessage">알림 내용</span>
     </div>
   </div>
@@ -515,16 +515,16 @@
         <span id="authNoticeMessage">가이드 처방을 저장하려면 로그인이 필요합니다.</span>
       </div>
 
-      <!-- Tab Switcher (로그인 vs 회원가입) -->
-      <div class="px-5 pt-4">
-        <div class="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
-          <button id="authTabBtnLogin" onclick="switchAuthTab('login')" class="flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition">
-            로그인
-          </button>
-          <button id="authTabBtnSignup" onclick="switchAuthTab('signup')" class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition">
-            회원가입
-          </button>
-        </div>
+      <!-- Modal Sub Header / Navigation Bar (로그인 우측 회원가입 탭 제거 및 깔끔한 헤더 적용) -->
+      <div id="authNavHeader" class="px-5 pt-4 pb-2 flex items-center justify-between border-b border-slate-100">
+        <h4 id="authNavTitle" class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-right-to-bracket text-indigo-600"></i>
+          <span>회원 로그인</span>
+        </h4>
+        <button id="authNavBackBtn" type="button" onclick="switchAuthTab('login')" class="hidden text-xs text-slate-500 hover:text-indigo-600 font-semibold flex items-center gap-1 transition">
+          <i class="fa-solid fa-arrow-left text-[10px]"></i>
+          <span>로그인으로 돌아가기</span>
+        </button>
       </div>
 
       <!-- ================= FORM: LOGIN ================= -->
@@ -548,9 +548,16 @@
           </button>
         </form>
 
+        <!-- 아이디 찾기 / 비밀번호 찾기 링크 바 -->
+        <div class="flex items-center justify-center gap-3 pt-2 text-xs text-slate-500 border-t border-slate-100">
+          <button type="button" onclick="switchAuthTab('findId')" class="hover:text-indigo-600 font-semibold transition text-slate-600">아이디 찾기</button>
+          <span class="text-slate-300">|</span>
+          <button type="button" onclick="switchAuthTab('findPw')" class="hover:text-indigo-600 font-semibold transition text-slate-600">비밀번호 찾기</button>
+        </div>
+
         <div class="text-center text-xs text-slate-500 pt-1">
           <span>아직 회원이 아니신가요?</span>
-          <button onclick="switchAuthTab('signup')" class="text-indigo-600 font-bold hover:underline ml-1">무료 회원가입</button>
+          <button type="button" onclick="switchAuthTab('signup')" class="text-indigo-600 font-bold hover:underline ml-1">무료 회원가입</button>
         </div>
       </div>
 
@@ -691,7 +698,131 @@
 
         <div class="text-center text-xs text-slate-500 pt-1">
           <span>이미 계정이 있으신가요?</span>
-          <button onclick="switchAuthTab('login')" class="text-indigo-600 font-bold hover:underline ml-1">로그인하기</button>
+          <button type="button" onclick="switchAuthTab('login')" class="text-indigo-600 font-bold hover:underline ml-1">로그인하기</button>
+        </div>
+      </div>
+
+      <!-- ================= FORM: FIND ID ================= -->
+      <div id="authViewFindId" class="hidden p-5 space-y-4">
+        <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-900 leading-relaxed">
+          <i class="fa-solid fa-circle-info text-indigo-600 mr-1"></i>
+          가입 시 등록하신 <strong>이름(실명)</strong>과 <strong>핸드폰 번호</strong>를 입력하시면 등록된 아이디를 조회하실 수 있습니다.
+        </div>
+
+        <form id="findIdForm" onsubmit="handleFindIdSubmit(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">이름 (실명) <span class="text-rose-500">*</span></label>
+            <input type="text" id="findIdNameInput" required placeholder="가입 시 등록한 이름 입력"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">핸드폰 번호 <span class="text-rose-500">*</span></label>
+            <input type="tel" id="findIdPhoneInput" required placeholder="010-0000-0000 또는 숫자만 입력"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <div id="findIdErrorMessage" class="hidden text-xs text-rose-600 font-medium"></div>
+
+          <button type="submit" id="findIdSubmitBtn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+            아이디 찾기
+          </button>
+        </form>
+
+        <!-- 아이디 찾기 결과 표시 박스 -->
+        <div id="findIdResultBox" class="hidden space-y-3 pt-2">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+            <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2 text-base">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <p class="text-xs text-slate-600 mb-1">고객님의 정보와 일치하는 아이디를 찾았습니다.</p>
+            <div id="foundIdValue" class="text-lg font-black text-indigo-700 tracking-wider select-all py-1"></div>
+            <p id="foundIdSubInfo" class="text-[11px] text-slate-400 mt-1"></p>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="button" onclick="loginWithFoundId()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-right-to-bracket text-xs"></i>
+              <span>이 아이디로 로그인</span>
+            </button>
+            <button type="button" onclick="goToResetPwWithFoundId()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
+              비밀번호 찾기
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-center gap-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <button type="button" onclick="switchAuthTab('login')" class="hover:text-indigo-600 font-medium transition text-slate-600">로그인으로 돌아가기</button>
+          <span class="text-slate-300">|</span>
+          <button type="button" onclick="switchAuthTab('findPw')" class="hover:text-indigo-600 font-semibold transition text-slate-600">비밀번호 찾기</button>
+        </div>
+      </div>
+
+      <!-- ================= FORM: FIND / RESET PASSWORD ================= -->
+      <div id="authViewFindPw" class="hidden p-5 space-y-4">
+        <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-900 leading-relaxed">
+          <i class="fa-solid fa-shield-halved text-indigo-600 mr-1"></i>
+          본인 정보(아이디, 이름, 핸드폰 번호) 확인 후 <strong>새로운 비밀번호</strong>로 안전하게 재설정하실 수 있습니다.
+        </div>
+
+        <!-- 1단계: 회원 본인 확인 -->
+        <form id="findPwVerifyForm" onsubmit="handleFindPwVerify(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">아이디 <span class="text-rose-500">*</span></label>
+            <input type="text" id="findPwIdInput" required placeholder="가입한 아이디 입력"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">이름 (실명) <span class="text-rose-500">*</span></label>
+            <input type="text" id="findPwNameInput" required placeholder="가입 시 등록한 이름"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">핸드폰 번호 <span class="text-rose-500">*</span></label>
+            <input type="tel" id="findPwPhoneInput" required placeholder="010-0000-0000 또는 숫자만 입력"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <div id="findPwErrorMessage" class="hidden text-xs text-rose-600 font-medium"></div>
+
+          <button type="submit" id="findPwVerifyBtn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+            본인 확인 및 다음 단계
+          </button>
+        </form>
+
+        <!-- 2단계: 새 비밀번호 설정 (1단계 확인 통과 후 노출) -->
+        <form id="findPwResetForm" onsubmit="handleFindPwResetSubmit(event)" class="hidden space-y-3 pt-2 border-t border-slate-200">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800 flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+            <div>
+              <span class="font-bold" id="findPwVerifiedUserText">회원 확인 완료!</span>
+              <p class="text-[11px] text-emerald-700 mt-0.5">사용하실 새로운 비밀번호를 입력해주세요.</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">새 비밀번호 <span class="text-rose-500">*</span></label>
+            <input type="password" id="findPwNewInput" required minlength="6" oninput="validateFindPwMatch()" placeholder="6자 이상 새 비밀번호 입력"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">새 비밀번호 확인 <span class="text-rose-500">*</span></label>
+            <input type="password" id="findPwNewCfmInput" required minlength="6" oninput="validateFindPwMatch()" placeholder="새 비밀번호 다시 한 번 입력"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+            <p id="findPwMatchMessage" class="hidden text-[11px] mt-1 font-medium"></p>
+          </div>
+
+          <div id="findPwResetErrorMessage" class="hidden text-xs text-rose-600 font-medium"></div>
+
+          <button type="submit" id="findPwResetBtn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+            새 비밀번호로 재설정 완료
+          </button>
+        </form>
+
+        <div class="flex items-center justify-center gap-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <button type="button" onclick="switchAuthTab('login')" class="hover:text-indigo-600 font-medium transition text-slate-600">로그인으로 돌아가기</button>
+          <span class="text-slate-300">|</span>
+          <button type="button" onclick="switchAuthTab('findId')" class="hover:text-indigo-600 font-semibold transition text-slate-600">아이디 찾기</button>
         </div>
       </div>
 
@@ -1419,6 +1550,26 @@
         saveUsersDb();
       }
 
+      // Ensure default socsoc admin account exists
+      if (!usersDb.some(u => u.username === 'socsoc')) {
+        usersDb.push({
+          id: 'socsoc_admin_local',
+          username: 'socsoc',
+          password: 'socsoc1234',
+          name: '속속 관리자',
+          nickname: '최고관리자',
+          email: 'socsoc-contact@naver.com',
+          phone: '010-0000-0000',
+          companyType: '제조사',
+          provider: 'normal',
+          role: 'admin',
+          savedGuides: [],
+          savedFormulas: [],
+          createdAt: new Date().toISOString()
+        });
+        saveUsersDb();
+      }
+
       // 최고 관리자(socsoc 및 admin) 권한 자동 부여 및 동기화
       let userDbChanged = false;
       usersDb.forEach(u => {
@@ -2132,6 +2283,96 @@
       }
     }
 
+    let verifiedResetUser = null;
+
+    // 모든 인증 폼 입력값을 매번 완전히 공백으로 초기화하는 함수
+    function clearAuthFormInputs() {
+      // 1. 로그인 폼 초기화
+      const loginId = document.getElementById('loginIdInput');
+      const loginPw = document.getElementById('loginPwInput');
+      if (loginId) loginId.value = '';
+      if (loginPw) loginPw.value = '';
+
+      // 2. 회원가입 폼 초기화
+      const signupId = document.getElementById('signupIdInput');
+      const signupPw = document.getElementById('signupPwInput');
+      const signupPwCfm = document.getElementById('signupPwCfmInput');
+      const signupName = document.getElementById('signupNameInput');
+      const signupNickname = document.getElementById('signupNicknameInput');
+      const signupEmail = document.getElementById('signupEmailInput');
+      const signupPhone = document.getElementById('signupPhoneInput');
+      if (signupId) signupId.value = '';
+      if (signupPw) signupPw.value = '';
+      if (signupPwCfm) signupPwCfm.value = '';
+      if (signupName) signupName.value = '';
+      if (signupNickname) signupNickname.value = '';
+      if (signupEmail) signupEmail.value = '';
+      if (signupPhone) signupPhone.value = '';
+
+      // 회원유형 기본값(제조사)으로 복원
+      const firstTypeRadio = document.querySelector('input[name="companyType"][value="제조사"]');
+      if (firstTypeRadio) firstTypeRadio.checked = true;
+
+      // 이용약관 체크박스 모두 해제
+      const agreeAll = document.getElementById('agreeAllTerms');
+      if (agreeAll) agreeAll.checked = false;
+      const termChecks = document.querySelectorAll('.term-check');
+      termChecks.forEach(c => c.checked = false);
+
+      const pwMatchMsg = document.getElementById('pwMatchMessage');
+      if (pwMatchMsg) {
+        pwMatchMsg.textContent = '';
+        pwMatchMsg.classList.add('hidden');
+      }
+
+      // 3. 아이디 찾기 폼 초기화
+      const findIdName = document.getElementById('findIdNameInput');
+      const findIdPhone = document.getElementById('findIdPhoneInput');
+      if (findIdName) findIdName.value = '';
+      if (findIdPhone) findIdPhone.value = '';
+      const findIdBox = document.getElementById('findIdResultBox');
+      if (findIdBox) findIdBox.classList.add('hidden');
+      const foundVal = document.getElementById('foundIdValue');
+      if (foundVal) foundVal.textContent = '';
+      const foundSub = document.getElementById('foundIdSubInfo');
+      if (foundSub) foundSub.textContent = '';
+
+      // 4. 비밀번호 찾기 폼 초기화
+      const findPwId = document.getElementById('findPwIdInput');
+      const findPwName = document.getElementById('findPwNameInput');
+      const findPwPhone = document.getElementById('findPwPhoneInput');
+      const findPwNew = document.getElementById('findPwNewInput');
+      const findPwNewCfm = document.getElementById('findPwNewCfmInput');
+      if (findPwId) findPwId.value = '';
+      if (findPwName) findPwName.value = '';
+      if (findPwPhone) findPwPhone.value = '';
+      if (findPwNew) findPwNew.value = '';
+      if (findPwNewCfm) findPwNewCfm.value = '';
+
+      const verifyForm = document.getElementById('findPwVerifyForm');
+      if (verifyForm) verifyForm.classList.remove('hidden');
+      const resetForm = document.getElementById('findPwResetForm');
+      if (resetForm) resetForm.classList.add('hidden');
+
+      const findPwMatchMsg = document.getElementById('findPwMatchMessage');
+      if (findPwMatchMsg) {
+        findPwMatchMsg.textContent = '';
+        findPwMatchMsg.classList.add('hidden');
+      }
+
+      // 모든 에러 메시지 감추기
+      const errIds = ['loginErrorMessage', 'signupErrorMessage', 'findIdErrorMessage', 'findPwErrorMessage', 'findPwResetErrorMessage'];
+      errIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = '';
+          el.classList.add('hidden');
+        }
+      });
+
+      verifiedResetUser = null;
+    }
+
     function openAuthModal(defaultTab = 'login', noticeMessage = '') {
       const modal = document.getElementById('authModal');
       const noticeBanner = document.getElementById('authNoticeBanner');
@@ -2144,39 +2385,54 @@
         noticeBanner.classList.add('hidden');
       }
 
-      switchAuthTab(defaultTab);
+      // 모달 열 때 모든 입력값 항상 공백으로 초기화
+      clearAuthFormInputs();
+
+      switchAuthTab(defaultTab, true);
       modal.classList.remove('hidden');
     }
 
     function closeAuthModal() {
       document.getElementById('authModal').classList.add('hidden');
-      const loginErr = document.getElementById('loginErrorMessage');
-      if (loginErr) loginErr.classList.add('hidden');
-      const signupErr = document.getElementById('signupErrorMessage');
-      if (signupErr) signupErr.classList.add('hidden');
-      const socialErr = document.getElementById('socialSignupErrorMsg');
-      if (socialErr) socialErr.classList.add('hidden');
+      clearAuthFormInputs();
     }
 
-    function switchAuthTab(tab) {
-      const btnLogin = document.getElementById('authTabBtnLogin');
-      const btnSignup = document.getElementById('authTabBtnSignup');
+    function switchAuthTab(tab, preserveValues = false) {
+      if (!preserveValues) {
+        clearAuthFormInputs();
+      }
+
+      const navTitle = document.getElementById('authNavTitle');
+      const navBackBtn = document.getElementById('authNavBackBtn');
+
       const viewLogin = document.getElementById('authViewLogin');
       const viewSignup = document.getElementById('authViewSignup');
+      const viewFindId = document.getElementById('authViewFindId');
+      const viewFindPw = document.getElementById('authViewFindPw');
       const viewSocial = document.getElementById('authViewSocialSignup');
 
       if (viewSocial) viewSocial.classList.add('hidden');
+      if (viewLogin) viewLogin.classList.add('hidden');
+      if (viewSignup) viewSignup.classList.add('hidden');
+      if (viewFindId) viewFindId.classList.add('hidden');
+      if (viewFindPw) viewFindPw.classList.add('hidden');
 
       if (tab === 'login') {
-        btnLogin.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
-        btnSignup.className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition';
-        viewLogin.classList.remove('hidden');
-        viewSignup.classList.add('hidden');
-      } else {
-        btnLogin.className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition';
-        btnSignup.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
-        viewLogin.classList.add('hidden');
-        viewSignup.classList.remove('hidden');
+        if (navTitle) navTitle.innerHTML = '<i class="fa-solid fa-right-to-bracket text-indigo-600"></i><span>회원 로그인</span>';
+        if (navBackBtn) navBackBtn.classList.add('hidden');
+        if (viewLogin) viewLogin.classList.remove('hidden');
+      } else if (tab === 'signup') {
+        if (navTitle) navTitle.innerHTML = '<i class="fa-solid fa-user-plus text-indigo-600"></i><span>무료 회원가입</span>';
+        if (navBackBtn) navBackBtn.classList.remove('hidden');
+        if (viewSignup) viewSignup.classList.remove('hidden');
+      } else if (tab === 'findId') {
+        if (navTitle) navTitle.innerHTML = '<i class="fa-solid fa-address-card text-indigo-600"></i><span>아이디 찾기</span>';
+        if (navBackBtn) navBackBtn.classList.remove('hidden');
+        if (viewFindId) viewFindId.classList.remove('hidden');
+      } else if (tab === 'findPw') {
+        if (navTitle) navTitle.innerHTML = '<i class="fa-solid fa-key text-indigo-600"></i><span>비밀번호 찾기 및 재설정</span>';
+        if (navBackBtn) navBackBtn.classList.remove('hidden');
+        if (viewFindPw) viewFindPw.classList.remove('hidden');
       }
     }
 
@@ -2205,6 +2461,385 @@
     function toggleAllTerms(master) {
       const checks = document.querySelectorAll('.term-check');
       checks.forEach(c => c.checked = master.checked);
+    }
+
+    // ==========================================
+    // 아이디 찾기 처리 로직
+    // ==========================================
+    async function handleFindIdSubmit(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('findIdNameInput').value.trim();
+      const phoneInput = document.getElementById('findIdPhoneInput').value.trim();
+      const rawPhone = phoneInput.replace(/[^0-9]/g, '');
+      const errMsg = document.getElementById('findIdErrorMessage');
+      const resultBox = document.getElementById('findIdResultBox');
+      const submitBtn = document.getElementById('findIdSubmitBtn');
+
+      if (errMsg) errMsg.classList.add('hidden');
+      if (resultBox) resultBox.classList.add('hidden');
+
+      if (!nameInput || !rawPhone) {
+        if (errMsg) {
+          errMsg.textContent = '이름과 핸드폰 번호를 정확히 입력해주세요.';
+          errMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>조회 중...</span>';
+      }
+
+      try {
+        let foundUser = null;
+
+        // 1. Supabase profiles 테이블에서 일치 유저 검색
+        if (sbClient) {
+          try {
+            const { data: profiles, error } = await sbClient
+              .from('profiles')
+              .select('username, name, email, phone, created_at')
+              .eq('name', nameInput);
+
+            if (!error && profiles && profiles.length > 0) {
+              const matched = profiles.find(p => (p.phone || '').replace(/[^0-9]/g, '') === rawPhone);
+              if (matched) {
+                foundUser = {
+                  username: matched.username || (matched.email ? matched.email.split('@')[0] : 'user'),
+                  name: matched.name,
+                  email: matched.email,
+                  createdAt: matched.created_at
+                };
+              }
+            }
+          } catch (sbErr) {
+            console.warn('Supabase findId check error:', sbErr);
+          }
+        }
+
+        // 2. 로컬 브라우저 DB(usersDb)에서 일치 유저 검색
+        if (!foundUser) {
+          const matchedLocal = usersDb.find(u => {
+            const uName = (u.name || '').trim();
+            const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+            return uName === nameInput && uPhone === rawPhone;
+          });
+          if (matchedLocal) {
+            foundUser = {
+              username: matchedLocal.username,
+              name: matchedLocal.name,
+              email: matchedLocal.email,
+              createdAt: matchedLocal.createdAt
+            };
+          }
+        }
+
+        // 결과 표시
+        if (foundUser) {
+          const valEl = document.getElementById('foundIdValue');
+          const subEl = document.getElementById('foundIdSubInfo');
+          if (valEl) valEl.textContent = foundUser.username;
+          if (subEl) {
+            const d = foundUser.createdAt ? new Date(foundUser.createdAt).toLocaleDateString() : '';
+            subEl.textContent = d ? `(가입일자: ${d})` : '';
+          }
+          if (resultBox) resultBox.classList.remove('hidden');
+        } else {
+          if (errMsg) {
+            errMsg.textContent = '일치하는 회원 정보를 찾을 수 없습니다. 이름과 핸드폰 번호를 다시 확인해주세요.';
+            errMsg.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        console.error('Find ID error:', err);
+        if (errMsg) {
+          errMsg.textContent = '아이디 조회 중 오류가 발생했습니다: ' + (err.message || '');
+          errMsg.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+        }
+      }
+    }
+
+    // 찾은 아이디로 로그인 탭 이동
+    function loginWithFoundId() {
+      const foundIdEl = document.getElementById('foundIdValue');
+      const foundId = foundIdEl ? foundIdEl.textContent.trim() : '';
+      switchAuthTab('login', true);
+      if (foundId) {
+        const idInput = document.getElementById('loginIdInput');
+        if (idInput) {
+          idInput.value = foundId;
+          const pwInput = document.getElementById('loginPwInput');
+          if (pwInput) pwInput.focus();
+        }
+      }
+    }
+
+    // 찾은 아이디로 비밀번호 재설정 탭 이동
+    function goToResetPwWithFoundId() {
+      const foundIdEl = document.getElementById('foundIdValue');
+      const foundId = foundIdEl ? foundIdEl.textContent.trim() : '';
+      const nameInput = document.getElementById('findIdNameInput');
+      const phoneInput = document.getElementById('findIdPhoneInput');
+      const name = nameInput ? nameInput.value.trim() : '';
+      const phone = phoneInput ? phoneInput.value.trim() : '';
+
+      switchAuthTab('findPw', true);
+      if (foundId) {
+        const pwIdInput = document.getElementById('findPwIdInput');
+        if (pwIdInput) pwIdInput.value = foundId;
+      }
+      if (name) {
+        const pwNameInput = document.getElementById('findPwNameInput');
+        if (pwNameInput) pwNameInput.value = name;
+      }
+      if (phone) {
+        const pwPhoneInput = document.getElementById('findPwPhoneInput');
+        if (pwPhoneInput) pwPhoneInput.value = phone;
+      }
+    }
+
+    // ==========================================
+    // 비밀번호 찾기 & 재설정 로직
+    // ==========================================
+    // 1단계: 본인 인증 확인
+    async function handleFindPwVerify(e) {
+      e.preventDefault();
+      const idInput = document.getElementById('findPwIdInput').value.trim();
+      const nameInput = document.getElementById('findPwNameInput').value.trim();
+      const phoneInput = document.getElementById('findPwPhoneInput').value.trim();
+      const rawPhone = phoneInput.replace(/[^0-9]/g, '');
+      const errMsg = document.getElementById('findPwErrorMessage');
+      const submitBtn = document.getElementById('findPwVerifyBtn');
+
+      if (errMsg) errMsg.classList.add('hidden');
+
+      if (!idInput || !nameInput || !rawPhone) {
+        if (errMsg) {
+          errMsg.textContent = '아이디, 이름, 핸드폰 번호를 모두 입력해주세요.';
+          errMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>본인 확인 중...</span>';
+      }
+
+      try {
+        let verifiedUser = null;
+
+        // 1. Supabase profiles 테이블 조회
+        if (sbClient) {
+          try {
+            const { data: profiles, error } = await sbClient
+              .from('profiles')
+              .select('*')
+              .or(`username.eq.${idInput},email.eq.${idInput}`);
+
+            if (!error && profiles && profiles.length > 0) {
+              const matched = profiles.find(p => {
+                const pName = (p.name || '').trim();
+                const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+                return pName === nameInput && pPhone === rawPhone;
+              });
+
+              if (matched) {
+                verifiedUser = {
+                  id: matched.id,
+                  username: matched.username || (matched.email ? matched.email.split('@')[0] : idInput),
+                  name: matched.name,
+                  email: matched.email,
+                  phone: matched.phone
+                };
+              }
+            }
+          } catch (sbErr) {
+            console.warn('Supabase findPw check error:', sbErr);
+          }
+        }
+
+        // 2. 로컬 usersDb 조회
+        if (!verifiedUser) {
+          const matchedLocal = usersDb.find(u => {
+            const uIdMatch = (u.username === idInput || u.email === idInput);
+            const uNameMatch = (u.name || '').trim() === nameInput;
+            const uPhoneMatch = (u.phone || '').replace(/[^0-9]/g, '') === rawPhone;
+            return uIdMatch && uNameMatch && uPhoneMatch;
+          });
+          if (matchedLocal) {
+            verifiedUser = matchedLocal;
+          }
+        }
+
+        if (verifiedUser) {
+          verifiedResetUser = verifiedUser;
+          // Step 1 숨기고 Step 2(새 비밀번호 입력창) 표시
+          document.getElementById('findPwVerifyForm').classList.add('hidden');
+          const resetForm = document.getElementById('findPwResetForm');
+          resetForm.classList.remove('hidden');
+          const verifiedText = document.getElementById('findPwVerifiedUserText');
+          if (verifiedText) {
+            verifiedText.textContent = `${verifiedUser.name} (${verifiedUser.username}) 님 본인 확인 완료!`;
+          }
+          const newInput = document.getElementById('findPwNewInput');
+          if (newInput) newInput.focus();
+        } else {
+          if (errMsg) {
+            errMsg.textContent = '입력하신 회원 정보(아이디, 이름, 핸드폰 번호)와 일치하는 계정을 찾을 수 없습니다.';
+            errMsg.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        console.error('Find PW verify error:', err);
+        if (errMsg) {
+          errMsg.textContent = '본인 확인 중 오류가 발생했습니다: ' + (err.message || '');
+          errMsg.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+        }
+      }
+    }
+
+    // 새 비밀번호 일치 검사 실시간 안내
+    function validateFindPwMatch() {
+      const pw1 = document.getElementById('findPwNewInput').value;
+      const pw2 = document.getElementById('findPwNewCfmInput').value;
+      const msg = document.getElementById('findPwMatchMessage');
+
+      if (!pw2) {
+        msg.classList.add('hidden');
+        return true;
+      }
+
+      msg.classList.remove('hidden');
+      if (pw1 === pw2) {
+        msg.textContent = '새 비밀번호가 일치합니다.';
+        msg.className = 'text-[11px] mt-1 font-semibold text-emerald-600';
+        return true;
+      } else {
+        msg.textContent = '새 비밀번호가 일치하지 않습니다.';
+        msg.className = 'text-[11px] mt-1 font-semibold text-rose-600';
+        return false;
+      }
+    }
+
+    // 2단계: 새 비밀번호 재설정 완료 처리
+    async function handleFindPwResetSubmit(e) {
+      e.preventDefault();
+      const newPw = document.getElementById('findPwNewInput').value;
+      const newPwCfm = document.getElementById('findPwNewCfmInput').value;
+      const errMsg = document.getElementById('findPwResetErrorMessage');
+      const submitBtn = document.getElementById('findPwResetBtn');
+
+      if (errMsg) errMsg.classList.add('hidden');
+
+      if (!verifiedResetUser) {
+        if (errMsg) {
+          errMsg.textContent = '본인 인증 세션이 만료되었습니다. 처음부터 다시 시도해주세요.';
+          errMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (newPw !== newPwCfm) {
+        if (errMsg) {
+          errMsg.textContent = '비밀번호가 서로 일치하지 않습니다. 다시 확인해주세요.';
+          errMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (newPw.length < 6) {
+        if (errMsg) {
+          errMsg.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
+          errMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>재설정 중...</span>';
+      }
+
+      try {
+        const targetUsername = verifiedResetUser.username;
+
+        // 1. 로컬 usersDb 업데이트
+        let foundInLocal = usersDb.find(u => u.username === targetUsername || (u.email && u.email === verifiedResetUser.email));
+        if (foundInLocal) {
+          foundInLocal.password = newPw;
+        } else {
+          // 로컬 DB에 없던 Supabase 계정인 경우 로컬 DB에도 추가
+          usersDb.push({
+            id: verifiedResetUser.id || 'user_' + Date.now(),
+            username: verifiedResetUser.username,
+            password: newPw,
+            name: verifiedResetUser.name || '',
+            nickname: verifiedResetUser.nickname || verifiedResetUser.name || verifiedResetUser.username,
+            email: verifiedResetUser.email || '',
+            phone: verifiedResetUser.phone || '',
+            companyType: verifiedResetUser.companyType || '제조사',
+            provider: 'normal',
+            role: checkIsAdmin(targetUsername) ? 'admin' : 'member',
+            savedGuides: [],
+            savedFormulas: [],
+            createdAt: new Date().toISOString()
+          });
+        }
+        saveUsersDb();
+
+        if (currentUser && currentUser.username === targetUsername) {
+          currentUser.password = newPw;
+        }
+
+        // 2. Supabase 이메일 비번 초기화 링크 발송 보조 시도 (선택적)
+        if (sbClient && verifiedResetUser.email) {
+          try {
+            await sbClient.auth.resetPasswordForEmail(verifiedResetUser.email, {
+              redirectTo: window.location.origin
+            });
+          } catch (e) {
+            // 이메일 발송 오류가 나더라도 로컬 비번 업데이트로 즉시 로그인 가능
+          }
+        }
+
+        showToast('비밀번호가 성공적으로 변경되었습니다! 새로운 비밀번호로 로그인해주세요.');
+
+        // 로그인 화면으로 이동 & 아이디 자동 입력
+        switchAuthTab('login', true);
+        const loginId = document.getElementById('loginIdInput');
+        const loginPw = document.getElementById('loginPwInput');
+        if (loginId) loginId.value = targetUsername;
+        if (loginPw) {
+          loginPw.value = '';
+          loginPw.focus();
+        }
+      } catch (err) {
+        console.error('Password reset error:', err);
+        if (errMsg) {
+          errMsg.textContent = '비밀번호 재설정 중 오류가 발생했습니다: ' + (err.message || '');
+          errMsg.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+        }
+      }
     }
 
     async function handleNormalLogin(e) {
@@ -2658,13 +3293,13 @@
 
     function handleFloatingNewRecipeClick() {
       if (!currentUser) {
-        openAuthModal('login', '새 처방 작성은 최고 관리자 전용 기능입니다. 관리자 계정으로 로그인해주세요.');
+        openAuthModal('login', '작성 권한이 없습니다. 관리자 계정으로 로그인해주세요.');
         return;
       }
 
       const isManager = currentUser.role === 'admin' || checkIsAdmin(currentUser.username);
       if (!isManager) {
-        showToast('새 처방 작성은 최고 관리자(socsoc, admin) 전용 권한입니다.');
+        showToast('작성 권한이 없습니다.');
         return;
       }
 
@@ -3715,13 +4350,13 @@
 
       toastMsg.textContent = message;
 
-      toast.classList.remove('opacity-0', '-translate-y-12', 'pointer-events-none');
+      toast.classList.remove('opacity-0', '-translate-y-8', 'pointer-events-none');
       toast.classList.add('opacity-100', 'translate-y-0');
 
       if (toastTimeout) clearTimeout(toastTimeout);
       toastTimeout = setTimeout(() => {
         toast.classList.remove('opacity-100', 'translate-y-0');
-        toast.classList.add('opacity-0', '-translate-y-12', 'pointer-events-none');
+        toast.classList.add('opacity-0', '-translate-y-8', 'pointer-events-none');
       }, 2500);
     }
 
