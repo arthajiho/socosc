@@ -16,9 +16,6 @@
   <meta property="og:description" content="화장품 가이드 처방 열람, 원료 배합비 실시간 100% 정밀 계산 및 내 처방 보관함">
   <meta property="og:url" content="https://thesocsoc.com">
 
-  <!-- Kakao Official JavaScript SDK (v1.43.0 with Auth.login popup support) -->
-  <script src="https://t1.kakaocdn.net/kakao_js_sdk/1.43.0/kakao.min.js"></script>
-
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <script src="recipes_data.js"></script>
   <style>
@@ -80,6 +77,10 @@
     .original-content-body p, .original-content-body span {
       line-height: 1.75 !important;
     }
+    /* Hide print button at bottom of recipe content */
+    .kboard-document-action, .kboard-button-print, button.kboard-button-action {
+      display: none !important;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans antialiased h-screen flex flex-col overflow-hidden">
@@ -102,10 +103,10 @@
     <!-- Center Navigation Tabs -->
     <nav class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
       <button id="navBtnExplorer" onclick="setAppMode('explorer')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition">
-        <span>📚</span> 가이드 처방관
+        가이드 처방 도서관
       </button>
       <button id="navBtnCalculator" onclick="setAppMode('calculator')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">
-        <span>🧪</span> 제형 개발 계산기 (연구원 워크벤치)
+        제형 개발 계산기 (연구원 워크벤치)
       </button>
     </nav>
 
@@ -120,8 +121,9 @@
       </div>
 
       <!-- Print Button (로그인 우측) -->
-      <button onclick="window.print()" class="px-2.5 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm transition flex items-center gap-1" title="화면 인쇄">
-        <span>🖨️</span> 인쇄
+      <button onclick="window.print()" class="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5" title="화면 인쇄">
+        <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"></path></svg>
+        <span>인쇄</span>
       </button>
     </div>
   </header>
@@ -142,7 +144,7 @@
           <div class="relative">
             <input type="text" id="searchInput" oninput="filterRecipes()" placeholder="처방명, 원료명, 처방번호, 공급사 검색..."
               class="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+            <svg class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 fill-none stroke-current stroke-2 pointer-events-none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
             <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold">×</button>
           </div>
 
@@ -158,6 +160,8 @@
               <button onclick="selectCategory('body')" data-cat="body" id="catBtnBody" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Body</button>
               <button onclick="selectCategory('hair')" data-cat="hair" id="catBtnHair" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Hair</button>
               <button onclick="selectCategory('make up')" data-cat="make up" id="catBtnMakeup" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">Make up</button>
+              <div class="col-span-4"></div>
+              <button onclick="selectCategory('etc')" data-cat="etc" id="catBtnEtc" class="cat-pill py-1.5 px-0.5 text-center rounded-md font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition text-[10.5px]">ETC</button>
             </div>
           </div>
 
@@ -198,7 +202,9 @@
               </h1>
               <button id="saveGuideRecipeBtn" onclick="toggleSaveCurrentGuideRecipe()"
                 class="shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95">
-                <span id="saveGuideRecipeIcon">⭐</span>
+                <span id="saveGuideRecipeIcon">
+                  <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                </span>
                 <span id="saveGuideRecipeText">가이드 처방 저장</span>
               </button>
             </div>
@@ -208,7 +214,7 @@
           <!-- The Exact Authentic Original Content Body -->
           <div class="bg-white rounded-xl border border-slate-200 p-6 md:p-8 shadow-sm">
             <div class="pb-3 border-b border-slate-100 mb-6">
-              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">공식 처방 가이드 원문 (Original Specification)</span>
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">가이드 처방</span>
             </div>
 
             <!-- Rendered Raw HTML -->
@@ -236,13 +242,12 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11.5px] text-slate-500 pt-2.5 border-t border-slate-100">
-              <p><strong>상호명:</strong> 속속(SOCSOC)</p>
+              <p><strong>속속(SOCSOC)</strong></p>
               <p><strong>대표자:</strong> 관리자</p>
               <p><strong>이메일:</strong> <a href="mailto:socsoc-contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc-contact@naver.com</a></p>
             </div>
 
-            <div class="text-[10.5px] text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-              <p>본 사이트의 처방 데이터 및 배합비는 연구 가이드 목적으로 제공되며, 양산 전 안정성 테스트를 권장합니다.</p>
+            <div class="text-[10.5px] text-slate-400 flex items-center justify-between gap-2 pt-1">
               <p>© 2026 속속(SOCSOC). All rights reserved.</p>
             </div>
           </footer>
@@ -267,11 +272,13 @@
               <p class="text-xs text-slate-500">배합비 소수점 2자리(0.00%) 정밀 계산 및 비커 계량값(g)을 즉시 산출합니다.</p>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1">
-                <span>🔄</span> 빈 시트로 초기화
+              <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>빈 시트로 초기화</span>
               </button>
               <button onclick="saveCurrentCustomFormula()" class="px-3.5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
-                <span>💾</span> 내 처방으로 저장
+                <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                <span>내 처방으로 저장</span>
               </button>
             </div>
           </div>
@@ -314,7 +321,7 @@
               <h2 class="font-bold text-slate-900 text-sm">제형 배합 및 계량 워크시트</h2>
               <p class="text-[11px] text-slate-400">배합비는 소수점 2자리(0.01% 단위)까지 정밀 수정됩니다.</p>
             </div>
-            <span class="text-xs text-slate-400">💡 행 추가 버튼으로 원료를 계속 넣을 수 있습니다.</span>
+            <span class="text-xs text-slate-400">행 추가 버튼으로 원료를 계속 추가할 수 있습니다.</span>
           </div>
 
           <div class="overflow-x-auto">
@@ -322,7 +329,7 @@
               <thead>
                 <tr class="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
                   <th class="py-2.5 px-3 w-16 text-center">상 (Phase)</th>
-                  <th class="py-2.5 px-3">원료 / 성분명 (직접 수정)</th>
+                  <th class="py-2.5 px-3">원료 (직접 수정)</th>
                   <th class="py-2.5 px-3 w-36 text-right">배합비 (%)</th>
                   <th class="py-2.5 px-3 w-32 text-right bg-indigo-50/50 text-indigo-900 font-black">계량값 (g)</th>
                   <th class="py-2.5 px-3 w-36">공급사 (직접 수정)</th>
@@ -345,7 +352,7 @@
                   </td>
                   <td colspan="2" class="py-3 px-3">
                     <span id="tableStatusTag" class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">
-                      ✅ 100.00% 적합
+                      100.00% 적합
                     </span>
                   </td>
                 </tr>
@@ -388,13 +395,12 @@
           </div>
           
           <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11.5px] text-slate-500 pt-2.5 border-t border-slate-100">
-            <p><strong>상호명:</strong> 속속(SOCSOC)</p>
+            <p><strong>속속(SOCSOC)</strong></p>
             <p><strong>대표자:</strong> 관리자</p>
             <p><strong>이메일:</strong> <a href="mailto:socsoc-contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc-contact@naver.com</a></p>
           </div>
 
-          <div class="text-[10.5px] text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-            <p>본 사이트의 처방 데이터 및 배합비는 연구 가이드 목적으로 제공되며, 양산 전 안정성 테스트를 권장합니다.</p>
+          <div class="text-[10.5px] text-slate-400 flex items-center justify-between gap-2 pt-1">
             <p>© 2026 속속(SOCSOC). All rights reserved.</p>
           </div>
         </footer>
@@ -409,8 +415,8 @@
         <div id="statusBanner" class="p-3.5 rounded-xl border transition-all duration-200 bg-emerald-50 border-emerald-300">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <div id="statusIconBg" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-emerald-100 text-emerald-700 font-bold shrink-0">
-                ✅
+              <div id="statusIconBg" class="w-10 h-10 rounded-xl flex items-center justify-center text-xs bg-emerald-100 text-emerald-800 font-extrabold shrink-0 border border-emerald-300">
+                OK
               </div>
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
@@ -437,8 +443,8 @@
                 <div id="gaugeBar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 100%;"></div>
                 <div class="absolute top-0 bottom-0 left-[80%] w-0.5 bg-slate-400"></div>
               </div>
-              <button id="fillWaterBtn" onclick="fillWaterShortage()" class="hidden text-xs font-bold text-amber-800 hover:text-amber-950 bg-amber-200 hover:bg-amber-300 px-2 py-1 rounded transition flex items-center gap-1 shadow-sm">
-                💧 부족분을 정제수(Water)로 채우기
+              <button id="fillWaterBtn" onclick="fillWaterShortage()" class="hidden text-xs font-bold text-amber-900 hover:text-amber-950 bg-amber-200 hover:bg-amber-300 px-2.5 py-1 rounded transition flex items-center gap-1 shadow-sm">
+                부족분을 정제수(Water)로 채우기
               </button>
             </div>
           </div>
@@ -450,16 +456,16 @@
 
   <!-- Floating Action Button: 새 처방 작성 (회원, 비회원 누구나 상시 표출) -->
   <button id="floatingNewRecipeBtn" onclick="handleFloatingNewRecipeClick()"
-    class="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-extrabold text-sm px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-2.5 transition-all duration-200 hover:scale-105 active:scale-95 border-2 border-white/40 cursor-pointer shadow-indigo-500/25"
+    class="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 py-3.5 rounded-full shadow-xl flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 border border-white/30 cursor-pointer"
     title="새 제형 개발 처방 작성하기">
-    <span class="text-base">✨</span>
+    <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
     <span>새 처방 작성</span>
   </button>
 
   <!-- Global Toast Notification -->
   <div id="toastNotification" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform -translate-y-12 opacity-0 pointer-events-none">
     <div class="px-4 py-2.5 rounded-xl bg-slate-900/90 backdrop-blur-md text-white font-semibold text-xs shadow-2xl flex items-center gap-2 border border-slate-700">
-      <span id="toastIcon">✨</span>
+      <span id="toastIcon" class="w-2 h-2 rounded-full bg-indigo-400 inline-block"></span>
       <span id="toastMessage">알림 내용</span>
     </div>
   </div>
@@ -474,14 +480,14 @@
       <div class="p-5 pb-3 border-b border-slate-100 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white font-black flex items-center justify-center text-sm">S</div>
-          <span class="font-extrabold text-slate-900 text-sm tracking-tight">속속 (SOCSOC) 멤버십</span>
+          <span class="font-extrabold text-slate-900 text-sm tracking-tight">속속 (SOCSOC)</span>
         </div>
         <button onclick="closeAuthModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
       </div>
 
       <!-- Notice Banner (로그인 필요 시 알림) -->
       <div id="authNoticeBanner" class="hidden mx-5 mt-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 font-medium flex items-center gap-2">
-        <span>🔒</span>
+        <svg class="w-3.5 h-3.5 fill-current text-indigo-600 shrink-0" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
         <span id="authNoticeMessage">가이드 처방을 저장하려면 로그인이 필요합니다.</span>
       </div>
 
@@ -499,24 +505,6 @@
 
       <!-- ================= FORM: LOGIN ================= -->
       <div id="authViewLogin" class="p-5 space-y-4">
-        <!-- Social Login Buttons -->
-        <div class="space-y-2">
-          <button onclick="handleSocialAuth('kakao')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] transition flex items-center justify-center gap-2 shadow-sm">
-            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.708 4.8 4.27 6.052l-.865 3.208c-.08.298.175.56.444.407l3.85-2.222c.427.047.863.07 1.301.07 4.97 0 9-3.186 9-7.115S16.97 3 12 3z"/></svg>
-            <span>카카오 1초 간편 로그인</span>
-          </button>
-          <button onclick="handleSocialAuth('naver')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#03C75A] hover:bg-[#02b350] text-white transition flex items-center justify-center gap-2 shadow-sm">
-            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>
-            <span>네이버 간편 로그인</span>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-2 text-slate-300 text-xs">
-          <div class="flex-1 border-t border-slate-200"></div>
-          <span class="text-slate-400 text-[11px]">또는 일반 아이디 로그인</span>
-          <div class="flex-1 border-t border-slate-200"></div>
-        </div>
-
         <!-- Normal Login Form -->
         <form onsubmit="handleNormalLogin(event)" class="space-y-3">
           <div>
@@ -544,25 +532,7 @@
 
       <!-- ================= FORM: SIGN UP ================= -->
       <div id="authViewSignup" class="hidden p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
-        <!-- Social Sign-up Buttons -->
-        <div class="space-y-2">
-          <button onclick="handleSocialAuth('kakao')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#FEE500] hover:bg-[#FDD800] text-[#191919] transition flex items-center justify-center gap-2 shadow-sm">
-            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.708 4.8 4.27 6.052l-.865 3.208c-.08.298.175.56.444.407l3.85-2.222c.427.047.863.07 1.301.07 4.97 0 9-3.186 9-7.115S16.97 3 12 3z"/></svg>
-            <span>카카오 간편 회원가입</span>
-          </button>
-          <button onclick="handleSocialAuth('naver')" class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-[#03C75A] hover:bg-[#02b350] text-white transition flex items-center justify-center gap-2 shadow-sm">
-            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>
-            <span>네이버 간편 회원가입</span>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-2 text-slate-300 text-xs">
-          <div class="flex-1 border-t border-slate-200"></div>
-          <span class="text-slate-400 text-[11px]">또는 일반 정보로 가입</span>
-          <div class="flex-1 border-t border-slate-200"></div>
-        </div>
-
-        <!-- Signup Form -->
+        <!-- Normal Signup Form -->
         <form onsubmit="handleNormalSignup(event)" class="space-y-3">
           <!-- ID -->
           <div>
@@ -580,10 +550,27 @@
 
           <!-- Password 2 (Mismatch Prevention) -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">비밀번호 확인 (오타 방지) <span class="text-rose-500">*</span></label>
+            <label class="block text-xs font-bold text-slate-700 mb-1">비밀번호 확인 <span class="text-rose-500">*</span></label>
             <input type="password" id="signupPwCfmInput" required oninput="validatePasswordMatch()" placeholder="비밀번호를 한 번 더 입력하세요"
               class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
             <p id="pwMatchMessage" class="hidden text-[11px] mt-1 font-medium"></p>
+          </div>
+
+          <!-- Name -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">이름 (실명) <span class="text-rose-500">*</span></label>
+            <input type="text" id="signupNameInput" required placeholder="이름을 입력하세요"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+
+          <!-- Nickname -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              닉네임 <span class="text-rose-500">*</span>
+              <span class="text-slate-400 font-normal">(숫자, 영문, 한글)</span>
+            </label>
+            <input type="text" id="signupNicknameInput" required maxlength="20" placeholder="닉네임 입력"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
           </div>
 
           <!-- Email -->
@@ -607,23 +594,23 @@
               <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
                 <input type="radio" name="companyType" value="제조사" checked class="text-indigo-600 focus:ring-indigo-500">
                 <div>
-                  <span class="font-bold text-slate-800 block text-xs">🏭 제조사</span>
-                  <span class="text-[10px] text-slate-400 block">OEM/ODM 연구소</span>
+                  <span class="font-bold text-slate-800 block text-xs">제조사</span>
+                  <span class="text-[10px] text-slate-400 block">OEM/ODM</span>
                 </div>
               </label>
 
               <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
                 <input type="radio" name="companyType" value="원료사" class="text-indigo-600 focus:ring-indigo-500">
                 <div>
-                  <span class="font-bold text-slate-800 block text-xs">🧪 원료사</span>
-                  <span class="text-[10px] text-slate-400 block">원료 공급 및 처방 등록</span>
+                  <span class="font-bold text-slate-800 block text-xs">원료사</span>
+                  <span class="text-[10px] text-slate-400 block">원료 공급 및 개발</span>
                 </div>
               </label>
 
               <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
                 <input type="radio" name="companyType" value="브랜드사" class="text-indigo-600 focus:ring-indigo-500">
                 <div>
-                  <span class="font-bold text-slate-800 block text-xs">✨ 브랜드사</span>
+                  <span class="font-bold text-slate-800 block text-xs">브랜드사</span>
                   <span class="text-[10px] text-slate-400 block">화장품 브랜드 BM/기획</span>
                 </div>
               </label>
@@ -631,8 +618,8 @@
               <label class="member-type-chip cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
                 <input type="radio" name="companyType" value="기타" class="text-indigo-600 focus:ring-indigo-500">
                 <div>
-                  <span class="font-bold text-slate-800 block text-xs">🔬 기타</span>
-                  <span class="text-[10px] text-slate-400 block">개인 연구원 / 학생</span>
+                  <span class="font-bold text-slate-800 block text-xs">기타</span>
+                  <span class="text-[10px] text-slate-400 block">개인 및 기타</span>
                 </div>
               </label>
             </div>
@@ -695,12 +682,9 @@
       
       <!-- Modal Header -->
       <div class="p-5 pb-3 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/50">
-        <div class="flex items-center gap-2">
-          <span class="text-lg">📁</span>
-          <div>
-            <h3 class="font-extrabold text-slate-900 text-base">내 처방 보관함</h3>
-            <p class="text-xs text-slate-400">저장한 가이드 처방과 내가 연구한 처방을 한곳에서 모아봅니다.</p>
-          </div>
+        <div>
+          <h3 class="font-extrabold text-slate-900 text-base">내 처방 보관함</h3>
+          <p class="text-xs text-slate-400">저장한 가이드 처방과 내가 연구한 처방을 한곳에서 모아봅니다.</p>
         </div>
         <button onclick="closeSavedItemsModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
       </div>
@@ -709,11 +693,11 @@
       <div class="px-5 pt-3 shrink-0">
         <div class="flex border-b border-slate-200 gap-4 text-xs font-bold">
           <button id="vaultTabBtnGuide" onclick="switchVaultTab('guide')" class="pb-2.5 border-b-2 border-indigo-600 text-indigo-700 flex items-center gap-1.5 transition">
-            <span>⭐ 저장한 가이드 처방</span>
+            <span>저장한 가이드 처방</span>
             <span id="vaultCountGuide" class="bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">0</span>
           </button>
           <button id="vaultTabBtnCustom" onclick="switchVaultTab('custom')" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition">
-            <span>🧪 내가 저장한 연구 처방</span>
+            <span id="vaultCustomTabTitle">내가 저장한 연구 처방</span>
             <span id="vaultCountCustom" class="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">0</span>
           </button>
         </div>
@@ -753,8 +737,326 @@
     </div>
   </div>
 
+  <!-- ======================================================== -->
+  <!-- MODAL 4: MY PAGE MODAL (마이페이지 프로필 & 설정 변경) -->
+  <!-- ======================================================== -->
+  <div id="myPageModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+      
+      <!-- Modal Header -->
+      <div class="p-5 pb-3 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/50">
+        <div>
+          <h3 class="font-extrabold text-slate-900 text-base">마이페이지</h3>
+          <p class="text-xs text-slate-400">회원 정보 및 계정 설정을 변경합니다.</p>
+        </div>
+        <button onclick="closeMyPageModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+        <!-- Account Info Summary -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <span class="text-slate-400 block text-[11px]">로그인 아이디</span>
+            <span id="myPageUsername" class="font-bold text-slate-800 text-sm">user123</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-400 block text-[11px]">가입 유형 / 회원 등급</span>
+            <span id="myPageRoleBadge" class="inline-block px-2 py-0.5 rounded font-bold text-[10.5px] bg-indigo-50 text-indigo-700 border border-indigo-200">정회원</span>
+          </div>
+        </div>
+
+        <form id="myPageForm" onsubmit="saveMyPageProfile(event)" class="space-y-4 text-xs">
+          <!-- Real Name -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">이름 (실명)</label>
+            <input type="text" id="myPageNameInput" placeholder="이름을 입력하세요"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          </div>
+
+          <!-- Nickname -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">
+              닉네임 <span class="text-rose-500">*</span>
+              <span class="text-slate-400 font-normal">(숫자, 영문, 한글)</span>
+            </label>
+            <input type="text" id="myPageNicknameInput" required maxlength="20" placeholder="닉네임 입력"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            <p id="myPageNicknameHelp" class="text-[11px] text-slate-400 mt-1">숫자, 영문, 한글 조합으로 설정 가능합니다.</p>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">이메일 주소 <span class="text-rose-500">*</span></label>
+            <input type="email" id="myPageEmailInput" required placeholder="example@company.com"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          </div>
+
+          <!-- Phone -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">핸드폰 번호 <span class="text-rose-500">*</span></label>
+            <input type="tel" id="myPagePhoneInput" required placeholder="010-1234-5678"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          </div>
+
+          <!-- Member / Company Type Selection -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1.5">회원 유형 변경</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="myPageCompanyType" value="제조사" class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">제조사</span>
+                  <span class="text-[10px] text-slate-400 block">OEM/ODM</span>
+                </div>
+              </label>
+
+              <label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="myPageCompanyType" value="원료사" class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">원료사</span>
+                  <span class="text-[10px] text-slate-400 block">원료 공급 및 개발</span>
+                </div>
+              </label>
+
+              <label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="myPageCompanyType" value="브랜드사" class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">브랜드사</span>
+                  <span class="text-[10px] text-slate-400 block">화장품 브랜드 BM/기획</span>
+                </div>
+              </label>
+
+              <label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 hover:bg-slate-50 transition has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60 has-[:checked]:ring-1 has-[:checked]:ring-indigo-600">
+                <input type="radio" name="myPageCompanyType" value="기타" class="text-indigo-600 focus:ring-indigo-500">
+                <div>
+                  <span class="font-bold text-slate-800 block text-xs">기타</span>
+                  <span class="text-[10px] text-slate-400 block">개인 및 기타</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Password Change Section -->
+          <div id="myPagePwSection" class="pt-3 border-t border-slate-200 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-700">비밀번호 변경</span>
+              <span class="text-[11px] text-slate-400">변경하지 않으려면 비워두세요.</span>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">현재 비밀번호</label>
+              <input type="password" id="myPageCurrentPwInput" placeholder="기존 비밀번호 입력"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-1">새 비밀번호</label>
+                <input type="password" id="myPageNewPwInput" placeholder="새 비밀번호 (6자 이상)"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-500 mb-1">새 비밀번호 확인</label>
+                <input type="password" id="myPageNewPwCfmInput" placeholder="새 비밀번호 재입력"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+            </div>
+          </div>
+
+          <div id="myPageErrorMessage" class="hidden text-xs text-rose-600 font-medium"></div>
+
+          <div class="pt-2 flex items-center justify-end gap-2">
+            <button type="button" onclick="closeMyPageModal()" class="px-4 py-2 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl transition">
+              닫기
+            </button>
+            <button type="submit" class="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition">
+              변경사항 저장
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 5: NEW RECIPE AUTHORING MODAL (관리자 새 처방 작성) -->
+  <!-- ======================================================== -->
+  <div id="newRecipeModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+      
+      <!-- Modal Header -->
+      <div class="p-5 pb-3 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/50">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">회원 전용</span>
+            <h3 class="font-extrabold text-slate-900 text-base">신규 가이드 처방 등록 워크시트</h3>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">화장품 가이드 처방 도서관에 공식 처방 및 원료 사양을 신규 등록합니다.</p>
+        </div>
+        <button onclick="closeNewRecipeModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
+      </div>
+
+      <!-- Modal Body -->
+      <form id="newRecipeForm" onsubmit="handleNewRecipeSubmit(event)" class="p-5 space-y-4 overflow-y-auto custom-scrollbar flex-1 text-xs">
+        
+        <!-- Basic Recipe Details -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="md:col-span-2">
+            <label class="block font-bold text-slate-700 mb-1">처방명 <span class="text-rose-500">*</span></label>
+            <input type="text" id="newRecTitle" required
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-800">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">카테고리 <span class="text-rose-500">*</span></label>
+            <select id="newRecCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-white">
+              <option value="sun care">Sun Care</option>
+              <option value="skin care" selected>Skin Care</option>
+              <option value="body">Body</option>
+              <option value="hair">Hair</option>
+              <option value="make up">Make up</option>
+              <option value="etc">ETC</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">제공사 <span class="text-rose-500">*</span></label>
+            <input type="text" id="newRecSupplier" required
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">처방번호 / 코드</label>
+            <input type="text" id="newRecFormulaCode"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">이메일</label>
+            <input type="email" id="newRecEmail"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">제형 설명 (Description)</label>
+          <textarea id="newRecDescription" rows="2" placeholder="제형의 외관, 사용감, 주요 기능성 및 컨셉 설명을 입력하세요."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"></textarea>
+        </div>
+
+        <!-- Ingredients Table (Dynamic Rows) -->
+        <div class="pt-2">
+          <div class="flex items-center justify-between mb-2">
+            <label class="font-bold text-slate-800 text-xs">원료 배합비 사양표 (%w/w)</label>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="addNewRecipeIngredientRow('Phase A')" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition shadow-sm">+ Phase A 추가</button>
+              <button type="button" onclick="addNewRecipeIngredientRow('Phase B')" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition shadow-sm">+ Phase B 추가</button>
+              <button type="button" onclick="addNewRecipeIngredientRow('Phase C')" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition shadow-sm">+ Phase C 추가</button>
+            </div>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                <tr>
+                  <th class="py-2 px-2.5 w-20 text-center">Phase</th>
+                  <th class="py-2 px-2.5">원료 (필수)</th>
+                  <th class="py-2 px-2.5">INCI명</th>
+                  <th class="py-2 px-2.5 w-28 text-right">배합비 (%)</th>
+                  <th class="py-2 px-2.5 w-32">공급사</th>
+                  <th class="py-2 px-2 w-12 text-center">삭제</th>
+                </tr>
+              </thead>
+              <tbody id="newRecipeRowsBody" class="divide-y divide-slate-100 bg-white">
+                <!-- Rendered dynamically -->
+              </tbody>
+              <tfoot class="bg-slate-50 border-t-2 border-slate-200 font-bold">
+                <tr>
+                  <td colspan="3" class="py-2.5 px-3 text-right text-slate-600 font-bold">합계 (Total):</td>
+                  <td id="newRecipeTotalPercent" class="py-2.5 px-3 text-right font-black text-indigo-700 text-sm">100.00 %</td>
+                  <td colspan="2" class="py-2.5 px-3">
+                    <span id="newRecipeStatusTag" class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">100.00% 적합</span>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Manufacturing Procedure -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">제조공정 (Manufacturing Procedure)</label>
+          <textarea id="newRecProcedure" rows="3" placeholder="제조공정을 입력하세요."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs leading-relaxed"></textarea>
+        </div>
+
+        <!-- Specification & Properties -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">규격 및 특성 (Specification)</label>
+          <textarea id="newRecSpecification" rows="3" placeholder="규격 및 특성을 입력하세요."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs leading-relaxed"></textarea>
+        </div>
+
+        <!-- Additional Notes / Etc -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">기타 (Additional Notes)</label>
+          <textarea id="newRecEtc" rows="3" placeholder="기타 참고사항을 입력하세요."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs leading-relaxed"></textarea>
+        </div>
+
+        <div id="newRecipeErrorMsg" class="hidden text-xs text-rose-600 font-medium"></div>
+
+        <!-- Submit & Actions -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+          <button type="button" onclick="closeNewRecipeModal()" class="px-4 py-2 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl transition">
+            취소
+          </button>
+          <button type="submit" class="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition">
+            처방 등록 완료 (게시)
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
   <script>
     const allRecipes = (window.SOCSOC_RECIPES && window.SOCSOC_RECIPES.length) ? window.SOCSOC_RECIPES : [];
+
+    // Helper: 처방 본문(contentHtml)에서 실제 제공사 및 처방코드 자동 정밀 추출
+    function extractRecipeMetadata(recipe) {
+      if (!recipe) return { supplier: '속속 (thesocsoc.com)', formulaCode: '-' };
+      let supplier = (recipe.supplier || '').trim();
+      let formulaCode = (recipe.formulaCode || '').trim();
+
+      const isDefaultSup = !supplier || supplier === '-' || supplier.includes('속속');
+      const isDefaultCode = !formulaCode || formulaCode === '-' || formulaCode.includes('미기재');
+
+      if ((isDefaultSup || isDefaultCode) && recipe.contentHtml) {
+        const plain = recipe.contentHtml.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+        if (isDefaultSup) {
+          const supMatch = plain.match(/(?:제공사|제공처|원문\s*등록처|원료사|Supplier)\s*[:：]\s*([^<\r\n\t]+?)(?=(?:처방\s*번호|처방코드|Formula|이메일|제형\s*설명|Phase|Trade|INCI|$))/i);
+          if (supMatch && supMatch[1]) {
+            supplier = supMatch[1].trim();
+          }
+        }
+        if (isDefaultCode) {
+          const codeMatch = plain.match(/(?:처방\s*번호|처방코드|Formula\s*(?:No\.?|Code))\s*[:：]\s*([^<\r\n\t]+?)(?=(?:제공사|이메일|제형\s*설명|Phase|Trade|INCI|$))/i);
+          if (codeMatch && codeMatch[1]) {
+            formulaCode = codeMatch[1].trim();
+          }
+        }
+      }
+
+      if (!supplier || supplier === '-') supplier = '속속 (thesocsoc.com)';
+      if (!formulaCode || formulaCode === '-') formulaCode = '처방코드 미기재';
+
+      recipe.supplier = supplier;
+      recipe.formulaCode = formulaCode;
+      return { supplier, formulaCode };
+    }
+
+    // 초기 로딩 시 모든 처방의 제공사 및 처방코드 검증 및 추출
+    allRecipes.forEach(r => extractRecipeMetadata(r));
 
     let currentRecipe = allRecipes[0];
     let currentCategoryFilter = 'all';
@@ -766,9 +1068,8 @@
     ];
 
     // ==========================================
-    // AUTH & MEMBER SYSTEM (Local Storage Persistence & Real Kakao SDK)
+    // AUTH & MEMBER SYSTEM (Local Storage Persistence)
     // ==========================================
-    const KAKAO_JS_KEY = '144d5111f8c196213382de1b1b74cb20';
     const STORAGE_USERS_KEY = 'socsoc_users_db';
     const STORAGE_SESSION_KEY = 'socsoc_current_user';
 
@@ -799,16 +1100,38 @@
     }
 
     function initAuth() {
-      // Initialize Kakao SDK with User's App Key
-      if (window.Kakao) {
-        try {
-          if (!window.Kakao.isInitialized()) {
-            window.Kakao.init(KAKAO_JS_KEY);
-            console.log('Kakao SDK successfully initialized with user key');
-          }
-        } catch (err) {
-          console.warn('Kakao SDK Init Notice:', err);
+      // Ensure default admin account exists
+      if (!usersDb.some(u => u.username === 'admin')) {
+        usersDb.push({
+          username: 'admin',
+          password: 'admin',
+          name: '관리자',
+          nickname: '시스템관리자',
+          email: 'socsoc-contact@naver.com',
+          phone: '010-0000-0000',
+          companyType: '제조사',
+          provider: 'normal',
+          role: 'admin',
+          savedGuides: [],
+          savedFormulas: [],
+          createdAt: new Date().toISOString()
+        });
+        saveUsersDb();
+      }
+
+      // Load custom recipes created by admin/members from localStorage
+      try {
+        const savedCustom = JSON.parse(localStorage.getItem('socsoc_admin_recipes') || '[]');
+        if (Array.isArray(savedCustom) && savedCustom.length > 0) {
+          savedCustom.forEach(r => {
+            extractRecipeMetadata(r);
+            if (!allRecipes.some(existing => existing.uid === r.uid)) {
+              allRecipes.unshift(r);
+            }
+          });
         }
+      } catch(e) {
+        console.warn('Error loading custom admin recipes:', e);
       }
 
       renderAuthHeader();
@@ -939,22 +1262,30 @@
     function showRecipeOriginalArticle(recipe) {
       currentRecipe = recipe;
       updateSaveGuideRecipeBtnState(recipe);
+
+      const meta = extractRecipeMetadata(recipe);
+
       document.getElementById('articleTitle').textContent = recipe.title;
       document.getElementById('articleCategoryBadge').textContent = (recipe.category || 'ETC').toUpperCase();
       document.getElementById('articleCategoryBadge').className = `px-2.5 py-0.5 rounded text-xs font-bold uppercase ${getCategoryColor(recipe.category)}`;
-      document.getElementById('articleFormulaCode').textContent = recipe.formulaCode || '처방코드 미기재';
-      document.getElementById('articleSupplier').textContent = recipe.supplier || '속속 (thesocsoc.com)';
+      document.getElementById('articleFormulaCode').textContent = meta.formulaCode;
+      document.getElementById('articleSupplier').textContent = meta.supplier;
       const srcLink = document.getElementById('sourceUrlLink');
       if (srcLink) srcLink.href = recipe.sourceUrl || 'https://thesocsoc.com';
 
       const container = document.getElementById('originalContentContainer');
       
       if (recipe.contentHtml && recipe.contentHtml.length > 50) {
-        container.innerHTML = recipe.contentHtml;
+        let cleanedHtml = recipe.contentHtml;
+        // 처방 내용 하단 인쇄 버튼 및 kboard 액션 바 완전 삭제
+        cleanedHtml = cleanedHtml.replace(/<div[^>]*class="[^"]*kboard-document-action[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>/gi, '');
+        cleanedHtml = cleanedHtml.replace(/<button[^>]*class="[^"]*kboard-button-print[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '');
+        cleanedHtml = cleanedHtml.replace(/<button[^>]*onclick="[^"]*print[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '');
+        container.innerHTML = cleanedHtml;
       } else {
         let html = '';
-        if (recipe.supplier) html += `<p class="mb-2"><strong>제공사:</strong> ${recipe.supplier}</p>`;
-        if (recipe.formulaCode) html += `<p class="mb-2"><strong>처방번호:</strong> ${recipe.formulaCode}</p>`;
+        if (meta.supplier) html += `<p class="mb-2"><strong>제공사:</strong> ${meta.supplier}</p>`;
+        if (meta.formulaCode) html += `<p class="mb-2"><strong>처방번호:</strong> ${meta.formulaCode}</p>`;
         if (recipe.description) html += `<p class="mb-4 bg-slate-50 p-3 rounded border border-slate-100"><strong>제형설명:</strong> ${recipe.description}</p>`;
         
         if (recipe.ingredients && recipe.ingredients.length > 0) {
@@ -994,7 +1325,15 @@
 
       renderRecipeList(allRecipes.filter(r => {
         const q = document.getElementById('searchInput').value.trim().toLowerCase();
-        const matchesCat = (currentCategoryFilter === 'all') || (r.category && r.category.toLowerCase().includes(currentCategoryFilter));
+        let matchesCat = false;
+        if (currentCategoryFilter === 'all') {
+          matchesCat = true;
+        } else if (currentCategoryFilter === 'etc') {
+          const cat = (r.category || '').toLowerCase();
+          matchesCat = cat.includes('etc') || !['sun care', 'skin care', 'body', 'hair', 'make up'].some(c => cat.includes(c));
+        } else {
+          matchesCat = r.category && r.category.toLowerCase().includes(currentCategoryFilter);
+        }
         if (!matchesCat) return false;
         if (!q) return true;
         return (r.title && r.title.toLowerCase().includes(q)) || (r.formulaCode && r.formulaCode.toLowerCase().includes(q));
@@ -1024,6 +1363,7 @@
         }`;
         
         const catBadgeColor = getCategoryColor(r.category);
+        const meta = extractRecipeMetadata(r);
 
         card.onclick = () => {
           showRecipeOriginalArticle(r);
@@ -1036,14 +1376,14 @@
               ${r.category || 'ETC'}
             </span>
             <span class="text-[10px] font-mono text-slate-400 truncate max-w-[130px]">
-              ${r.formulaCode ? r.formulaCode.substring(0, 15) : ''}
+              ${meta.formulaCode !== '처방코드 미기재' ? meta.formulaCode.substring(0, 18) : ''}
             </span>
           </div>
           <h4 class="text-xs font-bold text-slate-900 leading-snug line-clamp-2">
             ${r.title}
           </h4>
           <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-            <span class="truncate max-w-[180px]">${r.supplier || '-'}</span>
+            <span class="truncate max-w-[180px]">${meta.supplier}</span>
             <span class="text-indigo-600 font-semibold">글 읽기 →</span>
           </div>
         `;
@@ -1057,6 +1397,7 @@
       document.querySelectorAll('.cat-pill').forEach(btn => {
         const isSelected = (btn.getAttribute('data-cat') === cat);
         const isAll = (btn.getAttribute('data-cat') === 'all');
+        const isEtc = (btn.getAttribute('data-cat') === 'etc');
         if (isAll) {
           if (isSelected) {
             btn.className = 'cat-pill w-full py-1.5 px-3 rounded-lg font-bold text-xs bg-indigo-600 text-white transition shadow-sm flex items-center justify-between';
@@ -1083,7 +1424,15 @@
       else clearBtn.classList.add('hidden');
 
       const filtered = allRecipes.filter(r => {
-        const matchesCat = (currentCategoryFilter === 'all') || (r.category && r.category.toLowerCase().includes(currentCategoryFilter));
+        let matchesCat = false;
+        if (currentCategoryFilter === 'all') {
+          matchesCat = true;
+        } else if (currentCategoryFilter === 'etc') {
+          const cat = (r.category || '').toLowerCase();
+          matchesCat = cat.includes('etc') || !['sun care', 'skin care', 'body', 'hair', 'make up'].some(c => cat.includes(c));
+        } else {
+          matchesCat = r.category && r.category.toLowerCase().includes(currentCategoryFilter);
+        }
         if (!matchesCat) return false;
         if (!q) return true;
 
@@ -1112,6 +1461,7 @@
       if (c.includes('body')) return 'bg-blue-100 text-blue-800';
       if (c.includes('hair')) return 'bg-purple-100 text-purple-800';
       if (c.includes('make')) return 'bg-rose-100 text-rose-800';
+      if (c.includes('etc')) return 'bg-indigo-100 text-indigo-800';
       return 'bg-slate-100 text-slate-700';
     }
 
@@ -1147,7 +1497,7 @@
             <div class="flex items-center gap-1.5">
               <input type="text" value="${item.name || ''}" oninput="updateName(${index}, this.value)"
                 class="w-full px-2 py-1 text-xs font-semibold text-slate-800 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition"
-                placeholder="원료/성분명 입력">
+                placeholder="원료명 입력">
               ${item.isWater ? '<span class="shrink-0 text-[10px] text-blue-600 bg-blue-100 px-1 py-0.5 rounded font-bold">Base</span>' : ''}
             </div>
           </td>
@@ -1168,8 +1518,7 @@
 
           <td class="py-2 px-3">
             <input type="text" value="${item.supplier || ''}" oninput="updateSupplier(${index}, this.value)"
-              class="w-full px-2 py-1 text-xs text-slate-700 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition"
-              placeholder="공급사명 입력">
+              class="w-full px-2 py-1 text-xs text-slate-700 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition">
           </td>
 
           <td class="py-2 px-2 text-center">
@@ -1211,9 +1560,9 @@
     function addIngredient(phaseName) {
       activeFormula.push({
         phase: phaseName,
-        name: '신규 원료/성분명',
+        name: '신규 원료',
         percent: 1.00,
-        supplier: '공급사 입력',
+        supplier: '',
         isWater: false
       });
       renderCalculatorTable();
@@ -1283,8 +1632,8 @@
 
       if (Math.abs(diff) < 0.005) {
         banner.className = 'p-4 rounded-xl border transition-all duration-200 bg-emerald-50 border-emerald-300';
-        iconBg.className = 'w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-emerald-100 text-emerald-700 font-bold shrink-0';
-        iconBg.textContent = '✅';
+        iconBg.className = 'w-11 h-11 rounded-xl flex items-center justify-center bg-emerald-100 text-emerald-700 font-bold shrink-0';
+        iconBg.innerHTML = '<svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>';
         badge.className = 'px-2 py-0.5 rounded text-xs font-extrabold uppercase bg-emerald-200 text-emerald-900';
         badge.textContent = '100.00% 적합';
         numSpan.className = 'text-xl font-black text-emerald-700';
@@ -1296,11 +1645,11 @@
         gaugeStatus.textContent = '정상 (100.00%)';
         fillWaterBtn.classList.add('hidden');
         tableTag.className = 'px-2 py-0.5 rounded font-bold text-xs bg-emerald-100 text-emerald-800';
-        tableTag.textContent = '✅ 100.00% 적합';
+        tableTag.textContent = '100.00% 적합';
       } else if (diff > 0) {
         banner.className = 'p-4 rounded-xl border transition-all duration-200 bg-rose-50 border-rose-300';
-        iconBg.className = 'w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-rose-100 text-rose-700 font-bold shrink-0';
-        iconBg.textContent = '🚨';
+        iconBg.className = 'w-11 h-11 rounded-xl flex items-center justify-center bg-rose-100 text-rose-700 font-bold shrink-0';
+        iconBg.innerHTML = '<svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
         badge.className = 'px-2 py-0.5 rounded text-xs font-extrabold uppercase bg-rose-200 text-rose-900';
         badge.textContent = `100.00% 초과 (+${diff.toFixed(2)}%)`;
         numSpan.className = 'text-xl font-black text-rose-700';
@@ -1312,12 +1661,12 @@
         gaugeStatus.textContent = `초과 (+${diff.toFixed(2)}%)`;
         fillWaterBtn.classList.add('hidden');
         tableTag.className = 'px-2.5 py-1 rounded font-bold text-xs bg-rose-100 text-rose-800';
-        tableTag.textContent = `🚨 ${diff.toFixed(2)}% 초과`;
+        tableTag.textContent = `${diff.toFixed(2)}% 초과`;
       } else {
         const shortage = Math.abs(diff);
         banner.className = 'p-4 rounded-xl border transition-all duration-200 bg-amber-50 border-amber-300';
-        iconBg.className = 'w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-amber-100 text-amber-800 font-bold shrink-0';
-        iconBg.textContent = '⚠️';
+        iconBg.className = 'w-11 h-11 rounded-xl flex items-center justify-center bg-amber-100 text-amber-800 font-bold shrink-0';
+        iconBg.innerHTML = '<svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
         badge.className = 'px-2 py-0.5 rounded text-xs font-extrabold uppercase bg-amber-200 text-amber-900';
         badge.textContent = `100.00% 미달 (-${shortage.toFixed(2)}% 부족)`;
         numSpan.className = 'text-xl font-black text-amber-800';
@@ -1329,14 +1678,14 @@
         gaugeStatus.textContent = `부족 (-${shortage.toFixed(2)}%)`;
         fillWaterBtn.classList.remove('hidden');
         tableTag.className = 'px-2.5 py-1 rounded font-bold text-xs bg-amber-100 text-amber-800';
-        tableTag.textContent = `⚠️ ${shortage.toFixed(2)}% 부족 (미달)`;
+        tableTag.textContent = `${shortage.toFixed(2)}% 부족 (미달)`;
       }
     }
 
     function exportToCsv() {
       const title = document.getElementById('calcFormulaTitleInput').value || '처방_배치계량표';
       const batch = parseFloat(document.getElementById('batchSize').value) || 0;
-      let csv = "\uFEFFPhase,원료/성분명,배합비(%),계량값(g),공급사\n";
+      let csv = "\uFEFFPhase,원료,배합비(%),계량값(g),공급사\n";
       activeFormula.forEach(item => {
         const grams = ((item.percent * batch) / 100).toFixed(2);
         csv += `"${item.phase}","${item.name}",${item.percent.toFixed(2)},${grams},"${item.supplier || ''}"\n`;
@@ -1352,6 +1701,8 @@
     // ==========================================
     // AUTH & MEMBER UI LOGIC
     // ==========================================
+    let pendingSocialProvider = null;
+
     function renderAuthHeader() {
       const area = document.getElementById('authHeaderArea');
       if (!area) return;
@@ -1360,20 +1711,26 @@
         const savedGuidesCount = (currentUser.savedGuides || []).length;
         const savedFormulasCount = (currentUser.savedFormulas || []).length;
         const totalSaved = savedGuidesCount + savedFormulasCount;
-        const roleBadge = currentUser.companyType ? `[${currentUser.companyType}]` : '[연구원]';
+        const roleBadge = currentUser.role === 'admin' 
+          ? '[관리자]' 
+          : (currentUser.companyType ? `[${currentUser.companyType}]` : '[연구원]');
+        const displayName = currentUser.nickname || currentUser.name || currentUser.username;
 
         area.innerHTML = `
           <button onclick="openSavedItemsModal('guide')" class="px-2.5 py-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95" title="내 처방 보관함 열기">
-            <span>⭐ 내 보관함</span>
+            <span>내 보관함</span>
             <span class="bg-amber-200 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full">${totalSaved}</span>
+          </button>
+          <button onclick="openMyPageModal()" class="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg shadow-sm transition active:scale-95" title="마이페이지 열기">
+            마이페이지
           </button>
           <div class="flex items-center gap-2 pl-1 border-l border-slate-200">
             <div class="flex items-center gap-1.5 text-xs">
               <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[11px]">
-                ${(currentUser.name || currentUser.username || 'U').charAt(0).toUpperCase()}
+                ${displayName.charAt(0).toUpperCase()}
               </span>
               <span class="font-bold text-slate-800 text-xs hidden sm:inline">
-                ${currentUser.name || currentUser.username}
+                ${displayName}
               </span>
               <span class="text-[10px] text-indigo-600 bg-indigo-50 font-bold px-1.5 py-0.5 rounded border border-indigo-100 hidden md:inline">
                 ${roleBadge}
@@ -1416,6 +1773,8 @@
       if (loginErr) loginErr.classList.add('hidden');
       const signupErr = document.getElementById('signupErrorMessage');
       if (signupErr) signupErr.classList.add('hidden');
+      const socialErr = document.getElementById('socialSignupErrorMsg');
+      if (socialErr) socialErr.classList.add('hidden');
     }
 
     function switchAuthTab(tab) {
@@ -1423,6 +1782,9 @@
       const btnSignup = document.getElementById('authTabBtnSignup');
       const viewLogin = document.getElementById('authViewLogin');
       const viewSignup = document.getElementById('authViewSignup');
+      const viewSocial = document.getElementById('authViewSocialSignup');
+
+      if (viewSocial) viewSocial.classList.add('hidden');
 
       if (tab === 'login') {
         btnLogin.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
@@ -1449,11 +1811,11 @@
 
       msg.classList.remove('hidden');
       if (pw1 === pw2) {
-        msg.textContent = '✅ 비밀번호가 일치합니다.';
+        msg.textContent = '비밀번호가 일치합니다.';
         msg.className = 'text-[11px] mt-1 font-semibold text-emerald-600';
         return true;
       } else {
-        msg.textContent = '❌ 비밀번호가 일치하지 않습니다.';
+        msg.textContent = '비밀번호가 일치하지 않습니다.';
         msg.className = 'text-[11px] mt-1 font-semibold text-rose-600';
         return false;
       }
@@ -1481,133 +1843,21 @@
         closeAuthModal();
         renderAuthHeader();
         updateSaveGuideRecipeBtnState(currentRecipe);
-        showToast(`환영합니다, ${currentUser.name || currentUser.username}님!`);
+        showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
       } else {
         errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. (회원가입 후 이용해주세요)';
         errMsg.classList.remove('hidden');
       }
     }
 
-    function handleSocialAuth(provider) {
-      if (provider === 'kakao') {
-        // 1. Check protocol
-        if (window.location.protocol === 'file:') {
-          alert('⚠️ [중요 안내]\n현재 브라우저가 "file:///" (파일 직접 열기)로 실행 중입니다.\n\n카카오 보안 정책상 file:// 주소에서는 카카오 로그인이 원천 차단됩니다.\n\n해결 방법:\n폴더 안에 있는 [run_server.bat] 파일을 더블클릭하시거나,\n웹서버(http://localhost:3000)를 통해 접속하셔야 카카오 로그인 창이 뜹니다!');
-          return;
-        }
-
-        if (!window.Kakao) {
-          alert('카카오 SDK를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.');
-          return;
-        }
-        if (!window.Kakao.isInitialized()) {
-          try {
-            window.Kakao.init(KAKAO_JS_KEY);
-          } catch(e) {
-            console.error('Kakao re-init error:', e);
-            alert('카카오 SDK 초기화 오류: ' + e.message);
-            return;
-          }
-        }
-
-        try {
-          // Real Kakao Official Login Popup Call (throughTalk: false ensures browser popup)
-          window.Kakao.Auth.login({
-            throughTalk: false,
-            success: function(authObj) {
-              window.Kakao.API.request({
-                url: '/v2/user/me',
-                success: function(res) {
-                  const kakaoAccount = res.kakao_account || {};
-                  const profile = kakaoAccount.profile || {};
-                  const properties = res.properties || {};
-                  const kakaoId = `kakao_${res.id}`;
-                  const nickname = profile.nickname || properties.nickname || '카카오 연구원';
-                  const email = kakaoAccount.email || `${kakaoId}@thesocsoc.com`;
-
-                  let user = usersDb.find(u => u.username === kakaoId);
-                  if (!user) {
-                    user = {
-                      username: kakaoId,
-                      name: nickname,
-                      email: email,
-                      phone: '카카오 간편인증',
-                      companyType: '브랜드사',
-                      provider: 'kakao',
-                      savedGuides: [],
-                      savedFormulas: [],
-                      createdAt: new Date().toISOString()
-                    };
-                    usersDb.push(user);
-                    saveUsersDb();
-                  } else {
-                    user.name = nickname;
-                    if (kakaoAccount.email) user.email = email;
-                    saveUsersDb();
-                  }
-
-                  currentUser = user;
-                  localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
-                  closeAuthModal();
-                  renderAuthHeader();
-                  if (currentRecipe) updateSaveGuideRecipeBtnState(currentRecipe);
-                  showToast(`카카오 로그인 완료! 환영합니다, ${nickname}님!`, '🟡');
-                },
-                fail: function(error) {
-                  console.error('Kakao user info fetch error:', error);
-                  alert('카카오 계정 정보를 가져오지 못했습니다: ' + JSON.stringify(error));
-                }
-              });
-            },
-            fail: function(err) {
-              console.error('Kakao login error:', err);
-              if (err.error === 'access_denied') {
-                showToast('카카오 로그인이 취소되었습니다.');
-              } else {
-                alert('카카오 로그인 오류 안내:\n' + (err.error_description || err.msg || JSON.stringify(err)) + '\n\n* 카카오 개발자 센터의 플랫폼 도메인 설정(http://localhost:3000)을 확인해주세요.');
-              }
-            }
-          });
-        } catch (ex) {
-          alert('카카오 팝업 호출 실패: ' + ex.message);
-        }
-        return;
-      }
-
-      // Other providers (e.g. Naver - waiting for Naver Client ID)
-      const providerName = provider === 'kakao' ? '카카오' : '네이버';
-      const socialId = `${provider}_user`;
-      
-      let user = usersDb.find(u => u.username === socialId);
-      if (!user) {
-        user = {
-          username: socialId,
-          name: `${providerName} 연구원`,
-          email: `${socialId}@thesocsoc.com`,
-          phone: '010-0000-0000',
-          companyType: '브랜드사',
-          provider: provider,
-          savedGuides: [],
-          savedFormulas: [],
-          createdAt: new Date().toISOString()
-        };
-        usersDb.push(user);
-        saveUsersDb();
-      }
-
-      currentUser = user;
-      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
-      closeAuthModal();
-      renderAuthHeader();
-      updateSaveGuideRecipeBtnState(currentRecipe);
-      showToast(`${providerName} 간편 로그인되었습니다!`);
-    }
-
+    // 일반 회원가입 처리
     function handleNormalSignup(e) {
       e.preventDefault();
       const id = document.getElementById('signupIdInput').value.trim();
       const pw = document.getElementById('signupPwInput').value;
       const pwCfm = document.getElementById('signupPwCfmInput').value;
+      const name = document.getElementById('signupNameInput').value.trim();
+      const nickname = document.getElementById('signupNicknameInput').value.trim();
       const email = document.getElementById('signupEmailInput').value.trim();
       const phone = document.getElementById('signupPhoneInput').value.trim();
       
@@ -1619,7 +1869,14 @@
       const errMsg = document.getElementById('signupErrorMessage');
 
       if (pw !== pwCfm) {
-        errMsg.textContent = '비밀번호가 일치하지 않습니다. 오타 방지 입력을 확인해주세요.';
+        errMsg.textContent = '비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      // 닉네임 유효성 검사 (숫자, 영문, 한글 20자 이내)
+      if (nickname.length === 0 || nickname.length > 20 || !/^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s]+$/.test(nickname)) {
+        errMsg.textContent = '닉네임은 숫자, 영어, 한글로 입력해주세요.';
         errMsg.classList.remove('hidden');
         return;
       }
@@ -1640,11 +1897,13 @@
       const newUser = {
         username: id,
         password: pw,
-        name: id,
+        name: name,
+        nickname: nickname,
         email: email,
         phone: phone,
         companyType: companyType,
         provider: 'normal',
+        role: id === 'admin' ? 'admin' : 'member',
         savedGuides: [],
         savedFormulas: [],
         createdAt: new Date().toISOString()
@@ -1657,7 +1916,7 @@
       closeAuthModal();
       renderAuthHeader();
       updateSaveGuideRecipeBtnState(currentRecipe);
-      showToast(`회원가입이 완료되었습니다! 환영합니다, ${id}님.`);
+      showToast(`회원가입이 완료되었습니다! 환영합니다, ${nickname}님.`);
     }
 
     function logoutUser() {
@@ -1666,6 +1925,417 @@
       renderAuthHeader();
       updateSaveGuideRecipeBtnState(currentRecipe);
       showToast('로그아웃 되었습니다.');
+    }
+
+    // ==========================================
+    // MY PAGE LOGIC
+    // ==========================================
+    function openMyPageModal() {
+      if (!currentUser) {
+        openAuthModal('login', '마이페이지는 회원 로그인 후 이용 가능합니다.');
+        return;
+      }
+
+      document.getElementById('myPageUsername').textContent = currentUser.username;
+      
+      const roleText = currentUser.role === 'admin' ? '관리자' : '일반 회원';
+      document.getElementById('myPageRoleBadge').textContent = roleText;
+
+      document.getElementById('myPageNameInput').value = currentUser.name || '';
+      document.getElementById('myPageNicknameInput').value = currentUser.nickname || currentUser.name || '';
+      document.getElementById('myPageEmailInput').value = currentUser.email || '';
+      document.getElementById('myPagePhoneInput').value = currentUser.phone || '';
+
+      const typeRadios = document.querySelectorAll('input[name="myPageCompanyType"]');
+      typeRadios.forEach(r => {
+        r.checked = (r.value === currentUser.companyType);
+      });
+
+      const pwSection = document.getElementById('myPagePwSection');
+      const socialPwNotice = document.getElementById('myPageSocialPwNotice');
+
+      if (currentUser.provider === 'normal' || !currentUser.provider) {
+        pwSection.classList.remove('hidden');
+        if (socialPwNotice) socialPwNotice.classList.add('hidden');
+        document.getElementById('myPageCurrentPwInput').value = '';
+        document.getElementById('myPageNewPwInput').value = '';
+        document.getElementById('myPageNewPwCfmInput').value = '';
+      } else {
+        pwSection.classList.add('hidden');
+        if (socialPwNotice) socialPwNotice.classList.remove('hidden');
+      }
+
+      const err = document.getElementById('myPageErrorMessage');
+      if (err) err.classList.add('hidden');
+
+      document.getElementById('myPageModal').classList.remove('hidden');
+    }
+
+    function closeMyPageModal() {
+      document.getElementById('myPageModal').classList.add('hidden');
+    }
+
+    function saveMyPageProfile(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const name = document.getElementById('myPageNameInput').value.trim();
+      const nickname = document.getElementById('myPageNicknameInput').value.trim();
+      const email = document.getElementById('myPageEmailInput').value.trim();
+      const phone = document.getElementById('myPagePhoneInput').value.trim();
+      const typeEl = document.querySelector('input[name="myPageCompanyType"]:checked');
+      const companyType = typeEl ? typeEl.value : (currentUser.companyType || '기타');
+      const errMsg = document.getElementById('myPageErrorMessage');
+
+      if (!email) {
+        errMsg.textContent = '이메일 주소를 입력해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      // 닉네임 유효성 검사 (숫자, 영문, 한글 20자 이내)
+      if (nickname.length === 0 || nickname.length > 20 || !/^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s]+$/.test(nickname)) {
+        errMsg.textContent = '닉네임은 숫자, 영어, 한글로 입력해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      // 비밀번호 변경 처리 (일반 회원인 경우)
+      if (currentUser.provider === 'normal' || !currentUser.provider) {
+        const currentPw = document.getElementById('myPageCurrentPwInput').value;
+        const newPw = document.getElementById('myPageNewPwInput').value;
+        const newPwCfm = document.getElementById('myPageNewPwCfmInput').value;
+
+        if (currentPw || newPw || newPwCfm) {
+          if (currentPw !== currentUser.password) {
+            errMsg.textContent = '현재 비밀번호가 일치하지 않습니다.';
+            errMsg.classList.remove('hidden');
+            return;
+          }
+          if (newPw.length < 4) {
+            errMsg.textContent = '새 비밀번호는 최소 4자 이상이어야 합니다.';
+            errMsg.classList.remove('hidden');
+            return;
+          }
+          if (newPw !== newPwCfm) {
+            errMsg.textContent = '새 비밀번호 확인이 일치하지 않습니다.';
+            errMsg.classList.remove('hidden');
+            return;
+          }
+          currentUser.password = newPw;
+        }
+      }
+
+      currentUser.name = name || currentUser.name;
+      currentUser.nickname = nickname;
+      currentUser.email = email;
+      currentUser.phone = phone;
+      currentUser.companyType = companyType;
+
+      saveUsersDb();
+      renderAuthHeader();
+      closeMyPageModal();
+      showToast('회원 정보가 성공적으로 변경되었습니다.');
+    }
+
+    // ==========================================
+    // NEW RECIPE AUTHORING (관리자 새 처방 작성)
+    // ==========================================
+    let newRecipeIngredients = [];
+
+    function handleFloatingNewRecipeClick() {
+      if (!currentUser) {
+        openAuthModal('login', '새 처방 작성을 이용하시려면 로그인이 필요합니다.');
+        return;
+      }
+
+      openNewRecipeModal();
+    }
+
+    function openNewRecipeModal() {
+      // 초기 기본 배합 원료 설정 (Phase A 정제수만 유지)
+      newRecipeIngredients = [
+        { phase: 'Phase A', name: 'Water (정제수)', inci: 'Aqua', percent: 100.00, supplier: '' }
+      ];
+
+      document.getElementById('newRecTitle').value = '';
+      document.getElementById('newRecCategory').value = 'skin care';
+      document.getElementById('newRecSupplier').value = '';
+      document.getElementById('newRecFormulaCode').value = '';
+      document.getElementById('newRecEmail').value = '';
+      document.getElementById('newRecDescription').value = '';
+      document.getElementById('newRecProcedure').value = '';
+      document.getElementById('newRecSpecification').value = '';
+      document.getElementById('newRecEtc').value = '';
+
+      const err = document.getElementById('newRecipeErrorMsg');
+      if (err) err.classList.add('hidden');
+
+      renderNewRecipeRows();
+      document.getElementById('newRecipeModal').classList.remove('hidden');
+    }
+
+    function closeNewRecipeModal() {
+      document.getElementById('newRecipeModal').classList.add('hidden');
+    }
+
+    function renderNewRecipeRows() {
+      const tbody = document.getElementById('newRecipeRowsBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      newRecipeIngredients.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        tr.innerHTML = `
+          <td class="py-2 px-2.5 text-center">
+            <input type="text" value="${item.phase}" onchange="updateNewRecIng(${idx}, 'phase', this.value)"
+              class="w-16 px-1.5 py-1 text-center font-bold text-indigo-700 bg-slate-50 border border-slate-200 rounded text-xs">
+          </td>
+          <td class="py-2 px-2.5">
+            <input type="text" value="${item.name}" required placeholder="원료 입력" onchange="updateNewRecIng(${idx}, 'name', this.value)"
+              class="w-full px-2 py-1 border border-slate-200 rounded font-semibold text-slate-800 text-xs">
+          </td>
+          <td class="py-2 px-2.5">
+            <input type="text" value="${item.inci || ''}" placeholder="INCI명" onchange="updateNewRecIng(${idx}, 'inci', this.value)"
+              class="w-full px-2 py-1 border border-slate-200 rounded text-slate-600 text-xs">
+          </td>
+          <td class="py-2 px-2.5 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <input type="number" step="0.01" min="0" max="100" value="${Number(item.percent || 0).toFixed(2)}"
+                onchange="updateNewRecPercent(${idx}, this.value)"
+                class="w-20 px-2 py-1 text-right font-black border border-slate-200 rounded text-slate-900 text-xs">
+              <span class="text-slate-400 text-xs">%</span>
+            </div>
+          </td>
+          <td class="py-2 px-2.5">
+            <input type="text" value="${item.supplier || ''}" onchange="updateNewRecIng(${idx}, 'supplier', this.value)"
+              class="w-full px-2 py-1 border border-slate-200 rounded text-slate-600 text-xs">
+          </td>
+          <td class="py-2 px-2 text-center">
+            <button type="button" onclick="removeNewRecipeIngredientRow(${idx})" class="p-1 text-slate-400 hover:text-rose-600 font-bold text-sm">×</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      calculateNewRecipeSum();
+    }
+
+    function updateNewRecIng(idx, field, val) {
+      if (newRecipeIngredients[idx]) {
+        newRecipeIngredients[idx][field] = val;
+      }
+    }
+
+    function updateNewRecPercent(idx, val) {
+      const num = parseFloat(val) || 0;
+      if (newRecipeIngredients[idx]) {
+        newRecipeIngredients[idx].percent = parseFloat(num.toFixed(2));
+      }
+      calculateNewRecipeSum();
+    }
+
+    function addNewRecipeIngredientRow(phase = 'Phase A') {
+      newRecipeIngredients.push({
+        phase: phase,
+        name: '',
+        inci: '',
+        percent: 0.00,
+        supplier: ''
+      });
+      renderNewRecipeRows();
+    }
+
+    function removeNewRecipeIngredientRow(idx) {
+      newRecipeIngredients.splice(idx, 1);
+      renderNewRecipeRows();
+    }
+
+    function calculateNewRecipeSum() {
+      let sum = 0;
+      newRecipeIngredients.forEach(item => {
+        sum += (parseFloat(item.percent) || 0);
+      });
+      const totalSpan = document.getElementById('newRecipeTotalPercent');
+      const statusTag = document.getElementById('newRecipeStatusTag');
+
+      if (totalSpan) totalSpan.textContent = sum.toFixed(2) + ' %';
+      if (statusTag) {
+        if (Math.abs(sum - 100.00) < 0.005) {
+          statusTag.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800';
+          statusTag.textContent = '100.00% 적합';
+        } else if (sum > 100.00) {
+          statusTag.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800';
+          statusTag.textContent = `+${(sum - 100).toFixed(2)}% 초과`;
+        } else {
+          statusTag.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800';
+          statusTag.textContent = `-${(100 - sum).toFixed(2)}% 부족`;
+        }
+      }
+    }
+
+    function handleNewRecipeSubmit(e) {
+      e.preventDefault();
+      const title = document.getElementById('newRecTitle').value.trim();
+      const category = document.getElementById('newRecCategory').value;
+      const supplier = document.getElementById('newRecSupplier').value.trim();
+      const formulaCode = document.getElementById('newRecFormulaCode').value.trim();
+      const email = document.getElementById('newRecEmail').value.trim();
+      const description = document.getElementById('newRecDescription').value.trim();
+      const procedure = document.getElementById('newRecProcedure').value.trim();
+      const specification = document.getElementById('newRecSpecification').value.trim();
+      const etc = document.getElementById('newRecEtc').value.trim();
+      const errMsg = document.getElementById('newRecipeErrorMsg');
+
+      if (!title) {
+        errMsg.textContent = '처방명을 입력해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      if (!supplier) {
+        errMsg.textContent = '제공사를 입력해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      if (newRecipeIngredients.length === 0) {
+        errMsg.textContent = '원료를 최소 1개 이상 추가해주세요.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      // Generate HTML specification table for authentic display
+      let generatedHtml = '';
+      if (supplier) generatedHtml += `<p class="mb-2"><strong>제공사:</strong> ${supplier}</p>`;
+      if (formulaCode) generatedHtml += `<p class="mb-2"><strong>처방번호:</strong> ${formulaCode}</p>`;
+      if (email) generatedHtml += `<p class="mb-2"><strong>이메일:</strong> ${email}</p>`;
+      if (description) generatedHtml += `<p class="mb-4 bg-slate-50 p-3 rounded border border-slate-100"><strong>제형설명:</strong> ${description}</p>`;
+
+      generatedHtml += `
+        <table class="my-4">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Ingredients</th>
+              <th>INCI-Name</th>
+              <th style="text-align:right">%w/w</th>
+              <th>Supplier</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      newRecipeIngredients.forEach(ing => {
+        generatedHtml += `
+          <tr>
+            <td><strong>${ing.phase || 'Phase A'}</strong></td>
+            <td>${ing.name || '-'}</td>
+            <td>${ing.inci || '-'}</td>
+            <td style="text-align:right">${Number(ing.percent || 0).toFixed(2)}</td>
+            <td>${ing.supplier || '-'}</td>
+          </tr>
+        `;
+      });
+      generatedHtml += `</tbody></table>`;
+
+      if (procedure) {
+        generatedHtml += `<div class="mt-4"><h3 class="font-bold text-sm text-slate-900 mb-2">제조공정</h3><p class="whitespace-pre-line bg-slate-50 p-3 rounded border border-slate-100 text-xs">${procedure}</p></div>`;
+      }
+
+      if (specification) {
+        generatedHtml += `<div class="mt-4"><h3 class="font-bold text-sm text-slate-900 mb-2">규격 및 특성</h3><p class="whitespace-pre-line bg-slate-50 p-3 rounded border border-slate-100 text-xs">${specification}</p></div>`;
+      }
+
+      if (etc) {
+        generatedHtml += `<div class="mt-4"><h3 class="font-bold text-sm text-slate-900 mb-2">기타</h3><p class="whitespace-pre-line bg-slate-50 p-3 rounded border border-slate-100 text-xs">${etc}</p></div>`;
+      }
+
+      // 무조건 자동으로 하단에 들어가는 면책고지 (Disclaimer)
+      const disclaimerHtml = `
+        <div class="mt-8 pt-6 border-t-2 border-slate-200 bg-slate-50/80 p-5 rounded-xl border text-xs text-slate-600 leading-relaxed">
+          <h4 class="font-bold text-sm text-slate-900 mb-3 flex items-center gap-1.5">
+            <span>[처방 가이드라인 및 면책 고지 (Disclaimer)]</span>
+          </h4>
+          <div class="space-y-3">
+            <div>
+              <p class="font-bold text-slate-800">1. 연구·개발(R&D) 참고</p>
+              <p class="text-slate-600 pl-3 mt-0.5">본 처방은 화장품 연구·개발을 돕기 위해 시험적으로 설계된 가이드 처방(참고용)입니다.<br>완제품의 생산이나 상업적 출시를 위한 최종 확정 처방이 아닙니다.</p>
+            </div>
+            <div>
+              <p class="font-bold text-slate-800">2. 제형 안정성 및 안전성 검증 필수</p>
+              <p class="text-slate-600 pl-3 mt-0.5">본 처방을 바탕으로 제품을 제조할 경우, 처방을 적용하는 기업 및 연구자가 직접 제형 안정성(온도별 안정성, 경시 변화 등) 및 피부 안전성(자극 시험 등)을 철저히 검증해야 합니다.<br>이를 진행하지 않아 발생하는 문제에 대해 당사는 일체의 법적 책임을 지지 않습니다.</p>
+            </div>
+            <div>
+              <p class="font-bold text-slate-800">3. 성분 및 배합 한도 확인</p>
+              <p class="text-slate-600 pl-3 mt-0.5">처방에 포함된 모든 원료 및 배합 비율은 각 국가별(대한민국 식품의약품안전처, 미국 FDA, EU 등) 최신 화장품 안전기준 및 규정에 부합하는지 반드시 사전에 확인하시기 바랍니다.</p>
+            </div>
+            <div>
+              <p class="font-bold text-slate-800">4. 지식재산권(특허 등) 침해 주의</p>
+              <p class="text-slate-600 pl-3 mt-0.5">본 처방의 일부 또는 전체가 제3자의 특허권, 상표권 등 지식재산권을 침해하지 않는지 반드시 검토 후 사용하시기 바랍니다.<br>제3자의 권리 침해로 인한 분쟁 발생 시 당사는 법적 책임을 지지 않습니다.</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      generatedHtml += disclaimerHtml;
+
+      const newUid = 'custom_rec_' + Date.now();
+      const newRec = {
+        uid: newUid,
+        title: title,
+        category: category,
+        supplier: supplier,
+        formulaCode: formulaCode || '처방코드 미기재',
+        email: email,
+        description: description,
+        ingredients: JSON.parse(JSON.stringify(newRecipeIngredients)),
+        procedure: procedure,
+        specification: specification,
+        etc: etc,
+        contentHtml: generatedHtml,
+        sourceUrl: window.location.href,
+        author: currentUser ? (currentUser.nickname || currentUser.name || currentUser.username) : '연구원',
+        isCustomCreated: true
+      };
+
+      // 1. 가이드 처방 전체 목록(allRecipes) 최상단에 즉시 등록
+      allRecipes.unshift(newRec);
+
+      // 2. 브라우저 localStorage에 영구 저장 (새로고침 후에도 유지)
+      try {
+        let adminRecipes = JSON.parse(localStorage.getItem('socsoc_admin_recipes') || '[]');
+        adminRecipes.unshift(newRec);
+        localStorage.setItem('socsoc_admin_recipes', JSON.stringify(adminRecipes));
+      } catch(err) {
+        console.warn('Failed to save to localStorage:', err);
+      }
+
+      // 3. 작성자의 [내 보관함 - 저장한 가이드 처방]에도 자동 보관 저장
+      if (currentUser) {
+        if (!currentUser.savedGuides) currentUser.savedGuides = [];
+        if (!currentUser.savedGuides.some(g => g.uid === newRec.uid)) {
+          currentUser.savedGuides.unshift({
+            uid: newRec.uid,
+            title: newRec.title,
+            category: newRec.category,
+            supplier: newRec.supplier,
+            formulaCode: newRec.formulaCode,
+            savedAt: new Date().toISOString()
+          });
+          saveUsersDb();
+        }
+      }
+
+      updateCategoryPillCounts();
+      renderRecipeList(allRecipes);
+      showRecipeOriginalArticle(newRec);
+      renderAuthHeader();
+      updateSaveGuideRecipeBtnState(newRec);
+      setAppMode('explorer');
+
+      closeNewRecipeModal();
+      showToast(`신규 처방 [${title}]이 가이드 처방에 바로 등록 및 저장되었습니다!`);
     }
 
     // ==========================================
@@ -1700,7 +2370,7 @@
         saveUsersDb();
         updateSaveGuideRecipeBtnState(currentRecipe);
         renderAuthHeader();
-        showToast('⭐ [내 보관함]에 가이드 처방이 저장되었습니다!');
+        showToast('[내 보관함]에 가이드 처방이 저장되었습니다!');
       }
     }
 
@@ -1711,7 +2381,7 @@
       if (!btn || !icon || !text) return;
 
       if (!recipe) {
-        icon.textContent = '⭐';
+        icon.innerHTML = '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>';
         text.textContent = '가이드 처방 저장';
         btn.className = 'shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95';
         return;
@@ -1720,11 +2390,11 @@
       const isSaved = currentUser && currentUser.savedGuides && currentUser.savedGuides.some(g => g.uid === recipe.uid);
 
       if (isSaved) {
-        icon.textContent = '⭐';
+        icon.innerHTML = '<svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>';
         text.textContent = '저장됨 (보관함 확인)';
         btn.className = 'shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-indigo-500 bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5 shadow-sm active:scale-95 ring-2 ring-indigo-300';
       } else {
-        icon.textContent = '☆';
+        icon.innerHTML = '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>';
         text.textContent = '가이드 처방 저장';
         btn.className = 'shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95';
       }
@@ -1762,7 +2432,7 @@
       currentUser.savedFormulas.unshift(newRecord);
       saveUsersDb();
       renderAuthHeader();
-      showToast(`💾 [내 보관함]에 "${title}" 처방이 저장되었습니다!`);
+      showToast(`[내 보관함]에 "${title}" 처방이 저장되었습니다!`);
     }
 
     // ==========================================
@@ -1777,6 +2447,10 @@
       }
 
       currentVaultTab = defaultTab;
+      const nick = currentUser.nickname || currentUser.name || currentUser.username || '내';
+      const titleSpan = document.getElementById('vaultCustomTabTitle');
+      if (titleSpan) titleSpan.textContent = `[${nick}의 연구 처방]`;
+
       document.getElementById('savedItemsModal').classList.remove('hidden');
       switchVaultTab(defaultTab);
     }
@@ -1791,6 +2465,10 @@
       const btnCustom = document.getElementById('vaultTabBtnCustom');
       const viewGuide = document.getElementById('vaultViewGuide');
       const viewCustom = document.getElementById('vaultViewCustom');
+
+      const nick = (currentUser && (currentUser.nickname || currentUser.name || currentUser.username)) || '내';
+      const titleSpan = document.getElementById('vaultCustomTabTitle');
+      if (titleSpan) titleSpan.textContent = `[${nick}의 연구 처방]`;
 
       const countGuide = (currentUser.savedGuides || []).length;
       const countCustom = (currentUser.savedFormulas || []).length;
@@ -1821,9 +2499,8 @@
       if (list.length === 0) {
         container.innerHTML = `
           <div class="text-center py-12 text-slate-400">
-            <span class="text-3xl block mb-2">⭐</span>
             <p class="font-bold text-slate-600 text-xs">저장된 가이드 처방이 없습니다.</p>
-            <p class="text-[11px] text-slate-400 mt-1">가이드 처방관에서 마음에 드는 처방을 [가이드 처방 저장] 해보세요!</p>
+            <p class="text-[11px] text-slate-400 mt-1">가이드 처방 도서관에서 마음에 드는 처방을 [가이드 처방 저장] 해보세요!</p>
           </div>
         `;
         return;
@@ -1851,8 +2528,8 @@
             <button onclick="loadGuideRecipeFromVault('${item.uid}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition">
               원문 보기
             </button>
-            <button onclick="removeGuideRecipeFromVault('${item.uid}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg text-xs transition" title="보관함에서 삭제">
-              🗑️
+            <button onclick="removeGuideRecipeFromVault('${item.uid}')" class="px-2 py-1 text-slate-400 hover:text-rose-600 rounded text-xs font-bold transition" title="보관함에서 삭제">
+              삭제
             </button>
           </div>
         `;
@@ -1868,7 +2545,6 @@
       if (list.length === 0) {
         container.innerHTML = `
           <div class="text-center py-12 text-slate-400">
-            <span class="text-3xl block mb-2">🧪</span>
             <p class="font-bold text-slate-600 text-xs">저장된 연구 처방이 없습니다.</p>
             <p class="text-[11px] text-slate-400 mt-1">제형 개발 계산기에서 [내 처방으로 저장] 버튼을 눌러 연구 처방을 보관하세요!</p>
           </div>
@@ -1901,8 +2577,8 @@
             <button onclick="loadCustomFormulaFromVault('${item.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition">
               계산기로 불러오기
             </button>
-            <button onclick="removeCustomFormulaFromVault('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg text-xs transition" title="처방 삭제">
-              🗑️
+            <button onclick="removeCustomFormulaFromVault('${item.id}')" class="px-2 py-1 text-slate-400 hover:text-rose-600 rounded text-xs font-bold transition" title="처방 삭제">
+              삭제
             </button>
           </div>
         `;
@@ -1956,14 +2632,6 @@
     }
 
     // ==========================================
-    // FLOATING ACTION BUTTON
-    // ==========================================
-    function handleFloatingNewRecipeClick() {
-      startFreshZeroCalculator();
-      showToast('새 처방 작성을 위한 계산기 워크벤치가 준비되었습니다!');
-    }
-
-    // ==========================================
     // TERMS MODAL
     // ==========================================
     const TERMS_CONTENT = {
@@ -1979,7 +2647,7 @@
 본 서비스에서 제공되는 모든 가이드 처방 및 배합비 데이터는 연구 및 개발 참고용으로 제공됩니다. 화장품 양산 및 상용화 전에는 반드시 안정성, 방부력, 피부 자극성 등 관련 법규에 따른 적합성 테스트를 거쳐야 하며, 회사는 개별 제조 공정의 결과에 대해 보증하지 않습니다.`,
 
       privacy: `1. 개인정보 수집 항목
-- 필수 항목: 아이디, 비밀번호, 이메일 주소, 핸드폰 번호, 회원 유형(제조사/원료사/브랜드사/기타)
+- 필수 항목: 아이디, 비밀번호, 이름, 닉네임, 이메일 주소, 핸드폰 번호, 회원 유형(제조사/원료사/브랜드사/기타)
 - 서비스 이용 과정에서 생성되는 정보: 접속 로그, 저장한 처방 데이터
 
 2. 개인정보의 수집 및 이용 목적
@@ -2012,18 +2680,16 @@
     }
 
     // ==========================================
-    // TOAST NOTIFICATION UTILITY
+    // TOAST NOTIFICATION UTILITY (No Emoticons)
     // ==========================================
     let toastTimeout = null;
-    function showToast(message, icon = '✨') {
+    function showToast(message) {
       const toast = document.getElementById('toastNotification');
       const toastMsg = document.getElementById('toastMessage');
-      const toastIco = document.getElementById('toastIcon');
 
       if (!toast) return;
 
       toastMsg.textContent = message;
-      toastIco.textContent = icon;
 
       toast.classList.remove('opacity-0', '-translate-y-12', 'pointer-events-none');
       toast.classList.add('opacity-100', 'translate-y-0');
