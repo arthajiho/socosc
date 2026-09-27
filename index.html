@@ -1038,6 +1038,43 @@
             </button>
           </div>
         </form>
+
+        <!-- ================= 회원 탈퇴 탭 / 영역 ================= -->
+        <div class="pt-3 border-t border-slate-200">
+          <div class="flex items-center justify-end text-xs">
+            <button type="button" onclick="toggleWithdrawSection()" class="text-slate-400 hover:text-slate-600 font-medium hover:underline transition">
+              회원 탈퇴
+            </button>
+          </div>
+
+          <!-- 회원 탈퇴 비밀번호 확인 인라인 패널 -->
+          <div id="withdrawSection" class="hidden mt-3 p-4 bg-rose-50/80 border border-rose-200 rounded-xl space-y-3 animate-in fade-in duration-150 text-xs">
+            <div class="flex items-center gap-2 text-rose-700 font-bold">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span>회원 탈퇴 본인 확인</span>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              탈퇴 시 작성하신 처방, 보관함 및 계정 정보가 모두 삭제되며 복구할 수 없습니다.<br>
+              본인 확인을 위해 <strong>현재 비밀번호</strong>를 한 번 더 입력해주세요.
+            </p>
+            <div class="space-y-2">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">비밀번호 확인 <span class="text-rose-500">*</span></label>
+                <input type="password" id="withdrawPwInput" placeholder="현재 비밀번호를 입력하세요"
+                  class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-rose-500 bg-white transition">
+              </div>
+              <div id="withdrawErrorMessage" class="hidden text-xs text-rose-600 font-bold"></div>
+              <div class="flex items-center justify-end gap-2 pt-1">
+                <button type="button" onclick="toggleWithdrawSection(false)" class="px-3.5 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition">
+                  취소
+                </button>
+                <button type="button" id="withdrawSubmitBtn" onclick="handleWithdrawAccount()" class="px-4 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow transition">
+                  탈퇴 완료
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -3200,11 +3237,164 @@
       const err = document.getElementById('myPageErrorMessage');
       if (err) err.classList.add('hidden');
 
+      toggleWithdrawSection(false);
+
       document.getElementById('myPageModal').classList.remove('hidden');
     }
 
     function closeMyPageModal() {
       document.getElementById('myPageModal').classList.add('hidden');
+      toggleWithdrawSection(false);
+    }
+
+    // ==========================================
+    // 회원 탈퇴 처리 로직
+    // ==========================================
+    function toggleWithdrawSection(show = null) {
+      const section = document.getElementById('withdrawSection');
+      const pwInput = document.getElementById('withdrawPwInput');
+      const errMsg = document.getElementById('withdrawErrorMessage');
+      if (!section) return;
+
+      const shouldShow = (show !== null) ? show : section.classList.contains('hidden');
+      if (shouldShow) {
+        section.classList.remove('hidden');
+        if (pwInput) {
+          pwInput.value = '';
+          pwInput.focus();
+        }
+        if (errMsg) errMsg.classList.add('hidden');
+      } else {
+        section.classList.add('hidden');
+        if (pwInput) pwInput.value = '';
+        if (errMsg) errMsg.classList.add('hidden');
+      }
+    }
+
+    async function handleWithdrawAccount() {
+      if (!currentUser) return;
+
+      const pwInput = document.getElementById('withdrawPwInput');
+      const enteredPw = pwInput ? pwInput.value : '';
+      const errMsg = document.getElementById('withdrawErrorMessage');
+      const submitBtn = document.getElementById('withdrawSubmitBtn');
+
+      if (errMsg) errMsg.classList.add('hidden');
+
+      // 최고 관리자(admin, socsoc) 계정 보호
+      if (checkIsAdmin(currentUser.username) || currentUser.role === 'admin') {
+        if (errMsg) {
+          errMsg.textContent = '최고 관리자(admin, socsoc) 계정은 시스템 보호를 위해 탈퇴할 수 없습니다.';
+          errMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (!enteredPw) {
+        if (errMsg) {
+          errMsg.textContent = '본인 확인을 위해 현재 비밀번호를 입력해주세요.';
+          errMsg.classList.remove('hidden');
+        }
+        if (pwInput) pwInput.focus();
+        return;
+      }
+
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>처리 중...</span>';
+      }
+
+      try {
+        let isPasswordValid = false;
+
+        // 1. currentUser 객체의 password와 비교
+        if (currentUser.password && currentUser.password === enteredPw) {
+          isPasswordValid = true;
+        }
+
+        // 2. usersDb에서 유저 찾아서 비밀번호 비교
+        if (!isPasswordValid) {
+          const dbUser = usersDb.find(u => u.username === currentUser.username || u.id === currentUser.id);
+          if (dbUser && dbUser.password === enteredPw) {
+            isPasswordValid = true;
+          }
+        }
+
+        // 3. Supabase Auth 사용자인 경우 Supabase로 비밀번호 검증
+        if (!isPasswordValid && sbClient && currentUser.email) {
+          try {
+            const { data, error } = await sbClient.auth.signInWithPassword({
+              email: currentUser.email,
+              password: enteredPw
+            });
+            if (!error && data && data.user) {
+              isPasswordValid = true;
+            }
+          } catch (sbErr) {
+            console.warn('Supabase withdraw pw verification error:', sbErr);
+          }
+        }
+
+        if (!isPasswordValid) {
+          if (errMsg) {
+            errMsg.textContent = '비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
+            errMsg.classList.remove('hidden');
+          }
+          if (pwInput) {
+            pwInput.value = '';
+            pwInput.focus();
+          }
+          return;
+        }
+
+        // 비밀번호 확인 완료 -> 최종 컨펌
+        const really = confirm('[속속 회원 탈퇴 안내]\n\n정말로 회원 탈퇴를 진행하시겠습니까?\n\n탈퇴 시 저장된 모든 처방 데이터 및 계정 정보가 즉시 영구 삭제되며, 복구할 수 없습니다.');
+        if (!really) return;
+
+        const targetId = currentUser.id;
+        const targetUsername = currentUser.username;
+
+        // 1. Supabase 클라우드 데이터 정리
+        if (sbClient && targetId && !String(targetId).startsWith('local_')) {
+          try {
+            await Promise.allSettled([
+              sbClient.from('saved_guides').delete().eq('user_id', targetId),
+              sbClient.from('saved_formulas').delete().eq('user_id', targetId),
+              sbClient.from('profiles').delete().eq('id', targetId)
+            ]);
+            await sbClient.auth.signOut();
+          } catch (cloudErr) {
+            console.warn('Cloud account deletion cleanup warning:', cloudErr);
+          }
+        }
+
+        // 2. 로컬 브라우저 DB(usersDb)에서 제거
+        usersDb = usersDb.filter(u => u.username !== targetUsername && u.id !== targetId);
+        saveUsersDb();
+
+        // 3. 세션 완전 초기화
+        currentUser = null;
+        localStorage.removeItem(STORAGE_SESSION_KEY);
+
+        closeMyPageModal();
+        renderAuthHeader();
+        updateRecipeEditButtonVisibility();
+        updateSaveGuideRecipeBtnState(currentRecipe);
+
+        showToast('회원 탈퇴가 완료되었습니다. 그동안 속속을 이용해 주셔서 감사합니다.');
+      } catch (err) {
+        console.error('Withdraw error:', err);
+        if (errMsg) {
+          errMsg.textContent = '탈퇴 처리 중 오류가 발생했습니다: ' + (err.message || '');
+          errMsg.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+        }
+      }
     }
 
     async function saveMyPageProfile(e) {
