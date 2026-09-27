@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>속속(SOCSOC) 코스메틱 노트</title>
+    <link>https://thesocsoc.com</link>
+    <description>화장품 연구원을 위한 원료 가이드 처방 래퍼런스 및 배합비 자동 계산기 플랫폼 속속(SOCSOC)</description>
+    <language>ko</language>
+    <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+    <lastBuildDate>Sun, 27 Sep 2026 14:00:00 +0900</lastBuildDate>
+    <atom:link href="https://thesocsoc.com/rss.xml" rel="self" type="application/rss+xml" />
+    <generator>SOCSOC Cosmetic Platform</generator>
+
+    <item>
+      <title>속속(SOCSOC) 코스메틱 가이드 처방 도서관 (260여 종 연구 처방)</title>
+      <link>https://thesocsoc.com/?mode=explorer</link>
+      <description><![CDATA[화장품 연구원과 제형 개발자를 위한 스킨케어, 선케어, 헤어, 메이크업 등 260여 개 원료사 공식 가이드 처방 및 원료 사양 데이터베이스]]></description>
+      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <guid isPermaLink="true">https://thesocsoc.com/?mode=explorer</guid>
+    </item>
+
+    <item>
+      <title>화장품 배합비 실시간 100% 정밀 계산기 - 원료 Phase별 배합 및 배치 스케일업</title>
+      <link>https://thesocsoc.com/?mode=calculator</link>
+      <description><![CDATA[Phase A, B, C 원료 배합비 합계 100% 실시간 검증 및 연구실 샘플 배치 사이즈(g) 자동 환산 계산기 도구]]></description>
+      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <guid isPermaLink="true">https://thesocsoc.com/?mode=calculator</guid>
+    </item>
+
+  </channel>
+</rss>
