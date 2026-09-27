@@ -78,5 +78,6 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
-# 5. Official Sitemap Declaration
+# 5. Official Sitemap & AI Directives Declaration
 Sitemap: https://thesocsoc.com/sitemap.xml
+# LLMs: https://thesocsoc.com/llms.txt
