@@ -671,7 +671,7 @@
             <table class="w-full text-left text-xs border-collapse">
               <thead>
                 <tr class="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
-                  <th class="py-2.5 px-3 w-16 text-center">상 (Phase)</th>
+                  <th class="py-2.5 px-3 w-16 text-center">Phase</th>
                   <th class="py-2.5 px-3">원료 (직접 수정)</th>
                   <th class="py-2.5 px-3 w-36 text-right">배합비 (%)</th>
                   <th class="py-2.5 px-3 w-32 text-right bg-indigo-50/50 text-indigo-900 font-black">계량값 (g)</th>
@@ -1730,7 +1730,7 @@
 
     // Zero-base formula state (formatted strictly to 2 decimals)
     let activeFormula = [
-      { phase: 'Phase A', name: 'Base', percent: 100.00, supplier: '-', isWater: true }
+      { phase: 'Phase A', name: '', percent: 100.00, supplier: '', isWater: true }
     ];
 
     // ==========================================
@@ -2201,7 +2201,7 @@
 
     function startFreshZeroCalculator() {
       activeFormula = [
-        { phase: 'Phase A', name: 'Base', percent: 100.00, supplier: '-', isWater: true }
+        { phase: 'Phase A', name: '', percent: 100.00, supplier: '', isWater: true }
       ];
       document.getElementById('calcFormulaTitleInput').value = '신규 제형 개발 처방 #' + Math.floor(Math.random() * 900 + 100);
       setAppMode('calculator');
@@ -2214,7 +2214,7 @@
       
       if (activeFormula.length === 0) {
         activeFormula = [
-          { phase: 'Phase A', name: 'Base', percent: 100.00, supplier: '-', isWater: true }
+          { phase: 'Phase A', name: '', percent: 100.00, supplier: '', isWater: true }
         ];
       } else {
         activeFormula.forEach(item => {
@@ -2631,8 +2631,8 @@
     function addIngredient(phaseName) {
       activeFormula.push({
         phase: phaseName,
-        name: '신규 원료',
-        percent: 1.00,
+        name: '',
+        percent: 0.00,
         supplier: '',
         isWater: false
       });
@@ -2645,16 +2645,16 @@
       if (waterIdx === -1) {
         activeFormula.unshift({
           phase: 'Phase A',
-          name: 'Base',
+          name: '',
           percent: 0.00,
-          supplier: '-',
+          supplier: '',
           isWater: true
         });
         waterIdx = 0;
         renderCalculatorTable();
       } else {
-        if (activeFormula[waterIdx].name === 'Water (정제수)') {
-          activeFormula[waterIdx].name = 'Base';
+        if (activeFormula[waterIdx].name === 'Water (정제수)' || activeFormula[waterIdx].name === 'Base') {
+          activeFormula[waterIdx].name = '';
           renderCalculatorTable();
         }
       }
