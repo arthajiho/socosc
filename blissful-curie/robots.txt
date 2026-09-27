@@ -1,2 +1,24 @@
+# robots.txt for SOCSOC (thesocsoc.com)
 User-agent: *
 Allow: /
+
+# AI Crawlers & Search Engines (GEO & SEO Optimization)
+User-agent: Yeti
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://thesocsoc.com/sitemap.xml
