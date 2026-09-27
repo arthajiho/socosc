@@ -2,36 +2,52 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>속속(SOCSOC) 코스메틱 노트</title>
-    <link>https://thesocsoc.com/</link>
-    <description>화장품 연구원을 위한 원료 가이드 처방 래퍼런스, 배합비 자동 계산기 플랫폼 속속(SOCSOC)</description>
+    <link>https://thesocsoc.com</link>
+    <description>화장품 연구원을 위한 원료 가이드 처방 래퍼런스 및 배합비 자동 계산기 플랫폼 속속(SOCSOC)</description>
     <language>ko</language>
-    <pubDate>Sun, 27 Sep 2026 13:50:00 +0900</pubDate>
-    <lastBuildDate>Sun, 27 Sep 2026 13:50:00 +0900</lastBuildDate>
+    <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+    <lastBuildDate>Sun, 27 Sep 2026 14:00:00 +0900</lastBuildDate>
     <atom:link href="https://thesocsoc.com/rss.xml" rel="self" type="application/rss+xml" />
     <generator>SOCSOC Cosmetic Platform</generator>
 
     <item>
-      <title>속속(SOCSOC) 코스메틱 노트 - 화장품 원료 처방 도서관 &amp; 배합비 계산기</title>
-      <link>https://thesocsoc.com/</link>
-      <description>화장품 연구원을 위한 260여 개 이상의 원료사 공식 가이드 처방 래퍼런스 및 실시간 100% 정밀 배합비 계산기 플랫폼 속속(SOCSOC)</description>
-      <pubDate>Sun, 27 Sep 2026 13:50:00 +0900</pubDate>
-      <guid isPermaLink="true">https://thesocsoc.com/</guid>
+      <title>속속(SOCSOC) 코스메틱 가이드 처방 도서관 (260여 종 연구 처방)</title>
+      <link>https://thesocsoc.com/?mode=explorer</link>
+      <description><![CDATA[화장품 연구원과 제형 개발자를 위한 스킨케어, 선케어, 헤어, 메이크업 등 260여 개 원료사 공식 가이드 처방 및 원료 사양 데이터베이스]]></description>
+      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <guid isPermaLink="true">https://thesocsoc.com/?mode=explorer</guid>
     </item>
 
     <item>
-      <title>화장품 배합비 실시간 정밀 계산기 - 원료 Phase별 배합 및 배치 스케일업</title>
-      <link>https://thesocsoc.com/#calculator</link>
-      <description>Phase A, B, C 원료 배합비 합계 100% 실시간 검증 및 연구실 샘플 배치 사이즈(g) 자동 환산 계산기</description>
-      <pubDate>Sun, 27 Sep 2026 13:50:00 +0900</pubDate>
-      <guid isPermaLink="true">https://thesocsoc.com/#calculator</guid>
+      <title>화장품 배합비 실시간 100% 정밀 계산기 - 원료 Phase별 배합 및 배치 스케일업</title>
+      <link>https://thesocsoc.com/?mode=calculator</link>
+      <description><![CDATA[Phase A, B, C 원료 배합비 합계 100% 실시간 검증 및 연구실 샘플 배치 사이즈(g) 자동 환산 계산기 도구]]></description>
+      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <guid isPermaLink="true">https://thesocsoc.com/?mode=calculator</guid>
     </item>
 
     <item>
-      <title>스킨케어, 선케어, 헤어, 메이크업 카테고리별 화장품 제형 가이드 처방</title>
-      <link>https://thesocsoc.com/#explorer</link>
-      <description>글로벌 원료사의 정품 원료 사양, INCI 코드, 제조 공정 및 화장품 제형 개발을 위한 가이드 처방 데이터베이스</description>
-      <pubDate>Sun, 27 Sep 2026 13:50:00 +0900</pubDate>
-      <guid isPermaLink="true">https://thesocsoc.com/#explorer</guid>
+      <title>아쿠아 피토플렉스 크림 인 마스크 가이드 처방 (Aqua Phytoplex Cream in Mask)</title>
+      <link>https://thesocsoc.com/?recipe=285</link>
+      <description><![CDATA[병풀잎추출물 베이스 식물 유래 수분 진화 및 마스크 시트 밀착 연구를 위한 원료사 공식 화장품 제형 처방]]></description>
+      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <guid isPermaLink="true">https://thesocsoc.com/?recipe=285</guid>
+    </item>
+
+    <item>
+      <title>안티 링클 젤 가이드 처방 (Anti-wrinkle gel)</title>
+      <link>https://thesocsoc.com/?recipe=284</link>
+      <description><![CDATA[주름 개선 기능성 고분자 제형 연구 및 산뜻한 흡수감을 제공하는 안티 링클 젤 레퍼런스 처방]]></description>
+      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <guid isPermaLink="true">https://thesocsoc.com/?recipe=284</guid>
+    </item>
+
+    <item>
+      <title>안티에이징 로션 가이드 처방 (Anti-Aging Lotion)</title>
+      <link>https://thesocsoc.com/?recipe=280</link>
+      <description><![CDATA[피부 탄력 개선 및 유수분 밸런스 유지를 위한 화장품 연구개발용 안티에이징 에멀전 제형 가이드]]></description>
+      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <guid isPermaLink="true">https://thesocsoc.com/?recipe=280</guid>
     </item>
   </channel>
 </rss>
