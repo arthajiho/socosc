@@ -642,7 +642,7 @@
                 class="w-full text-base font-bold text-slate-900 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none">
               <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">g</span>
             </div>
-            <div class="flex gap-1 print-hide">
+            <div id="batchPresetBtns" class="flex gap-1 print-hide">
               <button onclick="setBatch(50)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition">50g</button>
               <button onclick="setBatch(100)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition">100g</button>
               <button onclick="setBatch(200)" class="px-2.5 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 rounded transition font-bold">200g</button>
@@ -891,11 +891,14 @@
       <!-- ================= FORM: SIGN UP ================= -->
       <div id="authViewSignup" class="hidden p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
         <!-- Normal Signup Form -->
-        <form onsubmit="handleNormalSignup(event)" class="space-y-3">
+        <form onsubmit="handleNormalSignup(event)" oninput="document.getElementById('signupErrorMessage')?.classList.add('hidden')" class="space-y-3">
           <!-- ID -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">아이디 <span class="text-rose-500">*</span></label>
-            <input type="text" id="signupIdInput" required placeholder="영문, 숫자 포함 4~16자"
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              아이디 <span class="text-rose-500">*</span>
+              <span class="text-slate-400 font-normal text-[11px] ml-1">(영문 또는 영문+숫자 4~16자)</span>
+            </label>
+            <input type="text" id="signupIdInput" required maxlength="16" placeholder="영문 또는 영문+숫자 4~16자 (한글/특수문자 불가)"
               class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
           </div>
 
@@ -916,8 +919,11 @@
 
           <!-- Name -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">이름 (실명) <span class="text-rose-500">*</span></label>
-            <input type="text" id="signupNameInput" required placeholder="이름을 입력하세요"
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              이름 (실명) <span class="text-rose-500">*</span>
+              <span class="text-slate-400 font-normal text-[11px] ml-1">(한글 또는 영문만 가능)</span>
+            </label>
+            <input type="text" id="signupNameInput" required maxlength="30" placeholder="이름 입력 (한글 또는 영문)"
               class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
           </div>
 
@@ -925,9 +931,9 @@
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">
               닉네임 <span class="text-rose-500">*</span>
-              <span class="text-slate-400 font-normal">(숫자, 영문, 한글)</span>
+              <span class="text-slate-400 font-normal text-[11px] ml-1">(한글, 영문, 숫자만 가능)</span>
             </label>
-            <input type="text" id="signupNicknameInput" required maxlength="20" placeholder="닉네임 입력"
+            <input type="text" id="signupNicknameInput" required maxlength="20" placeholder="닉네임 입력 (한글, 영문, 숫자)"
               class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
           </div>
 
@@ -2211,6 +2217,7 @@
         { phase: 'Phase A', name: '', percent: 100.00, supplier: '', isWater: true }
       ];
       document.getElementById('calcFormulaTitleInput').value = '신규 제형 개발 처방 #' + Math.floor(Math.random() * 900 + 100);
+      setBatch(200);
       setAppMode('calculator');
     }
 
@@ -2544,8 +2551,25 @@
     // CALCULATOR WORKBENCH LOGIC (2 Decimals Strict)
     // ==========================================
     function setBatch(val) {
-      document.getElementById('batchSize').value = val;
+      const input = document.getElementById('batchSize');
+      if (input) input.value = val;
+      updateBatchPresetButtons(val);
       updateCalculationsOnly();
+    }
+
+    function updateBatchPresetButtons(val) {
+      const container = document.getElementById('batchPresetBtns');
+      if (!container) return;
+      const numVal = parseFloat(val);
+      container.querySelectorAll('button').forEach(btn => {
+        const text = btn.textContent.trim();
+        const matchVal = text === '1kg' ? 1000 : parseFloat(text);
+        if (matchVal === numVal) {
+          btn.className = 'px-2.5 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 rounded transition font-bold';
+        } else {
+          btn.className = 'px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition';
+        }
+      });
     }
 
     function renderCalculatorTable() {
@@ -2680,7 +2704,9 @@
     }
 
     function updateCalculationsOnly() {
-      const batch = parseFloat(document.getElementById('batchSize').value) || 0;
+      const batchInput = document.getElementById('batchSize');
+      const batch = parseFloat(batchInput ? batchInput.value : 200) || 0;
+      updateBatchPresetButtons(batch);
       let totalPercent = 0;
 
       activeFormula.forEach((item, index) => {
@@ -2994,6 +3020,27 @@
 
       switchAuthTab(defaultTab, true);
       modal.classList.remove('hidden');
+
+      // 항상 상단부터 노출되도록 스크롤 초기화
+      if (modal) {
+        modal.scrollTop = 0;
+        if (typeof modal.scrollTo === 'function') modal.scrollTo({ top: 0, behavior: 'instant' });
+      }
+      const viewSignup = document.getElementById('authViewSignup');
+      if (defaultTab === 'signup' && viewSignup) {
+        viewSignup.scrollTop = 0;
+        if (typeof viewSignup.scrollTo === 'function') viewSignup.scrollTo({ top: 0, behavior: 'instant' });
+        setTimeout(() => {
+          if (viewSignup) {
+            viewSignup.scrollTop = 0;
+            if (typeof viewSignup.scrollTo === 'function') viewSignup.scrollTo({ top: 0, behavior: 'instant' });
+          }
+          if (modal) {
+            modal.scrollTop = 0;
+            if (typeof modal.scrollTo === 'function') modal.scrollTo({ top: 0, behavior: 'instant' });
+          }
+        }, 30);
+      }
     }
 
     function closeAuthModal() {
@@ -3028,7 +3075,27 @@
       } else if (tab === 'signup') {
         if (navTitle) navTitle.innerHTML = '<i class="fa-solid fa-user-plus text-indigo-600"></i><span>무료 회원가입</span>';
         if (navBackBtn) navBackBtn.classList.remove('hidden');
-        if (viewSignup) viewSignup.classList.remove('hidden');
+        if (viewSignup) {
+          viewSignup.classList.remove('hidden');
+          // 회원가입창 열릴 때 항상 최상단 노출
+          viewSignup.scrollTop = 0;
+          if (typeof viewSignup.scrollTo === 'function') viewSignup.scrollTo({ top: 0, behavior: 'instant' });
+          const modal = document.getElementById('authModal');
+          if (modal) {
+            modal.scrollTop = 0;
+            if (typeof modal.scrollTo === 'function') modal.scrollTo({ top: 0, behavior: 'instant' });
+          }
+          setTimeout(() => {
+            if (viewSignup) {
+              viewSignup.scrollTop = 0;
+              if (typeof viewSignup.scrollTo === 'function') viewSignup.scrollTo({ top: 0, behavior: 'instant' });
+            }
+            if (modal) {
+              modal.scrollTop = 0;
+              if (typeof modal.scrollTo === 'function') modal.scrollTo({ top: 0, behavior: 'instant' });
+            }
+          }, 30);
+        }
       } else if (tab === 'findId') {
         if (navTitle) navTitle.innerHTML = '<i class="fa-solid fa-address-card text-indigo-600"></i><span>아이디 찾기</span>';
         if (navBackBtn) navBackBtn.classList.remove('hidden');
@@ -3579,73 +3646,185 @@
     // 일반 회원가입 처리
     async function handleNormalSignup(e) {
       e.preventDefault();
-      const id = document.getElementById('signupIdInput').value.trim();
-      const pw = document.getElementById('signupPwInput').value;
-      const pwCfm = document.getElementById('signupPwCfmInput').value;
-      const name = document.getElementById('signupNameInput').value.trim();
-      const nickname = document.getElementById('signupNicknameInput').value.trim();
-      const email = document.getElementById('signupEmailInput').value.trim();
-      const phone = document.getElementById('signupPhoneInput').value.trim();
+      const idEl = document.getElementById('signupIdInput');
+      const pwEl = document.getElementById('signupPwInput');
+      const pwCfmEl = document.getElementById('signupPwCfmInput');
+      const nameEl = document.getElementById('signupNameInput');
+      const nicknameEl = document.getElementById('signupNicknameInput');
+      const emailEl = document.getElementById('signupEmailInput');
+      const phoneEl = document.getElementById('signupPhoneInput');
+
+      const id = idEl ? idEl.value.trim() : '';
+      const pw = pwEl ? pwEl.value : '';
+      const pwCfm = pwCfmEl ? pwCfmEl.value : '';
+      const name = nameEl ? nameEl.value.trim() : '';
+      const nickname = nicknameEl ? nicknameEl.value.trim() : '';
+      const email = emailEl ? emailEl.value.trim() : '';
+      const phone = phoneEl ? phoneEl.value.trim() : '';
       
       const companyTypeEl = document.querySelector('input[name="companyType"]:checked');
       const companyType = companyTypeEl ? companyTypeEl.value : '기타';
 
-      const agreeService = document.getElementById('agreeTermService').checked;
-      const agreePrivacy = document.getElementById('agreeTermPrivacy').checked;
+      const agreeService = document.getElementById('agreeTermService') ? document.getElementById('agreeTermService').checked : false;
+      const agreePrivacy = document.getElementById('agreeTermPrivacy') ? document.getElementById('agreeTermPrivacy').checked : false;
       const errMsg = document.getElementById('signupErrorMessage');
       const submitBtn = e.target.querySelector('button[type="submit"]');
 
       if (errMsg) errMsg.classList.add('hidden');
 
+      function showSignupError(msg, focusEl) {
+        if (errMsg) {
+          errMsg.textContent = msg;
+          errMsg.classList.remove('hidden');
+          try {
+            errMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } catch (_) {}
+        }
+        if (focusEl) {
+          focusEl.focus();
+        }
+      }
+
+      // 1. 기본 입력 유효성 검사
+      // 1-1. 아이디 유효성 검사 (영문 또는 영문+숫자 4~16자, 한글/특수문자/공백/순수숫자 불가)
+      if (!id) {
+        showSignupError('아이디를 입력해주세요.', idEl);
+        return;
+      }
+      const idRegex = /^(?=.*[a-zA-Z])[a-zA-Z0-9]{4,16}$/;
+      if (!idRegex.test(id)) {
+        showSignupError('아이디는 영문 또는 영문+숫자 조합 4~16자로 입력해주세요. (한글, 특수문자 불가)', idEl);
+        return;
+      }
+
+      // 1-2. 비밀번호 일치 및 길이 검사
       if (pw !== pwCfm) {
-        errMsg.textContent = '비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
-        errMsg.classList.remove('hidden');
+        showSignupError('비밀번호가 일치하지 않습니다. 다시 확인해주세요.', pwCfmEl);
         return;
       }
 
       if (pw.length < 6) {
-        errMsg.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
-        errMsg.classList.remove('hidden');
+        showSignupError('비밀번호는 최소 6자 이상이어야 합니다.', pwEl);
         return;
       }
 
-      // 닉네임 유효성 검사 (숫자, 영문, 한글 20자 이내)
-      if (nickname.length === 0 || nickname.length > 20 || !/^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s]+$/.test(nickname)) {
-        errMsg.textContent = '닉네임은 숫자, 영어, 한글로 입력해주세요.';
-        errMsg.classList.remove('hidden');
+      // 1-3. 이름(실명) 유효성 검사 (한글, 영문만 가능, 숫자 및 특수문자 불가)
+      if (!name) {
+        showSignupError('이름을 입력해주세요.', nameEl);
+        return;
+      }
+      const nameRegex = /^[a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ]+(?:\s[a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ]+)*$/;
+      if (!nameRegex.test(name) || name.length < 2 || name.length > 30) {
+        showSignupError('이름은 한글 또는 영문만 2~30자로 입력해주세요. (숫자, 특수문자 불가)', nameEl);
         return;
       }
 
+      // 1-4. 닉네임 유효성 검사 (한글, 영문, 숫자만 가능, 공백 및 특수문자 불가)
+      if (!nickname) {
+        showSignupError('닉네임을 입력해주세요.', nicknameEl);
+        return;
+      }
+      const nicknameRegex = /^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ]{2,20}$/;
+      if (!nicknameRegex.test(nickname)) {
+        showSignupError('닉네임은 한글, 영문, 숫자만 2~20자로 입력해주세요. (공백, 특수문자 불가)', nicknameEl);
+        return;
+      }
+
+      // 1-5. 이메일 유효성 검사
+      const normalizedEmail = email.toLowerCase();
+      if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        showSignupError('올바른 이메일 주소 형식을 입력해주세요. (예: example@company.com)', emailEl);
+        return;
+      }
+
+      // 1-6. 핸드폰 번호 유효성 검사 (숫자만 추출)
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      if (!cleanPhone || cleanPhone.length < 9) {
+        showSignupError('올바른 핸드폰 번호를 입력해주세요. (최소 9자리 이상 숫자)', phoneEl);
+        return;
+      }
+
+      // 1-7. 이용약관 및 개인정보 수집 동의 검사
       if (!agreeService || !agreePrivacy) {
-        errMsg.textContent = '서비스 이용약관 및 개인정보 수집 이용(필수)에 동의해주세요.';
-        errMsg.classList.remove('hidden');
+        showSignupError('서비스 이용약관 및 개인정보 수집 이용(필수)에 동의해주세요.');
+        return;
+      }
+
+      const normalizedId = id.toLowerCase();
+
+      // 2. 로컬 브라우저 DB(usersDb) 기준 중복 검사 (아이디, 핸드폰번호, 이메일)
+      const dupIdLocal = normalizedId && (usersDb.some(u => (u.username || '').trim().toLowerCase() === normalizedId) || ADMIN_USERNAMES.includes(normalizedId));
+      if (dupIdLocal) {
+        showSignupError('이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.', idEl);
+        return;
+      }
+
+      const dupPhoneLocal = cleanPhone && usersDb.some(u => {
+        const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+        return uPhone && uPhone === cleanPhone;
+      });
+      if (dupPhoneLocal) {
+        showSignupError('이미 등록된 핸드폰 번호입니다. 다른 번호를 입력해주세요.', phoneEl);
+        return;
+      }
+
+      const dupEmailLocal = normalizedEmail && usersDb.some(u => (u.email || '').trim().toLowerCase() === normalizedEmail);
+      if (dupEmailLocal) {
+        showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 입력해주세요.', emailEl);
         return;
       }
 
       const origBtnText = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span>가입 처리 중...</span>';
+        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>가입 확인 중...</span>';
       }
 
       try {
         let authUserId = null;
 
         if (sbClient) {
-          // 1. 아이디 중복 체크 (Supabase profiles 테이블)
-          const { data: existingUser } = await sbClient
+          // 3-1. Supabase profiles 테이블 아이디 중복 체크
+          const { data: existingUser, error: idErr } = await sbClient
             .from('profiles')
-            .select('id')
-            .eq('username', id)
+            .select('id, username')
+            .ilike('username', normalizedId)
             .maybeSingle();
 
           if (existingUser) {
-            errMsg.textContent = '이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.';
-            errMsg.classList.remove('hidden');
+            showSignupError('이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.', idEl);
             return;
           }
 
-          // 2. Supabase Auth 계정 생성
+          // 3-2. Supabase profiles 테이블 이메일 중복 체크
+          const { data: existingEmail, error: emailErr } = await sbClient
+            .from('profiles')
+            .select('id, email')
+            .ilike('email', normalizedEmail)
+            .maybeSingle();
+
+          if (existingEmail) {
+            showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 입력해주세요.', emailEl);
+            return;
+          }
+
+          // 3-3. Supabase profiles 테이블 핸드폰 번호 중복 체크 (숫자만 추출 비교)
+          const { data: profilePhones, error: phoneErr } = await sbClient
+            .from('profiles')
+            .select('id, phone');
+
+          if (!phoneErr && profilePhones && profilePhones.length > 0) {
+            const dupPhoneCloud = profilePhones.some(p => {
+              const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+              return pPhone && pPhone === cleanPhone;
+            });
+            if (dupPhoneCloud) {
+              showSignupError('이미 등록된 핸드폰 번호입니다. 다른 번호를 입력해주세요.', phoneEl);
+              return;
+            }
+          }
+
+          // 4. Supabase Auth 계정 생성
           const { data: authData, error: authErr } = await sbClient.auth.signUp({
             email: email,
             password: pw,
@@ -3661,19 +3840,18 @@
           });
 
           if (authErr) {
-            if (authErr.message.includes('already registered') || authErr.message.includes('already exists')) {
-              errMsg.textContent = '이미 등록된 이메일 주소입니다. 다른 이메일을 사용해주세요.';
+            if (authErr.message.includes('already registered') || authErr.message.includes('already exists') || authErr.message.includes('User already registered')) {
+              showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 사용해주세요.', emailEl);
             } else {
-              errMsg.textContent = '회원가입 오류: ' + authErr.message;
+              showSignupError('회원가입 오류: ' + authErr.message);
             }
-            errMsg.classList.remove('hidden');
             return;
           }
 
           if (authData && authData.user) {
             authUserId = authData.user.id;
 
-            // 3. profiles 테이블에 사용자 프로필 저장
+            // 5. profiles 테이블에 사용자 프로필 저장
             const { error: profErr } = await sbClient.from('profiles').upsert({
               id: authUserId,
               username: id,
@@ -3707,7 +3885,7 @@
           createdAt: new Date().toISOString()
         };
 
-        const existIdx = usersDb.findIndex(u => u.username === id);
+        const existIdx = usersDb.findIndex(u => (u.username || '').toLowerCase() === normalizedId);
         if (existIdx >= 0) usersDb[existIdx] = newUser;
         else usersDb.push(newUser);
 
@@ -3720,8 +3898,7 @@
         showToast(`회원가입이 완료되었습니다! 환영합니다, ${nickname}님.`);
       } catch (err) {
         console.error('Signup error:', err);
-        errMsg.textContent = '회원가입 중 오류가 발생했습니다: ' + (err.message || '');
-        errMsg.classList.remove('hidden');
+        showSignupError('회원가입 중 오류가 발생했습니다: ' + (err.message || ''));
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -3974,9 +4151,16 @@
         return;
       }
 
-      // 닉네임 유효성 검사 (숫자, 영문, 한글 20자 이내)
-      if (nickname.length === 0 || nickname.length > 20 || !/^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s]+$/.test(nickname)) {
-        errMsg.textContent = '닉네임은 숫자, 영어, 한글로 입력해주세요.';
+      // 이름 유효성 검사 (한글 또는 영문만 가능, 숫자 및 특수문자 불가)
+      if (name && (!/^[a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ]+(?:\s[a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ]+)*$/.test(name) || name.length < 2 || name.length > 30)) {
+        errMsg.textContent = '이름은 한글 또는 영문만 2~30자로 입력해주세요. (숫자, 특수문자 불가)';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      // 닉네임 유효성 검사 (한글, 영문, 숫자만 가능, 공백 및 특수문자 불가)
+      if (!nickname || nickname.length < 2 || nickname.length > 20 || !/^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ]+$/.test(nickname)) {
+        errMsg.textContent = '닉네임은 한글, 영문, 숫자만 2~20자로 입력해주세요. (공백, 특수문자 불가)';
         errMsg.classList.remove('hidden');
         return;
       }
