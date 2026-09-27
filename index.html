@@ -1766,7 +1766,14 @@
     }
 
     // 처방 글 조회수 영구 보존 및 실시간 카운팅
-    const STORAGE_RECIPE_VIEWS_KEY = 'socsoc_recipe_views';
+    const STORAGE_RECIPE_VIEWS_KEY = 'socsoc_recipe_views_v2';
+
+    // 모든 게시물 조회수 0 리셋 적용 (이전 캐시 데이터 정리)
+    try {
+      if (localStorage.getItem('socsoc_recipe_views')) {
+        localStorage.removeItem('socsoc_recipe_views');
+      }
+    } catch (e) {}
 
     function getStoredViewCounts() {
       try {
@@ -1790,16 +1797,8 @@
       if (map[uid] !== undefined) {
         return Number(map[uid]) || 0;
       }
-      // 처방 UID 기반으로 자연스럽고 일관된 초기 베이스 조회수 생성 (120~420회)
-      let hash = 0;
-      const strUid = String(uid);
-      for (let i = 0; i < strUid.length; i++) {
-        hash = (hash * 31 + strUid.charCodeAt(i)) % 10000;
-      }
-      const initialViews = 120 + (hash % 300);
-      map[uid] = initialViews;
-      saveStoredViewCounts(map);
-      return initialViews;
+      // 모든 처방 글의 기본 시작 조회수는 0회
+      return 0;
     }
 
     function incrementRecipeViewCount(uid) {
@@ -1808,6 +1807,14 @@
       const current = getRecipeViewCount(uid);
       map[uid] = current + 1;
       saveStoredViewCounts(map);
+    }
+
+    function resetAllRecipeViews() {
+      try {
+        localStorage.removeItem(STORAGE_RECIPE_VIEWS_KEY);
+        localStorage.removeItem('socsoc_recipe_views');
+      } catch (e) {}
+      filterRecipes();
     }
 
     let usersDb = [];
