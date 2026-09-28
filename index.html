@@ -192,7 +192,7 @@
     @media print {
       @page {
         size: A4 portrait;
-        margin: 12mm 15mm 15mm 15mm;
+        margin: 8mm 10mm 8mm 10mm;
       }
 
       html, body {
@@ -225,17 +225,17 @@
       .print-brand-header {
         display: block !important;
         text-align: center !important;
-        padding-bottom: 8px !important;
-        margin-bottom: 16px !important;
+        padding-bottom: 4px !important;
+        margin-bottom: 6px !important;
         border-bottom: 1.5px solid #0f172a !important;
       }
 
       .print-brand-footer {
         display: block !important;
         text-align: center !important;
-        padding-top: 10px !important;
-        margin-top: 24px !important;
-        border-top: 1.5px solid #cbd5e1 !important;
+        padding-top: 6px !important;
+        margin-top: 10px !important;
+        border-top: 1px solid #cbd5e1 !important;
         page-break-inside: avoid !important;
       }
 
@@ -283,6 +283,102 @@
         width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
+        page-break-inside: avoid !important;
+      }
+
+      /* Compact vertical gap between cards to guarantee 1-page fit */
+      body.mode-calc #modeCalculator .space-y-6 {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+      }
+
+      body.mode-calc #modeCalculator .space-y-6 > * {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+      }
+
+      /* Single-line slim Formula Title in print */
+      body.mode-calc #calcFormulaTitleCard {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 4px 10px !important;
+        margin: 0 !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+      }
+
+      body.mode-calc #calcFormulaTitleCard label {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+
+      body.mode-calc #printFormulaTitleDisplay {
+        display: inline-block !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        line-height: 1.2 !important;
+      }
+
+      /* Single-line slim Batch Size in print */
+      body.mode-calc #calcBatchSizeCard {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 4px 10px !important;
+        margin: 0 !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        background: #f8fafc !important;
+        box-shadow: none !important;
+      }
+
+      body.mode-calc #calcBatchSizeCard .batch-size-left {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 6px !important;
+      }
+
+      body.mode-calc #calcBatchSizeCard label {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: #475569 !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+
+      body.mode-calc #calcBatchSizeCard .batch-size-left .print-only {
+        display: inline-block !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+      }
+
+      body.mode-calc #calcBatchSizeCard .batch-size-right {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 6px !important;
+        font-size: 11px !important;
+        color: #475569 !important;
+      }
+
+      body.mode-calc #calcBatchSizeCard #totalGramsDisplay {
+        font-size: 12.5px !important;
+        font-weight: 900 !important;
+        color: #1e1b4b !important;
       }
 
       /* Hide interactive buttons during calculator print */
@@ -291,10 +387,64 @@
         display: none !important;
       }
 
+      /* Compact table card */
+      body.mode-calc #calcTableCard {
+        border-radius: 4px !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        page-break-inside: avoid !important;
+      }
+
+      body.mode-calc .print-table-card-header {
+        padding: 4px 8px !important;
+        background: #f8fafc !important;
+        border-bottom: 1px solid #cbd5e1 !important;
+      }
+
+      body.mode-calc .print-table-card-header h2 {
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+      }
+
       /* Hide delete column in formula table */
       body.mode-calc #modeCalculator table th:last-child,
       body.mode-calc #modeCalculator table td:last-child {
         display: none !important;
+      }
+
+      /* Manufacturing Procedure Card in Calculator Print */
+      body.mode-calc #calcProcedureCard.print-empty-hide {
+        display: none !important;
+      }
+
+      body.mode-calc #calcProcedureCard {
+        display: block !important;
+        margin-top: 6px !important;
+        padding: 6px 10px !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
+      }
+
+      body.mode-calc #printProcedureWrapper {
+        display: block !important;
+      }
+
+      body.mode-calc #printProcedureDisplay {
+        display: block !important;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        font-size: 10px !important;
+        line-height: 1.35 !important;
+        color: #0f172a !important;
+        background: #f8fafc !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 5px 8px !important;
+        border-radius: 3px !important;
       }
 
       /* Hide floating docked real-time summary bar at bottom */
@@ -303,20 +453,11 @@
         display: none !important;
       }
 
-      body.mode-calc #modeCalculator .rounded-xl {
-        border-radius: 0.5rem !important;
-        box-shadow: none !important;
-      }
-
-      body.mode-calc #modeCalculator .border,
-      body.mode-calc #modeCalculator .border-slate-200 {
-        border-color: #cbd5e1 !important;
-      }
-
       body.mode-calc #modeCalculator table {
         width: 100% !important;
+        table-layout: fixed !important;
         border-collapse: collapse !important;
-        page-break-inside: auto !important;
+        page-break-inside: avoid !important;
       }
 
       body.mode-calc #modeCalculator table tr {
@@ -327,9 +468,58 @@
       body.mode-calc #modeCalculator table th,
       body.mode-calc #modeCalculator table td {
         border: 1px solid #cbd5e1 !important;
-        padding: 8px 10px !important;
+        padding: 4px 6px !important;
         color: #0f172a !important;
-        font-size: 11.5px !important;
+        font-size: 10px !important;
+        line-height: 1.35 !important;
+        vertical-align: middle !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+      }
+
+      /* Exact screen-matched column proportions for print (Total = 100%) */
+      body.mode-calc #modeCalculator table th:nth-child(1),
+      body.mode-calc #modeCalculator table tbody td:nth-child(1) {
+        width: 9% !important;
+        text-align: center !important;
+      }
+
+      body.mode-calc #modeCalculator table th:nth-child(2),
+      body.mode-calc #modeCalculator table tbody td:nth-child(2) {
+        width: 21% !important;
+        text-align: left !important;
+      }
+
+      body.mode-calc #modeCalculator table th:nth-child(3),
+      body.mode-calc #modeCalculator table tbody td:nth-child(3) {
+        width: 36% !important;
+        text-align: left !important;
+      }
+
+      body.mode-calc #modeCalculator table th:nth-child(4),
+      body.mode-calc #modeCalculator table tbody td:nth-child(4) {
+        width: 11% !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+      }
+
+      body.mode-calc #modeCalculator table th:nth-child(5),
+      body.mode-calc #modeCalculator table tbody td:nth-child(5) {
+        width: 10% !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+      }
+
+      body.mode-calc #modeCalculator table th:nth-child(6),
+      body.mode-calc #modeCalculator table tbody td:nth-child(6) {
+        width: 13% !important;
+        text-align: left !important;
+      }
+
+      body.mode-calc #modeCalculator table th:nth-child(7),
+      body.mode-calc #modeCalculator table td:nth-child(7),
+      body.mode-calc #modeCalculator table .print-hide {
+        display: none !important;
       }
 
       body.mode-calc #modeCalculator table thead {
@@ -342,20 +532,26 @@
         background-color: #f8fafc !important;
       }
 
-      body.mode-calc #modeCalculator input {
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        font-size: inherit !important;
-        font-weight: inherit !important;
-        color: #0f172a !important;
-        width: 100% !important;
+      body.mode-calc #modeCalculator table tfoot td:nth-child(1) {
+        width: 66% !important;
+        text-align: right !important;
       }
 
-      body.mode-calc #calcFormulaTitleInput {
-        font-size: 15px !important;
-        font-weight: 800 !important;
+      body.mode-calc #modeCalculator table tfoot td:nth-child(2) {
+        width: 11% !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+      }
+
+      body.mode-calc #modeCalculator table tfoot td:nth-child(3) {
+        width: 10% !important;
+        text-align: right !important;
+        white-space: nowrap !important;
+      }
+
+      body.mode-calc #modeCalculator table tfoot td:nth-child(4) {
+        width: 13% !important;
+        text-align: left !important;
       }
 
       /* When in Explorer Mode: Print recipe article in full */
@@ -606,7 +802,7 @@
           </div>
 
           <!-- Calculator Header -->
-          <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 print-hide">
             <div class="space-y-1">
               <div class="flex items-center gap-2">
                 <span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded">R&D LAB</span>
@@ -627,20 +823,27 @@
           </div>
 
           <!-- Formula Title Custom Input -->
-          <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row md:items-center gap-3">
+          <div id="calcFormulaTitleCard" class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row md:items-center gap-3">
             <label class="text-xs font-bold uppercase text-slate-500 shrink-0">연구 처방명:</label>
             <input type="text" id="calcFormulaTitleInput" value="신규 제형 개발 처방 #1"
-              class="flex-1 font-bold text-sm text-slate-900 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition">
+              oninput="syncPrintFormulaTitle(this.value)"
+              class="flex-1 font-bold text-sm text-slate-900 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition print-hide">
+            <span id="printFormulaTitleDisplay" class="print-only font-bold text-sm text-slate-900 break-words flex-1">
+              신규 제형 개발 처방 #1
+            </span>
           </div>
 
         <!-- Target Batch Size Setting -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex items-center gap-3">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-600 shrink-0">목표 배치 용량</label>
-            <div class="relative w-36">
+        <div id="calcBatchSizeCard" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-3 batch-size-left">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-600 shrink-0">목표 배치 용량:</label>
+            <div class="relative w-36 print-hide">
               <input type="number" id="batchSize" value="200" min="1" step="1" oninput="updateCalculationsOnly()"
                 class="w-full text-base font-bold text-slate-900 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none">
               <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">g</span>
+            </div>
+            <div class="print-only font-black text-sm text-slate-900">
+              <span id="printBatchSizeDisplay">200</span> g
             </div>
             <div id="batchPresetBtns" class="flex gap-1 print-hide">
               <button onclick="setBatch(50)" class="px-2.5 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition">50g</button>
@@ -651,15 +854,15 @@
             </div>
           </div>
 
-          <div class="text-xs text-slate-500 flex items-center gap-2">
+          <div class="text-xs text-slate-500 flex items-center gap-2 batch-size-right">
             <span>총 계량 예상 무게:</span>
             <strong id="totalGramsDisplay" class="text-base font-black text-indigo-700">200.00 g</strong>
           </div>
         </div>
 
         <!-- Editable Formulation Table Card (Strict 2 Decimals) -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+        <div id="calcTableCard" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 print-table-card-header">
             <div>
               <h2 class="font-bold text-slate-900 text-sm">제형 배합 및 계량 워크시트</h2>
               <p class="text-[11px] text-slate-400 print-hide">배합비는 소수점 2자리(0.01% 단위)까지 정밀 수정됩니다.</p>
@@ -671,12 +874,13 @@
             <table class="w-full text-left text-xs border-collapse">
               <thead>
                 <tr class="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
-                  <th class="py-2.5 px-3 w-16 text-center">Phase</th>
-                  <th class="py-2.5 px-3">원료 (직접 수정)</th>
-                  <th class="py-2.5 px-3 w-36 text-right">배합비 (%)</th>
-                  <th class="py-2.5 px-3 w-32 text-right bg-indigo-50/50 text-indigo-900 font-black">계량값 (g)</th>
-                  <th class="py-2.5 px-3 w-36">공급사 (직접 수정)</th>
-                  <th class="py-2.5 px-2 w-12 text-center print-hide">삭제</th>
+                  <th class="py-2.5 px-2 w-20 text-center" title="Phase 아이콘을 마우스로 드래그하여 원하는 위치로 순서를 변경할 수 있습니다">Phase</th>
+                  <th class="py-2.5 px-3 w-[22%] min-w-[130px]">원료</th>
+                  <th class="py-2.5 px-3 min-w-[240px]">INCI</th>
+                  <th class="py-2.5 px-2 w-24 text-right">배합비 (%)</th>
+                  <th class="py-2.5 px-2 w-22 text-right bg-indigo-50/50 text-indigo-900 font-black">계량값 (g)</th>
+                  <th class="py-2.5 px-3 w-28">공급사</th>
+                  <th class="py-2.5 px-2 w-11 text-center print-hide">삭제</th>
                 </tr>
               </thead>
               <tbody id="formulaBody" class="divide-y divide-slate-100">
@@ -684,20 +888,21 @@
               </tbody>
               <tfoot>
                 <tr class="border-t-2 border-slate-300 font-bold text-xs bg-slate-50">
-                  <td colspan="2" class="py-3 px-3 text-right text-slate-700 text-sm">
+                  <td colspan="3" class="py-3 px-3 text-right text-slate-700 text-sm">
                     합계 (Total):
                   </td>
-                  <td id="tableTotalPercent" class="py-3 px-3 text-right font-black text-emerald-700 text-sm">
+                  <td id="tableTotalPercent" class="py-3 px-2 text-right font-black text-emerald-700 text-sm whitespace-nowrap">
                     100.00 %
                   </td>
-                  <td id="tableTotalGrams" class="py-3 px-3 text-right font-black text-indigo-900 bg-indigo-50/70 text-sm">
+                  <td id="tableTotalGrams" class="py-3 px-2 text-right font-black text-indigo-900 bg-indigo-50/70 text-sm whitespace-nowrap">
                     200.00 g
                   </td>
-                  <td colspan="2" class="py-3 px-3">
+                  <td class="py-3 px-3">
                     <span id="tableStatusTag" class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">
                       100.00% 적합
                     </span>
                   </td>
+                  <td class="print-hide"></td>
                 </tr>
               </tfoot>
             </table>
@@ -718,7 +923,35 @@
               <button onclick="addIngredient('Phase D')" class="px-3 py-1.5 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded transition shadow-sm">
                 + Phase D 원료 추가
               </button>
+              <button onclick="addIngredient('Phase E')" class="px-3 py-1.5 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded transition shadow-sm">
+                + Phase E 원료 추가
+              </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Manufacturing Procedure & Notes Section (원료 추가 탭 바로 밑) -->
+        <div id="calcProcedureCard" class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col gap-2.5 print-empty-hide">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <label for="calcProcedureInput" class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
+                <span>제조공정 및 기타사항</span>
+              </label>
+              <span class="text-[11px] text-slate-400 print-hide">제조 방법, 교반 속도, 가온/냉각 온도 및 특이사항을 작성할 수 있습니다.</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-medium print-hide" id="calcProcedureCharCount">0자</span>
+          </div>
+          <textarea id="calcProcedureInput" rows="4" oninput="syncCalcProcedure(this.value)"
+            class="w-full px-3 py-2.5 text-xs text-slate-800 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-lg outline-none transition custom-scrollbar print-hide resize-y leading-relaxed font-normal"
+            placeholder="제형 제조 시 공정 순서(예: Phase A 가온 용해, Phase B 유화 교반, Phase C 후첨 등) 및 기타 보관/안정성 특이사항을 입력하세요."></textarea>
+          
+          <!-- Print-only View -->
+          <div id="printProcedureWrapper" class="print-only">
+            <div class="font-bold text-[10.5px] text-slate-700 mb-1 flex items-center gap-1">
+              <span>■ 제조공정 및 기타사항</span>
+            </div>
+            <div id="printProcedureDisplay" class="whitespace-pre-wrap text-[10px] leading-relaxed text-slate-800 bg-slate-50/80 p-2.5 rounded border border-slate-200 break-words"></div>
           </div>
         </div>
 
@@ -1474,6 +1707,7 @@
               <button type="button" onclick="addNewRecipeIngredientRow('Phase B')" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition shadow-sm">+ Phase B 추가</button>
               <button type="button" onclick="addNewRecipeIngredientRow('Phase C')" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition shadow-sm">+ Phase C 추가</button>
               <button type="button" onclick="addNewRecipeIngredientRow('Phase D')" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition shadow-sm">+ Phase D 추가</button>
+              <button type="button" onclick="addNewRecipeIngredientRow('Phase E')" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition shadow-sm">+ Phase E 추가</button>
             </div>
           </div>
 
@@ -1733,7 +1967,7 @@
 
     // Zero-base formula state (formatted strictly to 2 decimals)
     let activeFormula = [
-      { phase: 'Phase A', name: '', percent: 100.00, supplier: '', isWater: true }
+      { phase: 'Phase A', name: '', inci: '', percent: 100.00, supplier: '', isWater: true }
     ];
 
     // ==========================================
@@ -1768,15 +2002,8 @@
       return ADMIN_USERNAMES.includes(str) || str === 'admin' || str === 'socsoc';
     }
 
-    // 처방 글 조회수 영구 보존 및 실시간 카운팅
+    // 처방 글 조회수 영구 보존 및 실시간 누적 카운팅 (절대 초기화/리셋 금지)
     const STORAGE_RECIPE_VIEWS_KEY = 'socsoc_recipe_views_v2';
-
-    // 모든 게시물 조회수 0 리셋 적용 (이전 캐시 데이터 정리)
-    try {
-      if (localStorage.getItem('socsoc_recipe_views')) {
-        localStorage.removeItem('socsoc_recipe_views');
-      }
-    } catch (e) {}
 
     function getStoredViewCounts() {
       try {
@@ -1800,7 +2027,6 @@
       if (map[uid] !== undefined) {
         return Number(map[uid]) || 0;
       }
-      // 모든 처방 글의 기본 시작 조회수는 0회
       return 0;
     }
 
@@ -1810,14 +2036,6 @@
       const current = getRecipeViewCount(uid);
       map[uid] = current + 1;
       saveStoredViewCounts(map);
-    }
-
-    function resetAllRecipeViews() {
-      try {
-        localStorage.removeItem(STORAGE_RECIPE_VIEWS_KEY);
-        localStorage.removeItem('socsoc_recipe_views');
-      } catch (e) {}
-      filterRecipes();
     }
 
     let usersDb = [];
@@ -2119,6 +2337,7 @@
       }
       renderCalculatorTable();
       updateCalculationsOnly();
+      syncCalcProcedure('');
     }
 
     function goHome() {
@@ -2179,6 +2398,19 @@
         openAuthModal('login', '로그인하시면 인쇄 기능을 사용하실 수 있습니다.');
         return;
       }
+      if (currentAppMode === 'calculator') {
+        document.body.classList.add('mode-calc');
+        document.body.classList.remove('mode-exp');
+        renderCalculatorTable();
+        const titleInput = document.getElementById('calcFormulaTitleInput');
+        const titleDisp = document.getElementById('printFormulaTitleDisplay');
+        if (titleInput && titleDisp) titleDisp.textContent = titleInput.value || '신규 제형 개발 처방';
+        const bInput = document.getElementById('batchSize');
+        const bDisp = document.getElementById('printBatchSizeDisplay');
+        if (bInput && bDisp) bDisp.textContent = bInput.value || '200';
+        const procInput = document.getElementById('calcProcedureInput');
+        syncCalcProcedure(procInput ? procInput.value : '');
+      }
       // 인쇄 시 모든 input의 타이핑된 최신 값이 화면 및 인쇄 드라이버에 그대로 반영되도록 속성 동기화
       document.querySelectorAll('input').forEach(inp => {
         inp.setAttribute('value', inp.value);
@@ -2197,39 +2429,61 @@
     });
 
     window.addEventListener('beforeprint', () => {
-      document.querySelectorAll('input').forEach(inp => {
-        inp.setAttribute('value', inp.value);
-      });
       if (currentAppMode === 'calculator') {
         document.body.classList.add('mode-calc');
         document.body.classList.remove('mode-exp');
+        renderCalculatorTable();
+        const titleInput = document.getElementById('calcFormulaTitleInput');
+        const titleDisp = document.getElementById('printFormulaTitleDisplay');
+        if (titleInput && titleDisp) titleDisp.textContent = titleInput.value || '신규 제형 개발 처방';
+        const bInput = document.getElementById('batchSize');
+        const bDisp = document.getElementById('printBatchSizeDisplay');
+        if (bInput && bDisp) bDisp.textContent = bInput.value || '200';
+        const procInput = document.getElementById('calcProcedureInput');
+        syncCalcProcedure(procInput ? procInput.value : '');
       } else {
         document.body.classList.add('mode-exp');
         document.body.classList.remove('mode-calc');
       }
+      document.querySelectorAll('input').forEach(inp => {
+        inp.setAttribute('value', inp.value);
+      });
     });
 
     function startFreshZeroCalculator() {
       activeFormula = [
-        { phase: 'Phase A', name: '', percent: 100.00, supplier: '', isWater: true }
+        { phase: 'Phase A', name: '', inci: '', percent: 100.00, supplier: '', isWater: true }
       ];
-      document.getElementById('calcFormulaTitleInput').value = '신규 제형 개발 처방 #' + Math.floor(Math.random() * 900 + 100);
+      const titleVal = '신규 제형 개발 처방 #' + Math.floor(Math.random() * 900 + 100);
+      document.getElementById('calcFormulaTitleInput').value = titleVal;
+      syncPrintFormulaTitle(titleVal);
+      const procInput = document.getElementById('calcProcedureInput');
+      if (procInput) procInput.value = '';
+      syncCalcProcedure('');
       setBatch(200);
       setAppMode('calculator');
     }
 
     function copyCurrentRecipeToCalculator() {
       if (!currentRecipe) return;
-      document.getElementById('calcFormulaTitleInput').value = currentRecipe.title + ' (수정 실험)';
+      const titleVal = currentRecipe.title + ' (수정 실험)';
+      document.getElementById('calcFormulaTitleInput').value = titleVal;
+      syncPrintFormulaTitle(titleVal);
       activeFormula = JSON.parse(JSON.stringify(currentRecipe.ingredients || []));
       
+      const procInput = document.getElementById('calcProcedureInput');
+      const procVal = currentRecipe.procedure || '';
+      if (procInput) procInput.value = procVal;
+      syncCalcProcedure(procVal);
+
       if (activeFormula.length === 0) {
         activeFormula = [
-          { phase: 'Phase A', name: '', percent: 100.00, supplier: '', isWater: true }
+          { phase: 'Phase A', name: '', inci: '', percent: 100.00, supplier: '', isWater: true }
         ];
       } else {
         activeFormula.forEach(item => {
           if (!item.phase) item.phase = 'Phase A';
+          if (!item.inci) item.inci = '';
           item.percent = parseFloat(Number(item.percent || 0).toFixed(2));
           const isW = (item.name && (item.name.toLowerCase().includes('water') || item.name.toLowerCase().includes('base') || item.name.includes('정제수'))) || (item.inci && item.inci.toLowerCase().includes('aqua'));
           item.isWater = isW;
@@ -2550,6 +2804,8 @@
     function setBatch(val) {
       const input = document.getElementById('batchSize');
       if (input) input.value = val;
+      const bDisp = document.getElementById('printBatchSizeDisplay');
+      if (bDisp) bDisp.textContent = val;
       updateBatchPresetButtons(val);
       updateCalculationsOnly();
     }
@@ -2569,6 +2825,44 @@
       });
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function syncPrintFormulaTitle(val) {
+      const el = document.getElementById('printFormulaTitleDisplay');
+      if (el) el.textContent = val || '신규 제형 개발 처방';
+    }
+
+    function syncCalcProcedure(val) {
+      const card = document.getElementById('calcProcedureCard');
+      const disp = document.getElementById('printProcedureDisplay');
+      const count = document.getElementById('calcProcedureCharCount');
+      const text = (val || '').trim();
+
+      if (count) {
+        count.textContent = `${(val || '').length}자`;
+      }
+      if (disp) {
+        disp.textContent = text || '';
+      }
+      if (card) {
+        if (!text) {
+          card.classList.add('print-empty-hide');
+        } else {
+          card.classList.remove('print-empty-hide');
+        }
+      }
+    }
+
+    let draggedRowIndex = null;
+
     function renderCalculatorTable() {
       const tbody = document.getElementById('formulaBody');
       tbody.innerHTML = '';
@@ -2578,46 +2872,85 @@
         const grams = ((item.percent * batch) / 100).toFixed(2);
         const tr = document.createElement('tr');
         tr.className = item.isWater ? 'bg-blue-50/30 hover:bg-blue-50/50 transition' : 'hover:bg-slate-50 transition';
+        tr.dataset.index = index;
+
+        const phaseBadgeColor = 
+          item.phase.includes('A') ? 'bg-amber-100 text-amber-900 border-amber-300' :
+          item.phase.includes('B') ? 'bg-blue-100 text-blue-900 border-blue-300' :
+          item.phase.includes('C') ? 'bg-purple-100 text-purple-900 border-purple-300' :
+          item.phase.includes('D') ? 'bg-emerald-100 text-emerald-900 border-emerald-300' :
+          item.phase.includes('E') ? 'bg-rose-100 text-rose-900 border-rose-300' :
+          'bg-slate-100 text-slate-800 border-slate-300';
+
+        const safeName = escapeHtml(item.name || '');
+        const safeInci = escapeHtml(item.inci || '');
+        const safeSupplier = escapeHtml(item.supplier || '');
 
         tr.innerHTML = `
-          <td class="py-2.5 px-3 text-center">
-            <span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${
-              item.phase.includes('A') ? 'bg-amber-100 text-amber-800' :
-              item.phase.includes('B') ? 'bg-blue-100 text-blue-800' :
-              item.phase.includes('C') ? 'bg-purple-100 text-purple-800' :
-              item.phase.includes('D') ? 'bg-emerald-100 text-emerald-800' :
-              'bg-slate-100 text-slate-800'
-            }">
+          <td class="py-2.5 px-2 text-center select-none">
+            <div class="flex items-center justify-center print-hide">
+              <div class="phase-drag-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black shadow-xs border cursor-grab active:cursor-grabbing hover:scale-105 hover:shadow-sm transition-all select-none ${phaseBadgeColor}"
+                   draggable="true"
+                   title="Phase 아이콘을 마우스로 잡고 드래그하여 원하는 위치로 이동하세요">
+                <i class="fa-solid fa-grip-vertical text-[10px] opacity-60 print-hide pointer-events-none"></i>
+                <span class="pointer-events-none">${item.phase || 'Phase A'}</span>
+              </div>
+            </div>
+            <div class="print-only text-center font-bold text-xs text-slate-900">
               ${item.phase || 'Phase A'}
-            </span>
+            </div>
           </td>
 
           <td class="py-2 px-3">
-            <div class="flex items-center gap-1.5">
-              <input type="text" value="${item.name || ''}" oninput="updateName(${index}, this.value)"
+            <div class="flex items-center gap-1.5 print-hide">
+              <input type="text" value="${safeName}" oninput="updateName(${index}, this.value)"
                 class="w-full px-2 py-1 text-xs font-semibold text-slate-800 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition"
                 placeholder="원료명 입력">
               ${item.isWater ? '<span class="shrink-0 text-[10px] text-blue-600 bg-blue-100 px-1 py-0.5 rounded font-bold">Base</span>' : ''}
             </div>
-          </td>
-
-          <!-- 2 Decimals Percent Input with step 0.01 -->
-          <td class="py-2 px-3 text-right">
-            <div class="flex items-center justify-end gap-1">
-              <input type="number" id="calc-percent-${index}" step="0.01" min="0" max="100" value="${Number(item.percent || 0).toFixed(2)}"
-                onchange="formatInputTwoDecimals(${index}, this)" oninput="updatePercent(${index}, this.value)"
-                class="w-20 px-2 py-1 text-right text-xs font-black text-slate-900 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none bg-white">
-              <span class="text-slate-400 text-xs">%</span>
+            <div class="print-only font-bold text-xs text-slate-900 break-words leading-snug">
+              <span id="print-name-${index}">${safeName || '-'}</span>
+              ${item.isWater ? '<span class="ml-1 text-[10px] text-blue-700 font-bold border border-blue-200 bg-blue-50 px-1 py-0.2 rounded inline-block">Base</span>' : ''}
             </div>
           </td>
 
-          <td class="py-2.5 px-3 text-right font-black text-indigo-900 bg-indigo-50/30 text-sm">
+          <td class="py-2 px-3">
+            <div class="print-hide">
+              <input type="text" value="${safeInci}" oninput="updateInci(${index}, this.value)"
+                class="w-full px-2 py-1 text-xs text-slate-700 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition"
+                placeholder="INCI명 입력">
+            </div>
+            <div class="print-only text-xs text-slate-700 break-words leading-snug">
+              <span id="print-inci-${index}">${safeInci || '-'}</span>
+            </div>
+          </td>
+
+          <!-- 2 Decimals Percent Input with step 0.01 -->
+          <td class="py-2 px-2 text-right">
+            <div class="flex items-center justify-end gap-1 print-hide">
+              <input type="number" id="calc-percent-${index}" step="0.01" min="0" max="100" value="${Number(item.percent || 0).toFixed(2)}"
+                onchange="formatInputTwoDecimals(${index}, this)" oninput="updatePercent(${index}, this.value)"
+                class="w-16 px-1.5 py-1 text-right text-xs font-black text-slate-900 border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none bg-white">
+              <span class="text-slate-400 text-xs">%</span>
+            </div>
+            <div class="print-only text-right font-black text-xs text-slate-900 whitespace-nowrap">
+              <span id="print-percent-${index}">${Number(item.percent || 0).toFixed(2)}</span> %
+            </div>
+          </td>
+
+          <td class="py-2.5 px-2 text-right font-black text-indigo-900 bg-indigo-50/30 text-sm whitespace-nowrap">
             <span id="calc-gram-${index}">${grams}</span> <span class="text-xs font-normal text-slate-500">g</span>
           </td>
 
           <td class="py-2 px-3">
-            <input type="text" value="${item.supplier || ''}" oninput="updateSupplier(${index}, this.value)"
-              class="w-full px-2 py-1 text-xs text-slate-700 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition">
+            <div class="print-hide">
+              <input type="text" value="${safeSupplier}" oninput="updateSupplier(${index}, this.value)"
+                class="w-full px-2 py-1 text-xs text-slate-700 bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition"
+                placeholder="공급사 입력">
+            </div>
+            <div class="print-only text-xs text-slate-600 break-words leading-snug">
+              <span id="print-supplier-${index}">${safeSupplier || '-'}</span>
+            </div>
           </td>
 
           <td class="py-2 px-2 text-center print-hide">
@@ -2626,7 +2959,89 @@
             }
           </td>
         `;
+
+        // Phase Icon Drag & Drop Listeners
+        const dragHandle = tr.querySelector('.phase-drag-badge');
+        if (dragHandle) {
+          dragHandle.addEventListener('dragstart', (e) => {
+            draggedRowIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(index));
+            tr.classList.add('opacity-40', 'bg-indigo-50/80');
+          });
+
+          dragHandle.addEventListener('dragend', () => {
+            draggedRowIndex = null;
+            document.querySelectorAll('#formulaBody tr').forEach(r => {
+              r.classList.remove('opacity-40', 'bg-indigo-50/80', 'border-t-2', 'border-b-2', 'border-indigo-600');
+            });
+          });
+        }
+
+        tr.addEventListener('dragover', (e) => {
+          if (draggedRowIndex === null) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const rect = tr.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          tr.classList.remove('border-t-2', 'border-b-2', 'border-indigo-600');
+          if (e.clientY < midY) {
+            tr.classList.add('border-t-2', 'border-indigo-600');
+          } else {
+            tr.classList.add('border-b-2', 'border-indigo-600');
+          }
+        });
+
+        tr.addEventListener('dragleave', (e) => {
+          if (!tr.contains(e.relatedTarget)) {
+            tr.classList.remove('border-t-2', 'border-b-2', 'border-indigo-600');
+          }
+        });
+
+        tr.addEventListener('drop', (e) => {
+          if (draggedRowIndex === null) return;
+          e.preventDefault();
+          tr.classList.remove('border-t-2', 'border-b-2', 'border-indigo-600');
+          const fromIdx = draggedRowIndex;
+          let toIdx = index;
+          const rect = tr.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          if (e.clientY >= midY) {
+            toIdx++;
+          }
+          if (fromIdx === toIdx || (fromIdx === toIdx - 1 && e.clientY >= midY)) {
+            draggedRowIndex = null;
+            return;
+          }
+
+          const [movedItem] = activeFormula.splice(fromIdx, 1);
+          const targetPos = fromIdx < toIdx ? toIdx - 1 : toIdx;
+          activeFormula.splice(targetPos, 0, movedItem);
+          draggedRowIndex = null;
+          renderCalculatorTable();
+          updateCalculationsOnly();
+        });
+
         tbody.appendChild(tr);
+      });
+
+      tbody.addEventListener('dragover', (e) => {
+        if (draggedRowIndex === null) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+
+      tbody.addEventListener('drop', (e) => {
+        if (draggedRowIndex === null) return;
+        if (e.target === tbody) {
+          e.preventDefault();
+          const fromIdx = draggedRowIndex;
+          const [movedItem] = activeFormula.splice(fromIdx, 1);
+          activeFormula.push(movedItem);
+          draggedRowIndex = null;
+          renderCalculatorTable();
+          updateCalculationsOnly();
+        }
       });
     }
 
@@ -2634,19 +3049,35 @@
       let val = parseFloat(el.value) || 0;
       el.value = val.toFixed(2);
       activeFormula[index].percent = parseFloat(val.toFixed(2));
+      const pEl = document.getElementById(`print-percent-${index}`);
+      if (pEl) pEl.textContent = activeFormula[index].percent.toFixed(2);
       updateCalculationsOnly();
     }
 
     function updateName(index, val) {
       activeFormula[index].name = val;
+      const el = document.getElementById(`print-name-${index}`);
+      if (el) el.textContent = val || '-';
+    }
+
+    function updateInci(index, val) {
+      if (activeFormula[index]) {
+        activeFormula[index].inci = val;
+        const el = document.getElementById(`print-inci-${index}`);
+        if (el) el.textContent = val || '-';
+      }
     }
 
     function updateSupplier(index, val) {
       activeFormula[index].supplier = val;
+      const el = document.getElementById(`print-supplier-${index}`);
+      if (el) el.textContent = val || '-';
     }
 
     function updatePercent(index, val) {
       activeFormula[index].percent = parseFloat(val) || 0;
+      const el = document.getElementById(`print-percent-${index}`);
+      if (el) el.textContent = activeFormula[index].percent.toFixed(2);
       updateCalculationsOnly();
     }
 
@@ -2660,6 +3091,7 @@
       activeFormula.push({
         phase: phaseName,
         name: '',
+        inci: '',
         percent: 0.00,
         supplier: '',
         isWater: false
@@ -2674,6 +3106,7 @@
         activeFormula.unshift({
           phase: 'Phase A',
           name: '',
+          inci: '',
           percent: 0.00,
           supplier: '',
           isWater: true
@@ -2791,10 +3224,10 @@
     function exportToCsv() {
       const title = document.getElementById('calcFormulaTitleInput').value || '처방_배치계량표';
       const batch = parseFloat(document.getElementById('batchSize').value) || 0;
-      let csv = "\uFEFFPhase,원료,배합비(%),계량값(g),공급사\n";
+      let csv = "\uFEFFPhase,원료,INCI,배합비(%),계량값(g),공급사\n";
       activeFormula.forEach(item => {
         const grams = ((item.percent * batch) / 100).toFixed(2);
-        csv += `"${item.phase}","${item.name}",${item.percent.toFixed(2)},${grams},"${item.supplier || ''}"\n`;
+        csv += `"${item.phase}","${item.name || ''}","${item.inci || ''}",${item.percent.toFixed(2)},${grams},"${item.supplier || ''}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -4988,11 +5421,14 @@
 
       if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
 
+      const procVal = (document.getElementById('calcProcedureInput')?.value || '').trim();
+
       const newRecord = {
         id: 'formula_' + Date.now(),
         title: title,
         batchSize: batchSize,
         formula: JSON.parse(JSON.stringify(activeFormula)),
+        procedure: procVal,
         totalPercent: parseFloat(totalPercent.toFixed(2)),
         savedAt: new Date().toISOString()
       };
@@ -5010,6 +5446,7 @@
             title: newRecord.title,
             batch_size: newRecord.batchSize,
             formula: newRecord.formula,
+            procedure: newRecord.procedure,
             total_percent: newRecord.totalPercent
           });
         } catch (e) {
@@ -5154,6 +5591,7 @@
               <span>원료 ${(item.formula || []).length}종 구성</span>
               <span>•</span>
               <span>저장일: ${(item.savedAt || '').substring(0, 10)}</span>
+              ${item.procedure ? '<span class="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-medium">제조공정 포함</span>' : ''}
             </div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
@@ -5205,6 +5643,11 @@
       document.getElementById('calcFormulaTitleInput').value = found.title;
       document.getElementById('batchSize').value = found.batchSize || 100;
       activeFormula = JSON.parse(JSON.stringify(found.formula || []));
+
+      const procInput = document.getElementById('calcProcedureInput');
+      const procVal = found.procedure || '';
+      if (procInput) procInput.value = procVal;
+      syncCalcProcedure(procVal);
 
       setAppMode('calculator');
       renderCalculatorTable();
