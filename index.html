@@ -108,6 +108,8 @@
 
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="recipes_data.js"></script>
   <style>
     input[type="number"]::-webkit-inner-spin-button,
@@ -578,7 +580,7 @@
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans antialiased h-screen flex flex-col overflow-hidden mode-exp">
+<body class="bg-slate-100 text-slate-800 font-sans antialiased h-screen flex flex-col overflow-hidden mode-calc">
 
   <!-- Top Global Navbar -->
   <header class="bg-white border-b border-slate-200 px-6 py-2.5 shrink-0 flex items-center justify-between shadow-sm z-20">
@@ -597,10 +599,10 @@
 
     <!-- Center Navigation Tabs -->
     <nav class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-      <button id="navBtnExplorer" onclick="setAppMode('explorer')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition">
+      <button id="navBtnExplorer" onclick="setAppMode('explorer')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">
         가이드 처방 도서관
       </button>
-      <button id="navBtnCalculator" onclick="setAppMode('calculator')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">
+      <button id="navBtnCalculator" onclick="setAppMode('calculator')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition">
         제형 개발 계산기 (연구원 워크벤치)
       </button>
     </nav>
@@ -629,7 +631,7 @@
     <!-- ======================================================== -->
     <!-- MODE 1: RECIPE EXPLORER & PURE ARTICLE VIEW -->
     <!-- ======================================================== -->
-    <div id="modeExplorer" class="flex-1 flex overflow-hidden w-full">
+    <div id="modeExplorer" class="hidden flex-1 flex overflow-hidden w-full">
       
       <!-- Left Sidebar: Curated 25 Recipe Catalog (5 per category) -->
       <aside class="w-full md:w-[380px] lg:w-[420px] bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden">
@@ -791,7 +793,7 @@
 
     <!-- ======================================================== -->
     <!-- MODE 2: ZERO-BASE FORMULATION CALCULATOR (독립 계산기) -->
-    <div id="modeCalculator" class="hidden flex-1 bg-slate-100 flex flex-col overflow-hidden relative">
+    <div id="modeCalculator" class="flex-1 bg-slate-100 flex flex-col overflow-hidden relative">
       <div class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
         <div class="max-w-5xl mx-auto space-y-6 pb-6">
         
@@ -811,9 +813,13 @@
               <p class="text-xs text-slate-500">배합비 소수점 2자리(0.00%) 정밀 계산 및 비커 계량값(g)을 즉시 산출합니다.</p>
             </div>
             <div class="flex items-center gap-2 print-hide">
-              <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5">
+              <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
                 <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 <span>빈 시트로 초기화</span>
+              </button>
+              <button onclick="exportCalculatorToExcel()" class="px-3.5 py-2 text-xs font-bold bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 text-emerald-800 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95" title="현재 작성된 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
+                <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
+                <span>엑셀 내보내기</span>
               </button>
               <button onclick="saveCurrentCustomFormula()" class="px-3.5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
                 <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
@@ -1963,11 +1969,13 @@
 
     let currentRecipe = allRecipes[0];
     let currentCategoryFilter = 'all';
-    let currentAppMode = 'explorer';
+    let currentAppMode = 'calculator';
 
-    // Zero-base formula state (formatted strictly to 2 decimals)
+    // Zero-base formula state (기본 셋팅: 상 3개 Phase A, B, C)
     let activeFormula = [
-      { phase: 'Phase A', name: '', inci: '', percent: 100.00, supplier: '', isWater: true }
+      { phase: 'Phase A', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+      { phase: 'Phase B', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+      { phase: 'Phase C', name: '', inci: '', percent: 0.00, supplier: '', isWater: false }
     ];
 
     // ==========================================
@@ -2326,7 +2334,7 @@
     }
 
     function init() {
-      setAppMode('explorer');
+      setAppMode('calculator');
       initAuth();
       updateCategoryPillCounts();
       filterRecipes();
@@ -2341,22 +2349,9 @@
     }
 
     function goHome() {
-      setAppMode('explorer');
-      selectCategory('all');
-      const searchInput = document.getElementById('searchInput');
-      if (searchInput) {
-        searchInput.value = '';
-        const clearBtn = document.getElementById('clearSearchBtn');
-        if (clearBtn) clearBtn.classList.add('hidden');
-      }
-      filterRecipes();
-      if (currentFilteredRecipes && currentFilteredRecipes.length > 0) {
-        showRecipeOriginalArticle(currentFilteredRecipes[0]);
-      } else if (allRecipes && allRecipes.length > 0) {
-        showRecipeOriginalArticle(allRecipes[0]);
-      }
-      const asideList = document.getElementById('recipeListContainer');
-      if (asideList) asideList.scrollTo({ top: 0, behavior: 'smooth' });
+      setAppMode('calculator');
+      renderCalculatorTable();
+      updateCalculationsOnly();
       const mainPane = document.querySelector('main');
       if (mainPane) mainPane.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -2452,7 +2447,9 @@
 
     function startFreshZeroCalculator() {
       activeFormula = [
-        { phase: 'Phase A', name: '', inci: '', percent: 100.00, supplier: '', isWater: true }
+        { phase: 'Phase A', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+        { phase: 'Phase B', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+        { phase: 'Phase C', name: '', inci: '', percent: 0.00, supplier: '', isWater: false }
       ];
       const titleVal = '신규 제형 개발 처방 #' + Math.floor(Math.random() * 900 + 100);
       document.getElementById('calcFormulaTitleInput').value = titleVal;
@@ -2478,7 +2475,9 @@
 
       if (activeFormula.length === 0) {
         activeFormula = [
-          { phase: 'Phase A', name: '', inci: '', percent: 100.00, supplier: '', isWater: true }
+          { phase: 'Phase A', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+          { phase: 'Phase B', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+          { phase: 'Phase C', name: '', inci: '', percent: 0.00, supplier: '', isWater: false }
         ];
       } else {
         activeFormula.forEach(item => {
@@ -2868,6 +2867,21 @@
       tbody.innerHTML = '';
       const batch = parseFloat(document.getElementById('batchSize').value) || 0;
 
+      if (!activeFormula || activeFormula.length === 0) {
+        const emptyTr = document.createElement('tr');
+        emptyTr.innerHTML = `
+          <td colspan="7" class="py-10 text-center text-slate-400 select-none">
+            <div class="flex flex-col items-center justify-center gap-1.5 py-2">
+              <i class="fa-solid fa-flask-vial text-slate-300 text-2xl mb-1"></i>
+              <p class="font-bold text-slate-600 text-xs">등록된 배합 원료가 없습니다.</p>
+              <p class="text-[11px] text-slate-400">하단의 <strong class="text-indigo-600 font-semibold">[+ Phase 원료 추가]</strong> 버튼을 클릭하여 원료를 구성해보세요.</p>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(emptyTr);
+        return;
+      }
+
       activeFormula.forEach((item, index) => {
         const grams = ((item.percent * batch) / 100).toFixed(2);
         const tr = document.createElement('tr');
@@ -2954,9 +2968,7 @@
           </td>
 
           <td class="py-2 px-2 text-center print-hide">
-            ${item.isWater ? '<span class="text-slate-300 text-xs">-</span>' : 
-              `<button onclick="removeIngredient(${index})" class="text-slate-300 hover:text-red-500 p-1 font-bold text-sm">×</button>`
-            }
+            <button onclick="removeIngredient(${index})" class="text-slate-300 hover:text-red-500 p-1 font-bold text-sm transition" title="원료 삭제">×</button>
           </td>
         `;
 
@@ -3221,20 +3233,110 @@
       }
     }
 
-    function exportToCsv() {
-      const title = document.getElementById('calcFormulaTitleInput').value || '처방_배치계량표';
-      const batch = parseFloat(document.getElementById('batchSize').value) || 0;
-      let csv = "\uFEFFPhase,원료,INCI,배합비(%),계량값(g),공급사\n";
+    function exportCalculatorToExcel() {
+      const titleInput = document.getElementById('calcFormulaTitleInput');
+      const title = (titleInput && titleInput.value.trim()) || '연구처방';
+      const batchInput = document.getElementById('batchSize');
+      const batch = parseFloat(batchInput ? batchInput.value : 0) || 200;
+      const procInput = document.getElementById('calcProcedureInput');
+      const procedure = (procInput && procInput.value.trim()) || '';
+      const today = new Date().toISOString().substring(0, 10);
+
+      if (!activeFormula || activeFormula.length === 0) {
+        showToast('내보낼 원료 배합비 데이터가 없습니다.');
+        return;
+      }
+
+      let totalPercent = 0;
+      let totalGrams = 0;
+
+      // 엑셀 시트 2차원 배열 데이터 구성
+      const rows = [];
+      rows.push(['[속속(SOCSOC) 화장품 처방 및 계량 워크시트]']);
+      rows.push(['연구 처방명', title, '', '작성일자', today]);
+      rows.push(['목표 배치 용량', `${batch} g`, '', '배치 계량 단위', 'g (그램)']);
+      rows.push([]); // 빈 줄 구분
+      rows.push(['Phase', '원료명', 'INCI명', '배합비 (%)', '계량값 (g)', '공급사']);
+
       activeFormula.forEach(item => {
-        const grams = ((item.percent * batch) / 100).toFixed(2);
-        csv += `"${item.phase}","${item.name || ''}","${item.inci || ''}",${item.percent.toFixed(2)},${grams},"${item.supplier || ''}"\n`;
+        const p = parseFloat(Number(item.percent || 0).toFixed(2));
+        const g = parseFloat(((p * batch) / 100).toFixed(2));
+        totalPercent += p;
+        totalGrams += g;
+        rows.push([
+          item.phase || 'Phase A',
+          item.name || '',
+          item.inci || '',
+          p,
+          g,
+          item.supplier || ''
+        ]);
       });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+      const fitStatus = Math.abs(totalPercent - 100) < 0.005 ? '100.00% 적합' : `${(100 - totalPercent).toFixed(2)}% 차이`;
+      rows.push(['합계', '', '', parseFloat(totalPercent.toFixed(2)), parseFloat(totalGrams.toFixed(2)), fitStatus]);
+
+      if (procedure) {
+        rows.push([]);
+        rows.push(['■ 제조공정 및 기타사항']);
+        procedure.split('\n').forEach(line => {
+          rows.push([line]);
+        });
+      }
+
+      const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
+      const safeFileName = `[SOCSOC]_${safeTitle}_${today}.xlsx`;
+
+      // 1. SheetJS (xlsx.js) 라이브러리를 통한 정식 .xlsx 파일 생성
+      if (typeof XLSX !== 'undefined') {
+        try {
+          const ws = XLSX.utils.aoa_to_sheet(rows);
+
+          // 열 너비 자동 최적화
+          ws['!cols'] = [
+            { wch: 12 }, // Phase
+            { wch: 28 }, // 원료명
+            { wch: 38 }, // INCI명
+            { wch: 14 }, // 배합비 (%)
+            { wch: 14 }, // 계량값 (g)
+            { wch: 20 }  // 공급사
+          ];
+
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, '배합비계량시트');
+          XLSX.writeFile(wb, safeFileName);
+          showToast(`엑셀 파일("${safeFileName}")이 다운로드되었습니다.`);
+          return;
+        } catch (e) {
+          console.warn('XLSX export fallback to CSV:', e);
+        }
+      }
+
+      // 2. Fallback: UTF-8 BOM CSV 파일 다운로드
+      let csvContent = "\uFEFF";
+      rows.forEach(r => {
+        const line = r.map(c => {
+          const str = String(c !== undefined && c !== null ? c : '');
+          return `"${str.replace(/"/g, '""')}"`;
+        }).join(',');
+        csvContent += line + "\r\n";
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `[SOCSOC]_${title}_배치계량표.csv`;
+      a.download = `[SOCSOC]_${safeTitle}_${today}.csv`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('엑셀 호환 CSV 파일이 다운로드되었습니다.');
+    }
+
+    // 기존 exportToCsv 호환용 별칭
+    function exportToCsv() {
+      exportCalculatorToExcel();
     }
 
     // ==========================================
@@ -4160,18 +4262,29 @@
         return;
       }
 
-      // 1-5. 이메일 유효성 검사
-      const normalizedEmail = email.toLowerCase();
+      // 1-5. 이메일 유효성 검사 (공백 제거 및 소문자 정규화)
+      const normalizedEmail = (email || '').trim().toLowerCase();
       if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
         showSignupError('올바른 이메일 주소 형식을 입력해주세요. (예: example@company.com)', emailEl);
         return;
       }
 
-      // 1-6. 핸드폰 번호 유효성 검사 (숫자만 추출)
-      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      // 1-6. 핸드폰 번호 유효성 검사 (숫자만 추출 및 국가번호 정규화)
+      const rawPhone = (phone || '').trim();
+      let cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+      if (cleanPhone.startsWith('82') && cleanPhone.length >= 11) {
+        cleanPhone = '0' + cleanPhone.slice(2);
+      }
       if (!cleanPhone || cleanPhone.length < 9) {
         showSignupError('올바른 핸드폰 번호를 입력해주세요. (최소 9자리 이상 숫자)', phoneEl);
         return;
+      }
+
+      let formattedPhone = cleanPhone;
+      if (cleanPhone.length === 11) {
+        formattedPhone = cleanPhone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+      } else if (cleanPhone.length === 10) {
+        formattedPhone = cleanPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
       }
 
       // 1-7. 이용약관 및 개인정보 수집 동의 검사
@@ -4190,7 +4303,10 @@
       }
 
       const dupPhoneLocal = cleanPhone && usersDb.some(u => {
-        const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+        let uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+        if (uPhone.startsWith('82') && uPhone.length >= 11) {
+          uPhone = '0' + uPhone.slice(2);
+        }
         return uPhone && uPhone === cleanPhone;
       });
       if (dupPhoneLocal) {
@@ -4214,38 +4330,55 @@
         let authUserId = null;
 
         if (sbClient) {
-          // 3-1. Supabase profiles 테이블 아이디 중복 체크
-          const { data: existingUser, error: idErr } = await sbClient
+          // 3-1. Supabase profiles 테이블 아이디 중복 체크 (.limit(1) 사용)
+          const { data: existingUserList, error: idErr } = await sbClient
             .from('profiles')
             .select('id, username')
             .ilike('username', normalizedId)
-            .maybeSingle();
+            .limit(1);
 
-          if (existingUser) {
+          if (existingUserList && existingUserList.length > 0) {
             showSignupError('이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.', idEl);
             return;
           }
 
-          // 3-2. Supabase profiles 테이블 이메일 중복 체크
-          const { data: existingEmail, error: emailErr } = await sbClient
+          // 3-2. Supabase profiles 테이블 이메일 중복 체크 (.limit(1) 사용)
+          const { data: existingEmailList, error: emailErr } = await sbClient
             .from('profiles')
             .select('id, email')
             .ilike('email', normalizedEmail)
-            .maybeSingle();
+            .limit(1);
 
-          if (existingEmail) {
+          if (existingEmailList && existingEmailList.length > 0) {
             showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 입력해주세요.', emailEl);
             return;
           }
 
-          // 3-3. Supabase profiles 테이블 핸드폰 번호 중복 체크 (숫자만 추출 비교)
+          // 3-3. Supabase profiles 테이블 핸드폰 번호 중복 체크
+          // (1) 정확한 번호 또는 하이픈 포함 번호 직접 쿼리
+          const { data: directPhoneMatch } = await sbClient
+            .from('profiles')
+            .select('id, phone')
+            .or(`phone.eq."${cleanPhone}",phone.eq."${formattedPhone}"`)
+            .limit(1);
+
+          if (directPhoneMatch && directPhoneMatch.length > 0) {
+            showSignupError('이미 등록된 핸드폰 번호입니다. 다른 번호를 입력해주세요.', phoneEl);
+            return;
+          }
+
+          // (2) 전체 profiles 핸드폰 번호 숫자 정제 후 전수 비교
           const { data: profilePhones, error: phoneErr } = await sbClient
             .from('profiles')
-            .select('id, phone');
+            .select('id, phone')
+            .not('phone', 'is', null);
 
-          if (!phoneErr && profilePhones && profilePhones.length > 0) {
+          if (!phoneErr && Array.isArray(profilePhones) && profilePhones.length > 0) {
             const dupPhoneCloud = profilePhones.some(p => {
-              const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+              let pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+              if (pPhone.startsWith('82') && pPhone.length >= 11) {
+                pPhone = '0' + pPhone.slice(2);
+              }
               return pPhone && pPhone === cleanPhone;
             });
             if (dupPhoneCloud) {
@@ -4256,21 +4389,22 @@
 
           // 4. Supabase Auth 계정 생성
           const { data: authData, error: authErr } = await sbClient.auth.signUp({
-            email: email,
+            email: normalizedEmail,
             password: pw,
             options: {
               data: {
                 username: id,
                 name: name,
                 nickname: nickname,
-                phone: phone,
+                phone: formattedPhone,
                 company_type: companyType
               }
             }
           });
 
           if (authErr) {
-            if (authErr.message.includes('already registered') || authErr.message.includes('already exists') || authErr.message.includes('User already registered')) {
+            const errMsgLower = (authErr.message || '').toLowerCase();
+            if (errMsgLower.includes('already registered') || errMsgLower.includes('already exists') || errMsgLower.includes('user already registered') || errMsgLower.includes('email exists')) {
               showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 사용해주세요.', emailEl);
             } else {
               showSignupError('회원가입 오류: ' + authErr.message);
@@ -4278,7 +4412,14 @@
             return;
           }
 
+          // ★ 핵심: Supabase Email Enumeration Protection 감지
+          // 이미 가입된 이메일로 다시 가입 시도할 경우, Supabase는 보안 정책상 에러를 던지지 않고
+          // identities 배열이 비어 있는([]) 가짜 user 객체를 리턴합니다.
           if (authData && authData.user) {
+            if (Array.isArray(authData.user.identities) && authData.user.identities.length === 0) {
+              showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 사용해주세요.', emailEl);
+              return;
+            }
             authUserId = authData.user.id;
 
             // 5. profiles 테이블에 사용자 프로필 저장
@@ -4287,8 +4428,8 @@
               username: id,
               name: name,
               nickname: nickname,
-              email: email,
-              phone: phone,
+              email: normalizedEmail,
+              phone: formattedPhone,
               company_type: companyType,
               role: checkIsAdmin(id) ? 'admin' : 'member'
             });
@@ -4305,8 +4446,8 @@
           password: pw,
           name: name,
           nickname: nickname,
-          email: email,
-          phone: phone,
+          email: normalizedEmail,
+          phone: formattedPhone,
           companyType: companyType,
           provider: 'normal',
           role: checkIsAdmin(id) ? 'admin' : 'member',
@@ -4579,6 +4720,36 @@
         errMsg.textContent = '이메일 주소를 입력해주세요.';
         errMsg.classList.remove('hidden');
         return;
+      }
+
+      // 이메일 중복 검사 (본인 계정 제외)
+      const normEmail = email.toLowerCase();
+      const dupEmail = usersDb.some(u => u.id !== currentUser.id && (u.email || '').trim().toLowerCase() === normEmail);
+      if (dupEmail) {
+        errMsg.textContent = '이미 다른 회원이 사용 중인 이메일 주소입니다.';
+        errMsg.classList.remove('hidden');
+        return;
+      }
+
+      // 핸드폰 번호 중복 검사 (본인 계정 제외)
+      let cleanPhone = phone.replace(/[^0-9]/g, '');
+      if (cleanPhone.startsWith('82') && cleanPhone.length >= 11) {
+        cleanPhone = '0' + cleanPhone.slice(2);
+      }
+      if (cleanPhone) {
+        const dupPhone = usersDb.some(u => {
+          if (u.id === currentUser.id) return false;
+          let uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+          if (uPhone.startsWith('82') && uPhone.length >= 11) {
+            uPhone = '0' + uPhone.slice(2);
+          }
+          return uPhone && uPhone === cleanPhone;
+        });
+        if (dupPhone) {
+          errMsg.textContent = '이미 다른 회원이 사용 중인 핸드폰 번호입니다.';
+          errMsg.classList.remove('hidden');
+          return;
+        }
       }
 
       // 이름 유효성 검사 (한글 또는 영문만 가능, 숫자 및 특수문자 불가)
