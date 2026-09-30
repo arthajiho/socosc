@@ -2388,11 +2388,6 @@
     let pendingPrintAfterLogin = false;
 
     function handlePrint() {
-      if (!currentUser) {
-        pendingPrintAfterLogin = true;
-        openAuthModal('login', '로그인하시면 인쇄 기능을 사용하실 수 있습니다.');
-        return;
-      }
       if (currentAppMode === 'calculator') {
         document.body.classList.add('mode-calc');
         document.body.classList.remove('mode-exp');
@@ -2405,6 +2400,9 @@
         if (bInput && bDisp) bDisp.textContent = bInput.value || '200';
         const procInput = document.getElementById('calcProcedureInput');
         syncCalcProcedure(procInput ? procInput.value : '');
+      } else {
+        document.body.classList.add('mode-exp');
+        document.body.classList.remove('mode-calc');
       }
       // 인쇄 시 모든 input의 타이핑된 최신 값이 화면 및 인쇄 드라이버에 그대로 반영되도록 속성 동기화
       document.querySelectorAll('input').forEach(inp => {
@@ -2413,13 +2411,11 @@
       window.print();
     }
 
-    // Ctrl+P / Cmd+P 단축키 입력 시에도 비로그인이면 로그인 창으로 유도
+    // Ctrl+P / Cmd+P 단축키 입력 시에도 정밀 인쇄 핸들러 연동 (비회원/회원 모두 지원)
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
-        if (!currentUser) {
-          e.preventDefault();
-          handlePrint();
-        }
+        e.preventDefault();
+        handlePrint();
       }
     });
 
