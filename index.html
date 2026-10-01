@@ -482,8 +482,9 @@
       /* Exact screen-matched column proportions for print (Total = 100%) */
       body.mode-calc #modeCalculator table th:nth-child(1),
       body.mode-calc #modeCalculator table tbody td:nth-child(1) {
-        width: 9% !important;
+        width: 11% !important;
         text-align: center !important;
+        white-space: nowrap !important;
       }
 
       body.mode-calc #modeCalculator table th:nth-child(2),
@@ -494,7 +495,7 @@
 
       body.mode-calc #modeCalculator table th:nth-child(3),
       body.mode-calc #modeCalculator table tbody td:nth-child(3) {
-        width: 36% !important;
+        width: 34% !important;
         text-align: left !important;
       }
 
@@ -700,10 +701,6 @@
                   BODY
                 </span>
                 <span id="articleFormulaCode" class="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">F-BDY-008</span>
-                <span id="articleAdminViewCountBadge" class="hidden px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 items-center gap-1 shrink-0" title="관리자 전용 조회수">
-                  <svg class="w-3.5 h-3.5 text-slate-400 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <span id="articleViewCountText">조회 0</span>
-                </span>
               </div>
               <div class="text-xs text-slate-500 flex items-center gap-1">
                 <span>제공사:</span>
@@ -888,7 +885,7 @@
             <table class="w-full text-left text-xs border-collapse">
               <thead>
                 <tr class="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
-                  <th class="py-2.5 px-2 w-20 text-center" title="Phase 아이콘을 마우스로 드래그하여 원하는 위치로 순서를 변경할 수 있습니다">Phase</th>
+                  <th class="py-2.5 px-2 w-32 min-w-[115px] text-center whitespace-nowrap" title="Phase 아이콘을 마우스로 드래그하여 원하는 위치로 순서를 변경할 수 있습니다">Phase</th>
                   <th class="py-2.5 px-3 w-[22%] min-w-[130px]">원료</th>
                   <th class="py-2.5 px-3 min-w-[240px]">INCI</th>
                   <th class="py-2.5 px-2 w-24 text-right">배합비 (%)</th>
@@ -2017,41 +2014,11 @@
       return ADMIN_USERNAMES.includes(str) || str === 'admin' || str === 'socsoc';
     }
 
-    // 처방 글 조회수 영구 보존 및 실시간 누적 카운팅 (절대 초기화/리셋 금지)
-    const STORAGE_RECIPE_VIEWS_KEY = 'socsoc_recipe_views_v2';
-
-    function getStoredViewCounts() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_RECIPE_VIEWS_KEY) || '{}');
-      } catch (e) {
-        return {};
-      }
-    }
-
-    function saveStoredViewCounts(map) {
-      try {
-        localStorage.setItem(STORAGE_RECIPE_VIEWS_KEY, JSON.stringify(map));
-      } catch (e) {
-        console.warn('Failed to save recipe views:', e);
-      }
-    }
-
-    function getRecipeViewCount(uid) {
-      if (!uid) return 0;
-      const map = getStoredViewCounts();
-      if (map[uid] !== undefined) {
-        return Number(map[uid]) || 0;
-      }
-      return 0;
-    }
-
-    function incrementRecipeViewCount(uid) {
-      if (!uid) return;
-      const map = getStoredViewCounts();
-      const current = getRecipeViewCount(uid);
-      map[uid] = current + 1;
-      saveStoredViewCounts(map);
-    }
+    // 가이드 처방 조회수 누적 저장소 완전 삭제 및 정리
+    try {
+      localStorage.removeItem('socsoc_recipe_views_v2');
+      localStorage.removeItem('socsoc_recipe_views');
+    } catch (e) {}
 
     let usersDb = [];
     try {
@@ -2572,21 +2539,6 @@
       // 시스템 관리자에게만 처방 수정 탭/버튼 노출 및 상세 내용 드래그 제어
       updateRecipeEditButtonVisibility();
 
-      // 관리자 전용 본문 상단 조회수 배지 갱신
-      const adminViewBadge = document.getElementById('articleAdminViewCountBadge');
-      const adminViewText = document.getElementById('articleViewCountText');
-      const isManager = currentUser && (currentUser.role === 'admin' || checkIsAdmin(currentUser.username) || checkIsAdmin(currentUser.email));
-      if (adminViewBadge && adminViewText) {
-        if (isManager && recipe && recipe.uid) {
-          adminViewText.textContent = `조회 ${getRecipeViewCount(recipe.uid).toLocaleString()}`;
-          adminViewBadge.classList.remove('hidden');
-          adminViewBadge.classList.add('inline-flex');
-        } else {
-          adminViewBadge.classList.add('hidden');
-          adminViewBadge.classList.remove('inline-flex');
-        }
-      }
-
       // 처방 열람 시 본문 스크롤을 항상 최상단으로 초기화
       const mainPane = document.querySelector('#modeExplorer main') || document.querySelector('main');
       if (mainPane) mainPane.scrollTop = 0;
@@ -2607,8 +2559,6 @@
         return;
       }
 
-      const isManager = currentUser && (currentUser.role === 'admin' || checkIsAdmin(currentUser.username) || checkIsAdmin(currentUser.email));
-
       recipes.forEach(r => {
         const isSelected = currentRecipe && (currentRecipe.uid === r.uid);
         const card = document.createElement('div');
@@ -2620,10 +2570,8 @@
         
         const catBadgeColor = getCategoryColor(r.category);
         const meta = extractRecipeMetadata(r);
-        const viewCount = getRecipeViewCount(r.uid);
 
         card.onclick = () => {
-          incrementRecipeViewCount(r.uid);
           showRecipeOriginalArticle(r);
           setAppMode('explorer');
         };
@@ -2634,12 +2582,6 @@
               <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${catBadgeColor}">
                 ${r.category || 'ETC'}
               </span>
-              ${isManager ? `
-                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/90 shrink-0" title="관리자 전용 조회수">
-                  <svg class="w-3 h-3 text-slate-400 fill-none stroke-current stroke-2 shrink-0" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <span>조회 ${viewCount.toLocaleString()}</span>
-                </span>
-              ` : ''}
             </div>
             <span class="text-[10px] font-mono text-slate-400 truncate max-w-[120px]">
               ${meta.formulaCode !== '처방코드 미기재' ? meta.formulaCode.substring(0, 18) : ''}
@@ -2890,6 +2832,12 @@
         return;
       }
 
+      // 처음 등장하는 Phase A의 인덱스 검색 (첫 번째 Phase A에만 base 표시)
+      const firstPhaseAIndex = activeFormula.findIndex(it => {
+        const p = (it.phase || '').trim();
+        return p === 'Phase A' || p.startsWith('Phase A') || p.includes('A');
+      });
+
       activeFormula.forEach((item, index) => {
         const grams = ((item.percent * batch) / 100).toFixed(2);
         const tr = document.createElement('tr');
@@ -2907,19 +2855,29 @@
         const safeName = escapeHtml(item.name || '');
         const safeInci = escapeHtml(item.inci || '');
         const safeSupplier = escapeHtml(item.supplier || '');
+        const isFirstPhaseA = (index === firstPhaseAIndex);
+        const phaseStr = escapeHtml(item.phase || 'Phase A');
+
+        const phaseBadgeHtml = isFirstPhaseA
+          ? `<span class="pointer-events-none whitespace-nowrap inline-flex items-center gap-1"><span>${phaseStr}</span><span class="text-[9.5px] font-extrabold text-amber-800 bg-amber-200/90 px-1 py-0.2 rounded border border-amber-300/80 leading-tight">base</span></span>`
+          : `<span class="pointer-events-none whitespace-nowrap">${phaseStr}</span>`;
+
+        const printPhaseHtml = isFirstPhaseA
+          ? `<span class="whitespace-nowrap font-bold text-xs text-slate-900">${phaseStr} <span class="text-[9px] font-normal text-slate-500 lowercase">(base)</span></span>`
+          : `<span class="whitespace-nowrap font-bold text-xs text-slate-900">${phaseStr}</span>`;
 
         tr.innerHTML = `
-          <td class="py-2.5 px-2 text-center select-none">
-            <div class="flex items-center justify-center print-hide">
-              <div class="phase-drag-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black shadow-xs border cursor-grab active:cursor-grabbing hover:scale-105 hover:shadow-sm transition-all select-none ${phaseBadgeColor}"
+          <td class="py-2.5 px-2 text-center select-none whitespace-nowrap">
+            <div class="flex items-center justify-center print-hide whitespace-nowrap">
+              <div class="phase-drag-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black shadow-xs border cursor-grab active:cursor-grabbing hover:scale-105 hover:shadow-sm transition-all select-none whitespace-nowrap ${phaseBadgeColor}"
                    draggable="true"
                    title="Phase 아이콘을 마우스로 잡고 드래그하여 원하는 위치로 이동하세요">
                 <i class="fa-solid fa-grip-vertical text-[10px] opacity-60 print-hide pointer-events-none"></i>
-                <span class="pointer-events-none">${item.phase || 'Phase A'}</span>
+                ${phaseBadgeHtml}
               </div>
             </div>
-            <div class="print-only text-center font-bold text-xs text-slate-900">
-              ${item.phase || 'Phase A'}
+            <div class="print-only text-center whitespace-nowrap">
+              ${printPhaseHtml}
             </div>
           </td>
 
@@ -3266,13 +3224,20 @@
       rows.push([]); // 빈 줄 구분
       rows.push(['Phase', '원료명', 'INCI명', '배합비 (%)', '계량값 (g)', '공급사']);
 
-      activeFormula.forEach(item => {
+      const firstPhaseAIdx = activeFormula.findIndex(it => {
+        const p = (it.phase || '').trim();
+        return p === 'Phase A' || p.startsWith('Phase A') || p.includes('A');
+      });
+
+      activeFormula.forEach((item, index) => {
         const p = parseFloat(Number(item.percent || 0).toFixed(2));
         const g = parseFloat(((p * batch) / 100).toFixed(2));
         totalPercent += p;
         totalGrams += g;
+        const isFirstA = (index === firstPhaseAIdx);
+        const phaseLabel = isFirstA ? `${item.phase || 'Phase A'} (base)` : (item.phase || 'Phase A');
         rows.push([
-          item.phase || 'Phase A',
+          phaseLabel,
           item.name || '',
           item.inci || '',
           p,
@@ -3377,20 +3342,6 @@
           el.ondragstart = (e) => false;
         }
       });
-
-      // 관리자 전용 본문 상단 조회수 배지 갱신
-      const adminViewBadge = document.getElementById('articleAdminViewCountBadge');
-      const adminViewText = document.getElementById('articleViewCountText');
-      if (adminViewBadge && adminViewText) {
-        if (isManager && currentRecipe && currentRecipe.uid) {
-          adminViewText.textContent = `조회 ${getRecipeViewCount(currentRecipe.uid).toLocaleString()}`;
-          adminViewBadge.classList.remove('hidden');
-          adminViewBadge.classList.add('inline-flex');
-        } else {
-          adminViewBadge.classList.add('hidden');
-          adminViewBadge.classList.remove('inline-flex');
-        }
-      }
     }
 
     function renderAuthHeader() {
