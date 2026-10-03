@@ -194,7 +194,7 @@
     @media print {
       @page {
         size: A4 portrait;
-        margin: 8mm 10mm 8mm 10mm;
+        margin: 6mm 8mm 6mm 8mm;
       }
 
       html, body {
@@ -227,34 +227,45 @@
       .print-brand-header {
         display: block !important;
         text-align: center !important;
-        padding-bottom: 4px !important;
-        margin-bottom: 6px !important;
+        padding-bottom: 3px !important;
+        margin-bottom: 5px !important;
         border-bottom: 1.5px solid #0f172a !important;
       }
 
       .print-brand-footer {
         display: block !important;
         text-align: center !important;
-        padding-top: 6px !important;
-        margin-top: 10px !important;
+        padding-top: 4px !important;
+        margin-top: 6px !important;
         border-top: 1px solid #cbd5e1 !important;
         page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
 
       .print-brand-title {
         font-size: 13.5px !important;
-        font-weight: 800 !important;
+        font-weight: 900 !important;
         color: #0f172a !important;
         letter-spacing: -0.02em !important;
-        line-height: 1.4 !important;
+        line-height: 1.25 !important;
+      }
+
+      .print-brand-sub1 {
+        font-size: 10.5px !important;
+        font-weight: 700 !important;
+        color: #334155 !important;
+        letter-spacing: -0.01em !important;
+        line-height: 1.25 !important;
+        margin-top: 1px !important;
       }
 
       .print-brand-sub {
-        font-size: 10px !important;
+        font-size: 9px !important;
         font-weight: 500 !important;
         color: #64748b !important;
         letter-spacing: 0.02em !important;
-        line-height: 1.3 !important;
+        line-height: 1.25 !important;
+        margin-top: 1px !important;
       }
 
       /* When in Calculator Mode: Print entire calculator sheet without height limits */
@@ -292,7 +303,7 @@
       body.mode-calc #modeCalculator .space-y-6 {
         display: flex !important;
         flex-direction: column !important;
-        gap: 6px !important;
+        gap: 4px !important;
       }
 
       body.mode-calc #modeCalculator .space-y-6 > * {
@@ -586,6 +597,84 @@
         padding: 0 !important;
         width: 100% !important;
       }
+
+      /* Mode 3: Analyzer (화장품 전성분 해체기) Print Styles */
+      body.mode-calc #modeAnalyzer,
+      body.mode-exp #modeAnalyzer {
+        display: none !important;
+      }
+
+      body.mode-analyzer #modeExplorer,
+      body.mode-analyzer #modeCalculator,
+      body.mode-analyzer header,
+      body.mode-analyzer footer,
+      body.mode-analyzer #calcFloatingBottomBar,
+      body.mode-analyzer #floatingNewRecipeBtn,
+      body.mode-analyzer .no-print {
+        display: none !important;
+      }
+
+      body.mode-analyzer #modeAnalyzer {
+        display: block !important;
+        overflow: visible !important;
+        height: auto !important;
+        position: static !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      body.mode-analyzer #modeAnalyzer > div {
+        overflow: visible !important;
+        height: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      body.mode-analyzer #modeAnalyzer .max-w-6xl {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      body.mode-analyzer #resultsContainer {
+        display: block !important;
+      }
+
+      body.mode-analyzer #editorTabContent {
+        display: none !important;
+      }
+
+      body.mode-analyzer .print-container {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+        break-after: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      body.mode-analyzer .print-table {
+        font-size: 8.8px !important;
+        line-height: 1.18 !important;
+        border-collapse: collapse !important;
+        width: 100% !important;
+      }
+
+      body.mode-analyzer .print-table th,
+      body.mode-analyzer .print-table td {
+        padding: 1.2px 3.5px !important;
+      }
+
+      body.mode-analyzer .page-break-avoid {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
     }
   </style>
 </head>
@@ -613,6 +702,9 @@
       </button>
       <button id="navBtnCalculator" onclick="setAppMode('calculator')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition">
         제형 개발 계산기 (연구원 워크벤치)
+      </button>
+      <button id="navBtnAnalyzer" onclick="setAppMode('analyzer')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">
+        화장품 전성분 해체기
       </button>
     </nav>
 
@@ -760,7 +852,8 @@
 
           <!-- Print Brand Footer (하단) -->
           <div class="print-brand-footer print-only">
-            <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 & 제형 개발 워크벤치</div>
+            <div class="print-brand-title">속속(SOCSOC)</div>
+            <div class="print-brand-sub1">화장품 처방 포털 & 제형 개발 워크벤치</div>
             <div class="print-brand-sub">Cosmetic Formulation & Raw Material Solution Platform</div>
           </div>
 
@@ -784,7 +877,7 @@
             
             <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11.5px] text-slate-500 pt-2.5 border-t border-slate-100">
               <p><strong>속속(SOCSOC)</strong></p>
-              <p><strong>이메일:</strong> <a href="mailto:socsoc-contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc-contact@naver.com</a></p>
+              <p><strong>이메일:</strong> <a href="mailto:socsoc_contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc_contact@naver.com</a></p>
             </div>
 
             <div class="text-[10.5px] text-slate-400 flex items-center justify-between gap-2 pt-1">
@@ -804,7 +897,8 @@
         
           <!-- Print Brand Header (상단) -->
           <div class="print-brand-header print-only">
-            <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 & 제형 개발 워크벤치</div>
+            <div class="print-brand-title">속속(SOCSOC)</div>
+            <div class="print-brand-sub1">화장품 처방 포털 & 제형 개발 워크벤치</div>
             <div class="print-brand-sub">Cosmetic Formulation & Raw Material Solution Platform</div>
           </div>
 
@@ -968,7 +1062,8 @@
 
         <!-- Print Brand Footer (하단) -->
         <div class="print-brand-footer print-only">
-          <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 & 제형 개발 워크벤치</div>
+          <div class="print-brand-title">속속(SOCSOC)</div>
+          <div class="print-brand-sub1">화장품 처방 포털 & 제형 개발 워크벤치</div>
           <div class="print-brand-sub">Cosmetic Formulation & Raw Material Solution Platform</div>
         </div>
 
@@ -992,7 +1087,7 @@
           
           <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11.5px] text-slate-500 pt-2.5 border-t border-slate-100">
             <p><strong>속속(SOCSOC)</strong></p>
-            <p><strong>이메일:</strong> <a href="mailto:socsoc-contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc-contact@naver.com</a></p>
+            <p><strong>이메일:</strong> <a href="mailto:socsoc_contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc_contact@naver.com</a></p>
           </div>
 
           <div class="text-[10.5px] text-slate-400 flex items-center justify-between gap-2 pt-1">
@@ -1045,6 +1140,348 @@
         </div>
       </div>
     </div>
+
+    </div>
+    <!-- End MODE 2: modeCalculator -->
+
+    <!-- ======================================================== -->
+    <!-- MODE 3: COSMETIC INGREDIENT DECONSTRUCTOR (화장품 전성분 해체기) -->
+    <!-- ======================================================== -->
+    <div id="modeAnalyzer" class="hidden flex-1 bg-slate-50 flex flex-col overflow-hidden relative">
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8">
+        <div class="max-w-6xl mx-auto space-y-6 pb-8">
+
+          <!-- 상단 대시보드 헤더 (인쇄 시 숨김) -->
+          <div class="no-print bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold tracking-wide border border-blue-100 mb-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                Cosmetic Reverse-Engineering Engine v2.4
+              </div>
+              <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">
+                화장품 전성분 해체기
+              </h1>
+              <p class="text-sm text-slate-500 mt-1">
+                전성분 텍스트를 파싱하여 <strong>1% 이하 추정 절취선 자동 탐지</strong> 및 <strong>성분별 역할 태깅·배합비(%)</strong>를 브라우저 내에서 시뮬레이션합니다.
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 rounded-xl shrink-0">
+              <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>100% 로컬 브라우저 연산 (외부 서버 전송 없음)</span>
+            </div>
+          </div>
+
+          <!-- 1. 입력 폼 섹션 (인쇄 시 숨김) -->
+          <section class="no-print bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <label for="rawTextarea" class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+                전성분 텍스트 입력 (쉼표 또는 줄바꿈 구분)
+              </label>
+
+              <!-- 샘플 프리셋 버튼 -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs text-slate-400 font-medium">테스트 프리셋:</span>
+                <button type="button" onclick="loadSample('cream')" class="text-xs px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">
+                  수분크림
+                </button>
+                <button type="button" onclick="loadSample('toner')" class="text-xs px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">
+                  진정토너
+                </button>
+                <button type="button" onclick="loadSample('serum')" class="text-xs px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">
+                  재생앰플
+                </button>
+                <button type="button" onclick="clearText()" class="text-xs px-2.5 py-1 rounded-md text-rose-500 hover:bg-rose-50 font-medium transition cursor-pointer">
+                  초기화
+                </button>
+              </div>
+            </div>
+
+            <!-- 큼직한 전성분 입력 영역 -->
+            <textarea
+              id="rawTextarea"
+              rows="4"
+              placeholder="화장품의 전성분을 쉼표(,)나 줄바꿈으로 구분하여 입력하세요..."
+              class="w-full p-4 rounded-xl border border-slate-200 bg-slate-50/60 text-slate-900 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition resize-y font-mono"
+            ></textarea>
+
+            <!-- 안심 문구 및 해체 시작 버튼 -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+              <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-500">
+                  🔒
+                </span>
+                <span class="font-normal">서버에 저장되지 않는 로컬 보안 툴. 입력하신 데이터는 브라우저 내에서만 연산됩니다.</span>
+              </div>
+
+              <button
+                type="button"
+                onclick="runAnalysis()"
+                class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                전성분 해체 시작
+              </button>
+            </div>
+          </section>
+
+          <!-- 2. 결과 대시보드 뷰 -->
+          <div id="resultsContainer" class="space-y-6 hidden">
+
+            <!-- 결과 대시보드 상단 툴바 (보관함 저장 지원) -->
+            <div class="no-print flex items-center justify-between border-b border-slate-200 pb-2.5 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">📋</span>
+                <h2 class="text-base font-bold text-slate-800 tracking-tight">성분 해체 및 배합비 시뮬레이션 워크시트</h2>
+              </div>
+
+              <button
+                type="button"
+                onclick="saveCurrentAnalyzerFormula()"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-sm transition active:scale-95 cursor-pointer"
+                title="전성분 해체 분석 결과를 내 연구노트에 저장합니다"
+              >
+                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                <span>해체 결과 저장</span>
+              </button>
+            </div>
+
+            <!-- [에디터 탭 영역] -->
+            <div id="editorTabContent" class="no-print space-y-6">
+              <!-- KPI 통계 카드 -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span class="text-xs text-slate-400 font-medium">총 검출 성분</span>
+                  <div class="text-2xl font-bold text-slate-800 mt-1" id="statTotalCount">0<span class="text-sm font-normal text-slate-400 ml-1">종</span></div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span class="text-xs text-blue-600 font-medium">1% 초과 고함량 구간</span>
+                  <div class="text-2xl font-bold text-blue-600 mt-1" id="statAboveCount">0<span class="text-sm font-normal text-slate-400 ml-1">종 (함량순)</span></div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <span class="text-xs text-rose-600 font-medium">1% 이하 추정 구간</span>
+                  <div class="text-2xl font-bold text-rose-600 mt-1" id="statBelowCount">0<span class="text-sm font-normal text-slate-400 ml-1">종 (순서 무관)</span></div>
+                </div>
+
+                <div id="statSumCard" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-500">배합비 합계</span>
+                    <span id="statSumBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 font-semibold text-slate-600">100% 대기</span>
+                  </div>
+                  <div class="text-2xl font-extrabold mt-1 text-slate-800" id="statSumVal">0.00<span class="text-sm font-normal ml-1">%</span></div>
+                </div>
+              </div>
+
+              <!-- 상단 액션 툴바 -->
+              <div class="bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-semibold text-slate-500">역할 필터:</span>
+                  <select id="roleFilterSelect" onchange="renderAnalyzerTable()" class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">전체 역할 보기</option>
+                  </select>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button type="button" onclick="applySmartEstimates()" class="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold hover:bg-indigo-100 transition cursor-pointer" title="화장품 지수 감쇠 모델에 맞추어 합계 100%로 배합비를 예상 분배합니다">
+                    <span>⚡</span> 배합비(%) 예상 분배
+                  </button>
+                  <button type="button" onclick="addNewIngredientRow()" class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-medium transition cursor-pointer">
+                    <span>➕</span> 성분 추가
+                  </button>
+                  <button type="button" onclick="copyTableAsTSV()" id="btnCopy" class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-medium transition cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    엑셀/표 복사
+                  </button>
+                </div>
+              </div>
+
+              <!-- 메인 해체 테이블 -->
+              <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <!-- 표 바로 위: 전성분 해체 분석 제목 입력 바 -->
+                <div class="p-3.5 sm:p-4 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <label for="analyzerFormulaTitleInput" class="text-xs font-extrabold uppercase text-slate-700 shrink-0 flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                    <span>전성분 해체 분석 제목:</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="analyzerFormulaTitleInput"
+                    placeholder="분석할 제품명 또는 처방 제목을 입력하세요 (예: 수분 진정 크림 전성분 해체 분석)"
+                    value="신규 전성분 해체 분석 처방"
+                    class="flex-1 font-bold text-sm text-slate-900 bg-white border border-slate-300 rounded-lg px-3.5 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition shadow-sm"
+                  >
+                </div>
+
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                        <th class="py-3 px-4 w-14 text-center">순번</th>
+                        <th class="py-3 px-4 min-w-[220px]">성분명 (영문/국문)</th>
+                        <th class="py-3 px-4 w-36 text-center">함량 (%)</th>
+                        <th class="py-3 px-4 min-w-[150px]">역할 / 분류</th>
+                        <th class="py-3 px-4 w-28 text-center">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ingredientTableBody" class="divide-y divide-slate-100">
+                      <!-- JS 동적 렌더링 -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- 테이블 푸터 -->
+                <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-500">
+                  <div class="flex items-center gap-3">
+                    <span>표시 중: <strong id="footerCount" class="text-slate-800">0</strong>개 성분</span>
+                    <span>•</span>
+                    <span id="footerCutoffInfo">1% 절취선: 대기중</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span>총 배합비 합계:</span>
+                    <span id="footerSum" class="text-sm font-bold font-mono px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-800">0.00 %</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 역할별 분포 통계 카드 -->
+              <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                  </svg>
+                  성분 역할 구성 및 제형 분포
+                </h2>
+                <div id="roleStatsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  <!-- JS 동적 생성 -->
+                </div>
+              </div>
+            </div>
+
+            <!-- [인쇄 전용 A4 보고서 컨테이너] -->
+            <div id="printTabContent" class="print-container hidden bg-white text-slate-900 p-4 md:p-6 rounded-2xl border border-slate-300 shadow-md max-w-[210mm] mx-auto">
+              <!-- [인쇄 상단] 속속(SOCSOC) 브랜딩 헤더 -->
+              <div class="print-brand-header text-center border-b border-slate-900 pb-2 mb-2">
+                <div class="text-sm font-black text-slate-900 tracking-tight">속속(SOCSOC)</div>
+                <div class="text-[11px] font-bold text-slate-700 mt-0.5">화장품 처방 포털 & 제형 개발 워크벤치</div>
+                <div class="text-[9.5px] font-medium text-slate-500 tracking-wider">Cosmetic Formulation & Raw Material Solution Platform</div>
+              </div>
+
+              <!-- 보고서 서브 헤더 (작성자/검토/승인 결재란 완전 삭제) -->
+              <div class="border-b border-slate-300 pb-2 mb-2">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 class="text-base font-extrabold text-slate-900 tracking-tight">
+                      화장품 전성분 역공학 처방 분석서
+                    </h2>
+                    <div id="printAnalyzerReportTitle" class="text-xs font-bold text-indigo-800 mt-0.5"></div>
+                    <div class="text-[9.5px] text-slate-500">
+                      Cosmetic Reverse-Engineering & Formulation Analysis Report
+                    </div>
+                  </div>
+                  <div class="text-right text-[10px] text-slate-500">
+                    분석 일자: <strong id="printDate" class="text-slate-900">-</strong>
+                  </div>
+                </div>
+
+                <!-- 메타데이터 바 -->
+                <div class="grid grid-cols-3 gap-2 mt-2 pt-1.5 border-t border-slate-200 text-[10px] text-slate-600">
+                  <div>총 검출 성분: <strong id="printTotalCount" class="text-slate-900">-</strong></div>
+                  <div>1% 기준선: <strong id="printCutoffInfo" class="text-slate-900">-</strong></div>
+                  <div class="text-right">
+                    배합비 합계: <strong id="printTotalSum" class="font-mono text-slate-900">-</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- A4 콤팩트 테이블 -->
+              <div class="overflow-hidden">
+                <table class="print-table w-full text-left border-collapse border border-slate-400 text-xs">
+                  <thead>
+                    <tr class="bg-slate-100 border-b border-slate-400 text-slate-800 text-[10.5px] font-bold">
+                      <th class="py-1 px-2 border-r border-slate-400 text-center w-10">순번</th>
+                      <th class="py-1 px-2 border-r border-slate-400">성분명 (영문/국문)</th>
+                      <th class="py-1 px-2 border-r border-slate-400 text-center w-20">함량 (%)</th>
+                      <th class="py-1 px-2 border-r border-slate-400 text-center w-24">역할 / 분류</th>
+                      <th class="py-1 px-2 text-center w-24">규정 구분</th>
+                    </tr>
+                  </thead>
+                  <tbody id="printTableBody" class="divide-y divide-slate-300">
+                    <!-- JS 동적 렌더링 -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- 보고서 하단 요약 -->
+              <div class="mt-2.5 pt-2 border-t border-slate-900 text-[10px] text-slate-600 space-y-1 page-break-avoid">
+                <div class="flex items-center justify-between font-bold text-slate-900 text-[10.5px]">
+                  <span>주요 역할별 성분 분포 요약:</span>
+                  <span>배합비 총합계: <span id="printFooterSum" class="font-mono text-xs">-</span></span>
+                </div>
+
+                <div id="printRoleSummaryBox" class="flex flex-wrap gap-1.5 text-[9.5px] text-slate-700 bg-slate-100 p-1.5 rounded border border-slate-300">
+                  <!-- JS 동적 요약 -->
+                </div>
+
+                <p class="text-[9px] text-slate-500 leading-tight pt-0.5">
+                  * 화장품법 제10조 및 화장품 표시·광고 관리 지침에 의거, 1% 이하로 사용된 성분은 순서에 상관없이 기재될 수 있습니다.
+                  본 보고서는 클라이언트 브라우저 로컬 연산을 통해 작성된 역공학 시뮬레이션 문서입니다.
+                </p>
+              </div>
+
+              <!-- [인쇄 하단] 속속(SOCSOC) 브랜딩 푸터 -->
+              <div class="print-brand-footer text-center border-t border-slate-300 pt-2 mt-2 page-break-avoid">
+                <div class="text-xs font-black text-slate-900 tracking-tight">속속(SOCSOC)</div>
+                <div class="text-[10px] font-bold text-slate-700 mt-0.5">화장품 처방 포털 & 제형 개발 워크벤치</div>
+                <div class="text-[9px] font-medium text-slate-500 tracking-wider">Cosmetic Formulation & Raw Material Solution Platform</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Global Unified Footer (해체기 하단) -->
+          <footer class="mt-12 pt-6 border-t border-slate-200 space-y-3 pb-12 print-hide no-print">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center text-white font-extrabold text-xs">S</span>
+                <span class="font-extrabold text-slate-800 text-sm">속속 (SOCSOC)</span>
+                <span class="text-xs text-slate-400">|</span>
+                <span class="text-xs text-slate-500 font-medium">화장품 처방 포털 & 제형 개발 워크벤치</span>
+              </div>
+              <div class="flex items-center gap-3 text-xs font-medium text-slate-600">
+                <a href="javascript:void(0)" onclick="openTermsModal('service')" class="hover:underline">이용약관</a>
+                <span class="text-slate-300">|</span>
+                <a href="javascript:void(0)" onclick="openTermsModal('privacy')" class="hover:underline font-bold text-slate-700">개인정보처리방침</a>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11.5px] text-slate-500 pt-2.5 border-t border-slate-100">
+              <p><strong>속속(SOCSOC)</strong></p>
+              <p><strong>이메일:</strong> <a href="mailto:socsoc_contact@naver.com" class="hover:underline text-indigo-600 font-medium">socsoc_contact@naver.com</a></p>
+            </div>
+
+            <div class="text-[10.5px] text-slate-400 flex items-center justify-between gap-2 pt-1">
+              <p>© 2026 속속(SOCSOC). All rights reserved.</p>
+            </div>
+          </footer>
+
+        </div>
+      </div>
+    </div>
+    <!-- End MODE 3: modeAnalyzer -->
 
   </div>
 
@@ -1180,7 +1617,7 @@
           <!-- Email -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">이메일 주소 <span class="text-rose-500">*</span></label>
-            <input type="email" id="signupEmailInput" required placeholder="socsoc-contact@naver.com"
+            <input type="email" id="signupEmailInput" required placeholder="socsoc_contact@naver.com"
               class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
           </div>
 
@@ -1411,8 +1848,8 @@
       <!-- Modal Header -->
       <div class="p-5 pb-3 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/50">
         <div>
-          <h3 class="font-extrabold text-slate-900 text-base">내 처방 보관함</h3>
-          <p class="text-xs text-slate-400">저장한 가이드 처방과 내가 연구한 처방을 한곳에서 모아봅니다.</p>
+          <h3 id="vaultModalMainTitle" class="font-extrabold text-slate-900 text-base">연구노트</h3>
+          <p class="text-xs text-slate-400">저장한 가이드 처방, 제형 개발 처방, 전성분 해체 분석을 한곳에서 모아봅니다.</p>
         </div>
         <button onclick="closeSavedItemsModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold text-lg transition">×</button>
       </div>
@@ -1428,6 +1865,10 @@
             <span id="vaultCustomTabTitle">내가 저장한 연구 처방</span>
             <span id="vaultCountCustom" class="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">0</span>
           </button>
+          <button id="vaultTabBtnAnalyzer" onclick="switchVaultTab('analyzer')" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition">
+            <span>전성분 해체 분석</span>
+            <span id="vaultCountAnalyzer" class="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full font-extrabold">0</span>
+          </button>
         </div>
       </div>
 
@@ -1440,6 +1881,11 @@
 
         <!-- View 2: My Custom Formulations -->
         <div id="vaultViewCustom" class="hidden space-y-2.5">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- View 3: Saved Deconstructed Formulations -->
+        <div id="vaultViewAnalyzer" class="hidden space-y-2.5">
           <!-- Rendered by JS -->
         </div>
       </div>
@@ -2007,7 +2453,7 @@
     const STORAGE_SESSION_KEY = 'socsoc_current_user';
 
     // 최고 관리자 계정 목록 (기본 관리자 admin 및 사용자 지정 socsoc)
-    const ADMIN_USERNAMES = ['admin', 'socsoc', 'thesocsoc', 'socsoc-contact@naver.com', 'thesocsoc@naver.com'];
+    const ADMIN_USERNAMES = ['admin', 'socsoc', 'thesocsoc', 'socsoc_contact@naver.com', 'socsoc-contact@naver.com', 'thesocsoc@naver.com'];
     function checkIsAdmin(val) {
       if (!val) return false;
       const str = String(val).trim().toLowerCase();
@@ -2031,6 +2477,11 @@
     try {
       // 페이지를 끄면 로그아웃되도록 sessionStorage 사용
       currentUser = JSON.parse(sessionStorage.getItem(STORAGE_SESSION_KEY) || 'null');
+      if (currentUser) {
+        if (!currentUser.savedGuides) currentUser.savedGuides = [];
+        if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
+        if (!currentUser.savedAnalyzers) currentUser.savedAnalyzers = [];
+      }
     } catch (e) {
       currentUser = null;
     }
@@ -2140,7 +2591,11 @@
               formula: f.formula,
               totalPercent: f.total_percent,
               savedAt: f.created_at
-            }))
+            })),
+            savedAnalyzers: (function() {
+              const localMatch = usersDb.find(u => u.username === uname || u.id === user.id);
+              return (localMatch && Array.isArray(localMatch.savedAnalyzers)) ? localMatch.savedAnalyzers : [];
+            })()
           };
 
           if (isUserAdmin && profile?.role !== 'admin') {
@@ -2169,13 +2624,14 @@
           password: 'admin',
           name: '관리자',
           nickname: '시스템관리자',
-          email: 'socsoc-contact@naver.com',
+          email: 'socsoc_contact@naver.com',
           phone: '010-0000-0000',
           companyType: '제조사',
           provider: 'normal',
           role: 'admin',
           savedGuides: [],
           savedFormulas: [],
+          savedAnalyzers: [],
           createdAt: new Date().toISOString()
         });
         saveUsersDb();
@@ -2189,13 +2645,14 @@
           password: 'socsoc1234',
           name: '속속 관리자',
           nickname: '최고관리자',
-          email: 'socsoc-contact@naver.com',
+          email: 'socsoc_contact@naver.com',
           phone: '010-0000-0000',
           companyType: '제조사',
           provider: 'normal',
           role: 'admin',
           savedGuides: [],
           savedFormulas: [],
+          savedAnalyzers: [],
           createdAt: new Date().toISOString()
         });
         saveUsersDb();
@@ -2320,6 +2777,9 @@
       renderCalculatorTable();
       updateCalculationsOnly();
       syncCalcProcedure('');
+      // 전성분 해체기 기본 샘플 초기화
+      loadSample('cream');
+      runAnalysis();
     }
 
     function goHome() {
@@ -2334,26 +2794,42 @@
       currentAppMode = mode;
       const mExplorer = document.getElementById('modeExplorer');
       const mCalc = document.getElementById('modeCalculator');
+      const mAnalyzer = document.getElementById('modeAnalyzer');
       const btnExp = document.getElementById('navBtnExplorer');
       const btnCalc = document.getElementById('navBtnCalculator');
+      const btnAnalyzer = document.getElementById('navBtnAnalyzer');
       const floatingBtn = document.getElementById('floatingNewRecipeBtn');
+
+      document.body.classList.remove('mode-exp', 'mode-calc', 'mode-analyzer');
+      mExplorer.classList.add('hidden');
+      mCalc.classList.add('hidden');
+      if (mAnalyzer) mAnalyzer.classList.add('hidden');
+
+      const activeBtnClass = 'flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
+      const inactiveBtnClass = 'flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition';
+
+      btnExp.className = inactiveBtnClass;
+      btnCalc.className = inactiveBtnClass;
+      if (btnAnalyzer) btnAnalyzer.className = inactiveBtnClass;
 
       if (mode === 'explorer') {
         document.body.classList.add('mode-exp');
-        document.body.classList.remove('mode-calc');
         mExplorer.classList.remove('hidden');
-        mCalc.classList.add('hidden');
         if (floatingBtn) floatingBtn.classList.remove('hidden');
-        btnExp.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
-        btnCalc.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition';
+        btnExp.className = activeBtnClass;
+      } else if (mode === 'analyzer') {
+        document.body.classList.add('mode-analyzer');
+        if (mAnalyzer) mAnalyzer.classList.remove('hidden');
+        if (floatingBtn) floatingBtn.classList.add('hidden');
+        if (btnAnalyzer) btnAnalyzer.className = activeBtnClass;
+        if (typeof renderAnalyzerTable === 'function') {
+          renderAnalyzerTable();
+        }
       } else {
         document.body.classList.add('mode-calc');
-        document.body.classList.remove('mode-exp');
-        mExplorer.classList.add('hidden');
         mCalc.classList.remove('hidden');
         if (floatingBtn) floatingBtn.classList.add('hidden');
-        btnExp.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition';
-        btnCalc.className = 'flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        btnCalc.className = activeBtnClass;
         renderCalculatorTable();
         updateCalculationsOnly();
       }
@@ -2364,7 +2840,7 @@
     function handlePrint() {
       if (currentAppMode === 'calculator') {
         document.body.classList.add('mode-calc');
-        document.body.classList.remove('mode-exp');
+        document.body.classList.remove('mode-exp', 'mode-analyzer');
         renderCalculatorTable();
         const titleInput = document.getElementById('calcFormulaTitleInput');
         const titleDisp = document.getElementById('printFormulaTitleDisplay');
@@ -2374,15 +2850,22 @@
         if (bInput && bDisp) bDisp.textContent = bInput.value || '200';
         const procInput = document.getElementById('calcProcedureInput');
         syncCalcProcedure(procInput ? procInput.value : '');
+        document.querySelectorAll('input').forEach(inp => {
+          inp.setAttribute('value', inp.value);
+        });
+        window.print();
+      } else if (currentAppMode === 'analyzer') {
+        document.body.classList.add('mode-analyzer');
+        document.body.classList.remove('mode-exp', 'mode-calc');
+        triggerAnalyzerPrint();
       } else {
         document.body.classList.add('mode-exp');
-        document.body.classList.remove('mode-calc');
+        document.body.classList.remove('mode-calc', 'mode-analyzer');
+        document.querySelectorAll('input').forEach(inp => {
+          inp.setAttribute('value', inp.value);
+        });
+        window.print();
       }
-      // 인쇄 시 모든 input의 타이핑된 최신 값이 화면 및 인쇄 드라이버에 그대로 반영되도록 속성 동기화
-      document.querySelectorAll('input').forEach(inp => {
-        inp.setAttribute('value', inp.value);
-      });
-      window.print();
     }
 
     // Ctrl+P / Cmd+P 단축키 입력 시에도 정밀 인쇄 핸들러 연동 (비회원/회원 모두 지원)
@@ -2396,7 +2879,7 @@
     window.addEventListener('beforeprint', () => {
       if (currentAppMode === 'calculator') {
         document.body.classList.add('mode-calc');
-        document.body.classList.remove('mode-exp');
+        document.body.classList.remove('mode-exp', 'mode-analyzer');
         renderCalculatorTable();
         const titleInput = document.getElementById('calcFormulaTitleInput');
         const titleDisp = document.getElementById('printFormulaTitleDisplay');
@@ -2406,9 +2889,13 @@
         if (bInput && bDisp) bDisp.textContent = bInput.value || '200';
         const procInput = document.getElementById('calcProcedureInput');
         syncCalcProcedure(procInput ? procInput.value : '');
+      } else if (currentAppMode === 'analyzer') {
+        document.body.classList.add('mode-analyzer');
+        document.body.classList.remove('mode-exp', 'mode-calc');
+        renderAnalyzerPrintReport();
       } else {
         document.body.classList.add('mode-exp');
-        document.body.classList.remove('mode-calc');
+        document.body.classList.remove('mode-calc', 'mode-analyzer');
       }
       document.querySelectorAll('input').forEach(inp => {
         inp.setAttribute('value', inp.value);
@@ -3359,19 +3846,22 @@
       if (currentUser) {
         const savedGuidesCount = (currentUser.savedGuides || []).length;
         const savedFormulasCount = (currentUser.savedFormulas || []).length;
-        const totalSaved = savedGuidesCount + savedFormulasCount;
+        const savedAnalyzersCount = (currentUser.savedAnalyzers || []).length;
+        const totalSaved = savedGuidesCount + savedFormulasCount + savedAnalyzersCount;
         const isAdminUser = currentUser.role === 'admin' || checkIsAdmin(currentUser.username);
         const roleBadge = isAdminUser
           ? '[관리자]' 
           : (currentUser.companyType ? `[${currentUser.companyType}]` : '[연구원]');
+        const userVaultNick = (currentUser.nickname && currentUser.nickname.trim()) ? currentUser.nickname.trim() : currentUser.username;
+        const vaultButtonLabel = `${userVaultNick}의 연구노트`;
         const displayName = currentUser.nickname || currentUser.name || currentUser.username;
         const roleClass = isAdminUser
           ? 'text-rose-600 bg-rose-50 border-rose-200 font-extrabold'
           : 'text-indigo-600 bg-indigo-50 border-indigo-100 font-bold';
 
         area.innerHTML = `
-          <button onclick="openSavedItemsModal('guide')" class="px-2.5 py-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95" title="내 처방 보관함 열기">
-            <span>내 보관함</span>
+          <button onclick="openSavedItemsModal('guide')" class="px-2.5 py-1.5 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95" title="${vaultButtonLabel} 열기">
+            <span>${vaultButtonLabel}</span>
             <span class="bg-amber-200 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded-full">${totalSaved}</span>
           </button>
           <button onclick="openMyPageModal()" class="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg shadow-sm transition active:scale-95" title="마이페이지 열기">
@@ -4086,7 +4576,11 @@
                 formula: f.formula,
                 totalPercent: f.total_percent,
                 savedAt: f.created_at
-              }))
+              })),
+              savedAnalyzers: (function() {
+                const localMatch = usersDb.find(u => u.username === uname || u.id === user.id);
+                return (localMatch && Array.isArray(localMatch.savedAnalyzers)) ? localMatch.savedAnalyzers : [];
+              })()
             };
 
             if (isUserAdmin && profile?.role !== 'admin') {
@@ -4112,6 +4606,7 @@
           currentUser = loggedInUser;
           if (!currentUser.savedGuides) currentUser.savedGuides = [];
           if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
+          if (!currentUser.savedAnalyzers) currentUser.savedAnalyzers = [];
           saveUsersDb();
 
           closeAuthModal();
@@ -4412,6 +4907,7 @@
           role: checkIsAdmin(id) ? 'admin' : 'member',
           savedGuides: [],
           savedFormulas: [],
+          savedAnalyzers: [],
           createdAt: new Date().toISOString()
         };
 
@@ -5486,7 +5982,7 @@
         saveUsersDb();
         updateSaveGuideRecipeBtnState(currentRecipe);
         renderAuthHeader();
-        showToast('[내 보관함]에 가이드 처방이 저장되었습니다!');
+        showToast('[연구노트]에 가이드 처방이 저장되었습니다!');
 
         if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
           try {
@@ -5522,7 +6018,7 @@
 
       if (isSaved) {
         icon.innerHTML = '<svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>';
-        text.textContent = '저장됨 (보관함 확인)';
+        text.textContent = '저장됨 (연구노트 확인)';
         btn.className = 'shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-indigo-500 bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5 shadow-sm active:scale-95 ring-2 ring-indigo-300';
       } else {
         icon.innerHTML = '<svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>';
@@ -5566,7 +6062,7 @@
       currentUser.savedFormulas.unshift(newRecord);
       saveUsersDb();
       renderAuthHeader();
-      showToast(`[내 보관함]에 "${title}" 처방이 저장되었습니다!`);
+      showToast(`[연구노트]에 "${title}" 처방이 저장되었습니다!`);
 
       if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
         try {
@@ -5592,12 +6088,15 @@
 
     function openSavedItemsModal(defaultTab = 'guide') {
       if (!currentUser) {
-        openAuthModal('login', '보관함 열람은 회원 로그인 후 이용 가능합니다.');
+        openAuthModal('login', '연구노트 열람은 회원 로그인 후 이용 가능합니다.');
         return;
       }
 
       currentVaultTab = defaultTab;
-      const nick = currentUser.nickname || currentUser.name || currentUser.username || '내';
+      const nick = (currentUser.nickname && currentUser.nickname.trim()) || currentUser.username || '연구원';
+      const mainTitle = document.getElementById('vaultModalMainTitle');
+      if (mainTitle) mainTitle.textContent = `${nick}의 연구노트`;
+
       const titleSpan = document.getElementById('vaultCustomTabTitle');
       if (titleSpan) titleSpan.textContent = `[${nick}의 연구 처방]`;
 
@@ -5613,31 +6112,46 @@
       currentVaultTab = tab;
       const btnGuide = document.getElementById('vaultTabBtnGuide');
       const btnCustom = document.getElementById('vaultTabBtnCustom');
+      const btnAnalyzer = document.getElementById('vaultTabBtnAnalyzer');
       const viewGuide = document.getElementById('vaultViewGuide');
       const viewCustom = document.getElementById('vaultViewCustom');
+      const viewAnalyzer = document.getElementById('vaultViewAnalyzer');
 
-      const nick = (currentUser && (currentUser.nickname || currentUser.name || currentUser.username)) || '내';
+      const nick = (currentUser && ((currentUser.nickname && currentUser.nickname.trim()) || currentUser.username)) || '연구원';
+      const mainTitle = document.getElementById('vaultModalMainTitle');
+      if (mainTitle) mainTitle.textContent = `${nick}의 연구노트`;
+
       const titleSpan = document.getElementById('vaultCustomTabTitle');
       if (titleSpan) titleSpan.textContent = `[${nick}의 연구 처방]`;
 
       const countGuide = (currentUser.savedGuides || []).length;
       const countCustom = (currentUser.savedFormulas || []).length;
+      const countAnalyzer = (currentUser.savedAnalyzers || []).length;
 
-      document.getElementById('vaultCountGuide').textContent = countGuide;
-      document.getElementById('vaultCountCustom').textContent = countCustom;
+      if (document.getElementById('vaultCountGuide')) document.getElementById('vaultCountGuide').textContent = countGuide;
+      if (document.getElementById('vaultCountCustom')) document.getElementById('vaultCountCustom').textContent = countCustom;
+      if (document.getElementById('vaultCountAnalyzer')) document.getElementById('vaultCountAnalyzer').textContent = countAnalyzer;
+
+      const activeClass = 'pb-2.5 border-b-2 border-indigo-600 text-indigo-700 flex items-center gap-1.5 transition font-bold';
+      const inactiveClass = 'pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition font-bold';
+
+      if (btnGuide) btnGuide.className = (tab === 'guide' ? activeClass : inactiveClass);
+      if (btnCustom) btnCustom.className = (tab === 'custom' ? activeClass : inactiveClass);
+      if (btnAnalyzer) btnAnalyzer.className = (tab === 'analyzer' ? activeClass : inactiveClass);
+
+      if (viewGuide) viewGuide.classList.add('hidden');
+      if (viewCustom) viewCustom.classList.add('hidden');
+      if (viewAnalyzer) viewAnalyzer.classList.add('hidden');
 
       if (tab === 'guide') {
-        btnGuide.className = 'pb-2.5 border-b-2 border-indigo-600 text-indigo-700 flex items-center gap-1.5 transition';
-        btnCustom.className = 'pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition';
-        viewGuide.classList.remove('hidden');
-        viewCustom.classList.add('hidden');
+        if (viewGuide) viewGuide.classList.remove('hidden');
         renderSavedGuides();
-      } else {
-        btnGuide.className = 'pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-700 flex items-center gap-1.5 transition';
-        btnCustom.className = 'pb-2.5 border-b-2 border-indigo-600 text-indigo-700 flex items-center gap-1.5 transition';
-        viewGuide.classList.add('hidden');
-        viewCustom.classList.remove('hidden');
+      } else if (tab === 'custom') {
+        if (viewCustom) viewCustom.classList.remove('hidden');
         renderSavedCustomFormulas();
+      } else if (tab === 'analyzer') {
+        if (viewAnalyzer) viewAnalyzer.classList.remove('hidden');
+        renderSavedAnalyzers();
       }
     }
 
@@ -5803,6 +6317,103 @@
       }
     }
 
+    function renderSavedAnalyzers() {
+      const container = document.getElementById('vaultViewAnalyzer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const list = (currentUser && currentUser.savedAnalyzers) || [];
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-400">
+            <p class="font-bold text-slate-600 text-xs">저장된 전성분 해체 분석이 없습니다.</p>
+            <p class="text-[11px] text-slate-400 mt-1">화장품 전성분 해체기에서 [해체 결과 저장] 버튼을 눌러 분석 결과를 연구노트에 보관하세요!</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'p-3.5 bg-slate-50 hover:bg-indigo-50/40 rounded-xl border border-slate-200 transition flex items-center justify-between gap-3';
+        div.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                전성분 해체 분석
+              </span>
+              <span class="text-[11px] font-bold text-slate-500">성분: ${item.totalCount || (item.ingredients || []).length}종</span>
+              <span class="text-[11px] font-bold ${Math.abs((item.totalSum || 0) - 100) < 0.005 ? 'text-emerald-600' : 'text-slate-600'}">
+                (${Number(item.totalSum || 0).toFixed(2)}%)
+              </span>
+            </div>
+            <h4 class="text-xs font-bold text-slate-900 truncate">${item.title}</h4>
+            <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+              <span>저장일: ${(item.savedAt || '').substring(0, 10)}</span>
+              ${item.cutoffName ? `<span class="text-[10px] text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded font-medium">1% 기준: ${item.cutoffName}</span>` : ''}
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="loadAnalyzerFormulaFromVault('${item.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition">
+              분석기로 불러오기
+            </button>
+            <button onclick="removeAnalyzerFormulaFromVault('${item.id}')" class="px-2 py-1 text-slate-400 hover:text-rose-600 rounded text-xs font-bold transition" title="분석 결과 삭제">
+              삭제
+            </button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function loadAnalyzerFormulaFromVault(id) {
+      if (!currentUser || !currentUser.savedAnalyzers) return;
+      const found = currentUser.savedAnalyzers.find(a => a.id === id);
+      if (!found) return;
+
+      const rawTextEl = document.getElementById('rawTextarea');
+      if (rawTextEl) rawTextEl.value = found.rawText || '';
+
+      const titleInput = document.getElementById('analyzerFormulaTitleInput');
+      if (titleInput) titleInput.value = found.title || '전성분 해체 분석 처방';
+
+      analyzerState = {
+        ingredients: JSON.parse(JSON.stringify(found.ingredients || [])),
+        cutoffIndex: found.cutoffIndex !== undefined ? found.cutoffIndex : null,
+        cutoffName: found.cutoffName || null,
+        manualCutoff: found.manualCutoff !== undefined ? found.manualCutoff : null
+      };
+
+      const resultsContainer = document.getElementById('resultsContainer');
+      if (resultsContainer) resultsContainer.classList.remove('hidden');
+
+      setAppMode('analyzer');
+      updateRoleFilterOptions();
+      renderAnalyzerTable();
+      renderAnalyzerPrintReport();
+      closeSavedItemsModal();
+      showToast(`전성분 해체 분석 "${found.title}"을(를) 불러왔습니다.`);
+    }
+
+    async function removeAnalyzerFormulaFromVault(id) {
+      if (!currentUser || !currentUser.savedAnalyzers) return;
+      currentUser.savedAnalyzers = currentUser.savedAnalyzers.filter(a => a.id !== id);
+      saveUsersDb();
+      renderSavedAnalyzers();
+      renderAuthHeader();
+      const countAnalyzer = (currentUser.savedAnalyzers || []).length;
+      if (document.getElementById('vaultCountAnalyzer')) document.getElementById('vaultCountAnalyzer').textContent = countAnalyzer;
+      showToast('전성분 해체 분석 처방이 삭제되었습니다.');
+
+      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+        try {
+          await sbClient.from('saved_analyzers').delete().eq('user_id', currentUser.id).eq('id', id);
+        } catch (e) {
+          console.warn('Cloud delete analyzer warning:', e);
+        }
+      }
+    }
+
     // ==========================================
     // TERMS MODAL
     // ==========================================
@@ -5849,6 +6460,676 @@
 
     function closeTermsModal() {
       document.getElementById('termsModal').classList.add('hidden');
+    }
+
+    // ==========================================
+    // MODE 3: COSMETIC INGREDIENT DECONSTRUCTOR
+    // 화장품 전성분 해체기 로직 & 시뮬레이터
+    // ==========================================
+
+    // 1. 샘플 프리셋
+    const SAMPLES = {
+      cream: '정제수, 글리세린, 부틸렌글라이콜, 카프릴릭/카프릭트라이글리세라이드, 하이드로제네이티드폴리(C6-14올레핀), 세테아릴알코올, 메도우폼씨오일, 나이아신아마이드, 1,2-헥산다이올, 세테아릴올리베이트, 소르비탄올리베이트, 시어버터, 다이메티콘, 카보머, 트로메타민, 에틸헥실글리세린, 아데노신, 디소듐이디티에이, 병풀추출물, 소듐하이알루로네이트, 토코페롤, 향료',
+      toner: '정제수, 프로판다이올, 디프로필렌글라이콜, 1,2-헥산다이올, 나이아신아마이드, 판테놀, 베타인, 글리세린, 잔탄검, 에틸헥실글리세린, 디소듐이디티에이, 병풀추출물, 알란토인, 아데노신, 시트릭애씨드, 소듐하이알루로네이트, 티트리잎추출물',
+      serum: '병풀추출물, 정제수, 부틸렌글라이콜, 글리세린, 나이아신아마이드, 1,2-헥산다이올, 프로판다이올, 판테놀, 카보머, 트로메타민, 에틸헥실글리세린, 아데노신, 알란토인, 디소듐이디티에이, 소듐하이알루로네이트, 하이드록시에틸셀룰로오스, 아세틸헥사펩타이드-8'
+    };
+
+    // 2. 1% 미량 지표 성분 정의
+    const ONE_PERCENT_INDICATORS = [
+      { name: '페녹시에탄올', en: 'phenoxyethanol', reason: '국내 배합한도 1.0% 이하 보존제' },
+      { name: '에틸헥실글리세린', en: 'ethylhexylglycerin', reason: '통상 0.05~0.5% 처방 보존보조제' },
+      { name: '향료', en: 'fragrance', aliases: ['parfum'], reason: '통상 0.05~0.3% 소량 첨가 착향제' },
+      { name: '토코페롤', en: 'tocopherol', aliases: ['비타민e'], reason: '통상 0.05~0.5% 산화방지제' },
+      { name: 'bht', en: 'bht', aliases: ['디부틸하이드록시톨루엔'], reason: '배합한도 0.2% 이하 산화방지제' },
+      { name: '클로르페네신', en: 'chlorphenesin', reason: '국내 배합한도 0.3% 이하 보존제' },
+      { name: '메칠파라벤', en: 'methylparaben', reason: '배합한도 0.4% 이하 파라벤계 보존제' },
+      { name: '프로필파라벤', en: 'propylparaben', reason: '배합한도 0.2% 이하 파라벤계 보존제' },
+      { name: '디소듐이디티에이', en: 'disodium edta', aliases: ['edta'], reason: '통상 0.02~0.05% 소량 처방 킬레이트제' },
+      { name: '아데노신', en: 'adenosine', reason: '주름개선 기능성 고시 함량 0.04%' },
+      { name: '잔탄검', en: 'xanthan gum', reason: '통상 0.1~0.5% 고분자 점증제' },
+      { name: '카보머', en: 'carbomer', reason: '통상 0.1~0.5% 고분자 점증제' },
+      { name: '소듐하이알루로네이트', en: 'sodium hyaluronate', reason: '통상 원료 분말 0.01~0.1% 고분자 보습제' },
+      { name: '1,2-헥산다이올', en: '1,2-hexanediol', reason: '통상 1.0~2.0% 처방 보존/보습제' }
+    ];
+
+    // 3. 성분 역할 사전 및 매칭 규칙
+    const ROLE_RULES = [
+      { role: '용제', keywords: ['정제수', 'water', 'aqua', '에탄올', 'ethanol', '변성알코올', '온천수', '해수', '다마스크장미꽃수'] },
+      { role: '보습제', keywords: ['글리세린', '부틸렌글라이콜', '프로판다이올', '프로판디올', '디프로필렌글라이콜', '다이프로필렌글라이콜', '소듐하이알루로네이트', '판테놀', '베타인', '트레할로오스', '알란토인', '자일리톨'] },
+      { role: '점증제', keywords: ['카보머', '잔탄검', '아크릴레이트', '크로스폴리머', '하이드록시에틸셀룰로오스', '셀룰로오스검', '암모늄아크릴로일다이메틸타우레이트'] },
+      { role: '기능성', keywords: ['나이아신아마이드', '아데노신', '알부틴', '아스코빅애씨드', '비타민c', '레티놀', '살리실릭애씨드', '글루타티온', '트라넥사믹애씨드', '펩타이드', '마데카소사이드', '세라마이드'] },
+      { role: '보존제', keywords: ['페녹시에탄올', '에틸헥실글리세린', '1,2-헥산다이올', '클로르페네신', '메칠파라벤', '프로필파라벤', '소듐벤조에이트', '포타슘소르베이트', '벤질알코올'] },
+      { role: '에몰리언트', keywords: ['세테아릴알코올', '스테아릭애씨드', '카프릴릭/카프릭', '시어버터', '스쿠알란', '호호바씨오일', '해바라기씨오일', '다이메티콘', '사이클로펜타실록세인'] },
+      { role: '유화제', keywords: ['세테아릴올리베이트', '소르비탄올리베이트', '글리세릴스테아레이트', '폴리솔베이트', '세테아릴글루코사이드', '피이지-', '하이드로제네이티드레시틴', '레시틴'] },
+      { role: '산화방지제', keywords: ['토코페롤', '토코페릴아세테이트', 'bht', '부틸레이티드하이드록시톨루엔', '아스코빌팔미테이트'] },
+      { role: 'pH조절제', keywords: ['트로메타민', '시트릭애씨드', '알지닌', '락틱애씨드', '수산화나트륨'] },
+      { role: '킬레이트제', keywords: ['디소듐이디티에이', 'disodium edta', '소듐이디티에이', 'edta'] },
+      { role: '착향제', keywords: ['향료', 'fragrance', 'parfum', '리날룰', '리모넨', '시트로넬올'] },
+      { role: '진정/추출물', keywords: ['추출물', 'extract', '병풀', '티트리', '어성초', '녹차', '알로에베라'] }
+    ];
+
+    const ALL_ROLES = ['용제', '보습제', '점증제', '기능성', '보존제', '에몰리언트', '유화제', '산화방지제', 'pH조절제', '킬레이트제', '착향제', '진정/추출물', '기타'];
+
+    const ROLE_COLORS = {
+      '용제': 'bg-sky-50 text-sky-700 border-sky-200',
+      '보습제': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      '점증제': 'bg-purple-50 text-purple-700 border-purple-200',
+      '기능성': 'bg-amber-50 text-amber-800 border-amber-200',
+      '보존제': 'bg-rose-50 text-rose-700 border-rose-200',
+      '에몰리언트': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      '유화제': 'bg-teal-50 text-teal-700 border-teal-200',
+      '산화방지제': 'bg-orange-50 text-orange-700 border-orange-200',
+      'pH조절제': 'bg-pink-50 text-pink-700 border-pink-200',
+      '킬레이트제': 'bg-slate-100 text-slate-700 border-slate-300',
+      '착향제': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+      '진정/추출물': 'bg-lime-50 text-lime-700 border-lime-200',
+      '기타': 'bg-zinc-100 text-zinc-600 border-zinc-200'
+    };
+
+    let analyzerState = {
+      ingredients: [],
+      cutoffIndex: null,
+      cutoffName: null,
+      manualCutoff: null
+    };
+
+    function loadSample(key) {
+      const el = document.getElementById('rawTextarea');
+      if (el) el.value = SAMPLES[key] || '';
+      const titleInput = document.getElementById('analyzerFormulaTitleInput');
+      if (titleInput) {
+        if (key === 'cream') titleInput.value = '수분 진정 크림 전성분 해체 분석';
+        else if (key === 'toner') titleInput.value = '진정 토너 전성분 해체 분석';
+        else if (key === 'serum') titleInput.value = '시카 세럼 전성분 해체 분석';
+      }
+    }
+
+    function clearText() {
+      const el = document.getElementById('rawTextarea');
+      if (el) el.value = '';
+      const titleInput = document.getElementById('analyzerFormulaTitleInput');
+      if (titleInput) titleInput.value = '신규 전성분 해체 분석 처방';
+    }
+
+    function checkIndicator(name) {
+      const clean = (name || '').toLowerCase().replace(/\s+/g, '');
+      for (const item of ONE_PERCENT_INDICATORS) {
+        if (clean.includes(item.name.toLowerCase().replace(/\s+/g, '')) ||
+            clean.includes(item.en.toLowerCase().replace(/\s+/g, '')) ||
+            (item.aliases && item.aliases.some(a => clean.includes(a.toLowerCase())))) {
+          return { isIndicator: true, reason: item.reason };
+        }
+      }
+      return { isIndicator: false };
+    }
+
+    function matchRole(name) {
+      const clean = (name || '').toLowerCase().replace(/\s+/g, '');
+      for (const rule of ROLE_RULES) {
+        for (const kw of rule.keywords) {
+          if (clean.includes(kw.toLowerCase().replace(/\s+/g, ''))) {
+            return rule.role;
+          }
+        }
+      }
+      return '기타';
+    }
+
+    function splitPreservingParens(text) {
+      const result = [];
+      let current = '';
+      let depth = 0;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (c === '(' || c === '[' || c === '{') depth++;
+        else if (c === ')' || c === ']' || c === '}') depth = Math.max(0, depth - 1);
+        else if ((c === ',' || c === '\n' || c === '\r' || c === ';') && depth === 0) {
+          if (current.trim().length > 0) result.push(current.trim());
+          current = '';
+          continue;
+        }
+        current += c;
+      }
+      if (current.trim().length > 0) result.push(current.trim());
+      return result;
+    }
+
+    function runAnalysis() {
+      const txtArea = document.getElementById('rawTextarea');
+      if (!txtArea) return;
+      const raw = txtArea.value.trim();
+      if (!raw) {
+        showToast('전성분 텍스트를 입력해주세요.');
+        return;
+      }
+
+      const tokens = splitPreservingParens(raw);
+      let detectedCutoff = null;
+      let detectedCutoffName = null;
+      const list = [];
+
+      tokens.forEach((token, idx) => {
+        const cleanName = token.trim().replace(/^[\d\.\-\*\s]+/, '').replace(/[\.]$/, '');
+        if (!cleanName) return;
+
+        const { isIndicator, reason } = checkIndicator(cleanName);
+        const role = matchRole(cleanName);
+
+        if (isIndicator && detectedCutoff === null) {
+          detectedCutoff = list.length;
+          detectedCutoffName = cleanName;
+        }
+
+        list.push({
+          id: 'ing_' + Date.now() + '_' + idx,
+          order: list.length + 1,
+          name: cleanName,
+          percentage: '',
+          role: role,
+          isIndicator: isIndicator,
+          indicatorReason: reason
+        });
+      });
+
+      analyzerState.ingredients = list;
+      analyzerState.cutoffIndex = detectedCutoff;
+      analyzerState.cutoffName = detectedCutoffName;
+      analyzerState.manualCutoff = null;
+
+      const titleInput = document.getElementById('analyzerFormulaTitleInput');
+      if (titleInput && (!titleInput.value.trim() || titleInput.value === '신규 전성분 해체 분석 처방')) {
+        if (list.length > 0) {
+          titleInput.value = `${list[0].name} 기반 전성분 해체 분석`;
+        }
+      }
+
+      const resBox = document.getElementById('resultsContainer');
+      if (resBox) resBox.classList.remove('hidden');
+      updateRoleFilterOptions();
+      renderAnalyzerTable();
+      renderAnalyzerPrintReport();
+    }
+
+    function getEffectiveCutoff() {
+      return analyzerState.manualCutoff !== null ? analyzerState.manualCutoff : analyzerState.cutoffIndex;
+    }
+
+    function triggerAnalyzerPrint() {
+      renderAnalyzerPrintReport();
+      window.print();
+    }
+
+    function updateRoleFilterOptions() {
+      const select = document.getElementById('roleFilterSelect');
+      if (!select) return;
+      select.innerHTML = '<option value="all">전체 역할 보기 (' + analyzerState.ingredients.length + ')</option>';
+      ALL_ROLES.forEach(r => {
+        const count = analyzerState.ingredients.filter(i => i.role === r).length;
+        if (count > 0) {
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = r + ' (' + count + ')';
+          select.appendChild(opt);
+        }
+      });
+    }
+
+    function calculateTotalPercentage() {
+      let sum = 0;
+      analyzerState.ingredients.forEach(i => {
+        const v = parseFloat(i.percentage);
+        if (!isNaN(v)) sum += v;
+      });
+      return parseFloat(sum.toFixed(2));
+    }
+
+    function renderAnalyzerTable() {
+      const tbody = document.getElementById('ingredientTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const filterSel = document.getElementById('roleFilterSelect');
+      const filter = filterSel ? filterSel.value : 'all';
+      const effectiveCutoff = getEffectiveCutoff();
+
+      analyzerState.ingredients.forEach((item, index) => {
+        if (filter !== 'all' && item.role !== filter) return;
+
+        // 1% 이하 절취선 배너
+        if (effectiveCutoff !== null && index === effectiveCutoff) {
+          const bannerTr = document.createElement('tr');
+          bannerTr.innerHTML = `
+            <td colspan="5" class="p-0">
+              <div class="bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 border-y-2 border-dashed border-rose-300 px-4 py-3 my-0">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="flex items-center justify-center w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-bold shadow-sm">✂️</span>
+                    <div>
+                      <div class="text-xs md:text-sm font-bold text-rose-800 flex items-center gap-2">
+                        [--- 1% 이하 추정 구간 (이후 순서 무관) ---]
+                        ${analyzerState.cutoffName ? `<span class="text-xs font-normal bg-rose-100 text-rose-700 px-2 py-0.5 rounded">최초 감지: '${analyzerState.cutoffName}'</span>` : ''}
+                      </div>
+                      <p class="text-xs text-rose-600/90 mt-0.5">
+                        화장품법 표시규정에 따라 1% 초과 성분은 함량순 기재되나, 이 기준점 이후 성분들은 <strong>순서에 상관없이 자유 기재</strong> 가능합니다.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" onclick="shiftCutoff(-1)" class="text-xs px-2 py-1 rounded bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 font-medium cursor-pointer">
+                      ▲ 기준선 위로
+                    </button>
+                    <button type="button" onclick="shiftCutoff(1)" class="text-xs px-2 py-1 rounded bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 font-medium cursor-pointer">
+                      ▼ 기준선 아래로
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(bannerTr);
+        }
+
+        // 개별 성분 행
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition-colors group';
+        const styleClass = ROLE_COLORS[item.role] || ROLE_COLORS['기타'];
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 text-center">
+            <span class="text-xs font-bold text-slate-400">#${item.order}</span>
+          </td>
+          <td class="py-3 px-4">
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                value="${item.name.replace(/"/g, '&quot;')}"
+                onchange="updateAnalyzerIngredientName('${item.id}', this.value)"
+                class="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-1.5 py-0.5 text-slate-800 font-medium text-sm focus:outline-none transition"
+              />
+              ${item.isIndicator ? `<span class="shrink-0 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200" title="${item.indicatorReason || '1% 이하 지표'}">1% 지표</span>` : ''}
+            </div>
+          </td>
+          <td class="py-3 px-4">
+            <div class="relative flex items-center justify-center">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value="${item.percentage}"
+                placeholder="0.00"
+                oninput="updatePercentage('${item.id}', this.value)"
+                class="w-24 text-right pr-6 pl-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 text-sm font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+              />
+              <span class="absolute right-2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+            </div>
+          </td>
+          <td class="py-3 px-4">
+            <select
+              onchange="updateRole('${item.id}', this.value)"
+              class="w-full text-xs font-semibold px-2.5 py-1.5 rounded-lg border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${styleClass}"
+            >
+              ${ALL_ROLES.map(r => `<option value="${r}" ${item.role === r ? 'selected' : ''} class="bg-white text-slate-800">${r}</option>`).join('')}
+            </select>
+          </td>
+          <td class="py-3 px-4 text-center">
+            <div class="flex items-center justify-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+              <button type="button" onclick="moveRow(${index}, -1)" ${index === 0 ? 'disabled' : ''} class="p-1 rounded hover:bg-slate-200 text-slate-500 disabled:opacity-20 cursor-pointer">▲</button>
+              <button type="button" onclick="moveRow(${index}, 1)" ${index === analyzerState.ingredients.length - 1 ? 'disabled' : ''} class="p-1 rounded hover:bg-slate-200 text-slate-500 disabled:opacity-20 cursor-pointer">▼</button>
+              <button type="button" onclick="deleteRow('${item.id}')" class="p-1 rounded hover:bg-rose-100 text-rose-500 cursor-pointer">✕</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      updateAnalyzerStats();
+      renderAnalyzerPrintReport();
+    }
+
+    // A4 한장 보고서 렌더링
+    function renderAnalyzerPrintReport() {
+      const pBody = document.getElementById('printTableBody');
+      if (!pBody) return;
+      pBody.innerHTML = '';
+
+      const effectiveCutoff = getEffectiveCutoff();
+      const sum = calculateTotalPercentage();
+      const d = new Date();
+      const dateStr = d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0');
+
+      const printDateEl = document.getElementById('printDate');
+      if (printDateEl) printDateEl.textContent = dateStr;
+      const printTotalEl = document.getElementById('printTotalCount');
+      if (printTotalEl) printTotalEl.textContent = analyzerState.ingredients.length + '개';
+      const printCutoffEl = document.getElementById('printCutoffInfo');
+      if (printCutoffEl) printCutoffEl.textContent = effectiveCutoff !== null ? '제 ' + (effectiveCutoff + 1) + '번째 성분 앞' : '미검출';
+      const printSumEl = document.getElementById('printTotalSum');
+      if (printSumEl) printSumEl.textContent = sum.toFixed(2) + ' %';
+      const printFooterSumEl = document.getElementById('printFooterSum');
+      if (printFooterSumEl) printFooterSumEl.textContent = sum.toFixed(2) + ' %';
+
+      const titleInput = document.getElementById('analyzerFormulaTitleInput');
+      const printReportTitleEl = document.getElementById('printAnalyzerReportTitle');
+      if (printReportTitleEl) {
+        printReportTitleEl.textContent = (titleInput && titleInput.value.trim()) ? `[처방명: ${titleInput.value.trim()}]` : '';
+      }
+
+      analyzerState.ingredients.forEach((item, index) => {
+        const isCutoff = effectiveCutoff !== null && index === effectiveCutoff;
+        const isAbove = effectiveCutoff === null ? true : index < effectiveCutoff;
+
+        if (isCutoff) {
+          const cutTr = document.createElement('tr');
+          cutTr.className = 'bg-rose-50/70 border-y-2 border-dashed border-rose-500 text-rose-900';
+          cutTr.innerHTML = `
+            <td colspan="5" class="py-1 px-3 font-bold text-[10.5px]">
+              <div class="flex items-center justify-between">
+                <span>✂️ [--- 1% 이하 추정 구간 (이후 성분 배합비 순서 무관 기재) ---]</span>
+                ${analyzerState.cutoffName ? `<span class="font-normal text-[10px]">기준 감지: '${analyzerState.cutoffName}'</span>` : ''}
+              </div>
+            </td>
+          `;
+          pBody.appendChild(cutTr);
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = index % 2 === 1 ? 'bg-slate-50/40' : 'bg-white';
+        const numVal = item.percentage !== '' ? parseFloat(item.percentage).toFixed(2) + ' %' : '-';
+
+        tr.innerHTML = `
+          <td class="py-1 px-2 text-center font-bold text-slate-500 border-r border-slate-300 text-[10.5px]">${item.order}</td>
+          <td class="py-1 px-2 font-medium text-slate-900 border-r border-slate-300 text-[11px]">
+            ${item.name}
+            ${item.isIndicator ? '<span class="ml-1 text-[9px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">지표</span>' : ''}
+          </td>
+          <td class="py-1 px-2 text-center font-mono font-bold text-slate-800 border-r border-slate-300 text-[11px]">${numVal}</td>
+          <td class="py-1 px-2 text-center border-r border-slate-300 text-[10.5px]">
+            <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800 border border-slate-300">${item.role}</span>
+          </td>
+          <td class="py-1 px-2 text-center text-[10px] text-slate-600 font-medium">${isAbove ? '1% 초과 (함량순)' : '1% 이하 (순서무관)'}</td>
+        `;
+        pBody.appendChild(tr);
+      });
+
+      // 인쇄용 역할 요약 박스
+      const roleBox = document.getElementById('printRoleSummaryBox');
+      if (roleBox) {
+        roleBox.innerHTML = '';
+        ALL_ROLES.forEach(r => {
+          const count = analyzerState.ingredients.filter(i => i.role === r).length;
+          if (count === 0) return;
+          const pct = Math.round((count / analyzerState.ingredients.length) * 100);
+          const span = document.createElement('span');
+          span.className = 'inline-flex items-center gap-1';
+          span.innerHTML = `<strong class="text-slate-900">${r}</strong>: ${count}종 (${pct}%)<span class="text-slate-300 ml-1.5">|</span>`;
+          roleBox.appendChild(span);
+        });
+      }
+    }
+
+    function updateAnalyzerIngredientName(id, val) {
+      const item = analyzerState.ingredients.find(i => i.id === id);
+      if (item) {
+        item.name = val;
+        const { isIndicator, reason } = checkIndicator(val);
+        item.isIndicator = isIndicator;
+        item.indicatorReason = reason;
+        renderAnalyzerTable();
+      }
+    }
+
+    function updatePercentage(id, val) {
+      const item = analyzerState.ingredients.find(i => i.id === id);
+      if (item) {
+        item.percentage = val === '' ? '' : parseFloat(val);
+        updateAnalyzerStats();
+        renderAnalyzerPrintReport();
+      }
+    }
+
+    function updateRole(id, newRole) {
+      const item = analyzerState.ingredients.find(i => i.id === id);
+      if (item) {
+        item.role = newRole;
+        renderAnalyzerTable();
+      }
+    }
+
+    function deleteRow(id) {
+      analyzerState.ingredients = analyzerState.ingredients.filter(i => i.id !== id);
+      analyzerState.ingredients.forEach((item, idx) => item.order = idx + 1);
+      updateRoleFilterOptions();
+      renderAnalyzerTable();
+    }
+
+    function moveRow(index, delta) {
+      const target = index + delta;
+      if (target < 0 || target >= analyzerState.ingredients.length) return;
+      const temp = analyzerState.ingredients[index];
+      analyzerState.ingredients[index] = analyzerState.ingredients[target];
+      analyzerState.ingredients[target] = temp;
+      analyzerState.ingredients.forEach((item, idx) => item.order = idx + 1);
+      renderAnalyzerTable();
+    }
+
+    function shiftCutoff(delta) {
+      const current = getEffectiveCutoff();
+      if (current === null) return;
+      const next = Math.max(0, Math.min(analyzerState.ingredients.length, current + delta));
+      analyzerState.manualCutoff = next;
+      renderAnalyzerTable();
+    }
+
+    function addNewIngredientRow() {
+      const newOrder = analyzerState.ingredients.length + 1;
+      analyzerState.ingredients.push({
+        id: 'ing_' + Date.now(),
+        order: newOrder,
+        name: '새 성분',
+        percentage: '',
+        role: '기타',
+        isIndicator: false
+      });
+      updateRoleFilterOptions();
+      renderAnalyzerTable();
+    }
+
+    function updateAnalyzerStats() {
+      const count = analyzerState.ingredients.length;
+      const cutoff = getEffectiveCutoff();
+      const aboveCount = cutoff !== null ? cutoff : count;
+      const belowCount = cutoff !== null ? Math.max(0, count - cutoff) : 0;
+      const sum = calculateTotalPercentage();
+
+      const elTot = document.getElementById('statTotalCount');
+      if (elTot) elTot.innerHTML = count + '<span class="text-sm font-normal text-slate-400 ml-1">종</span>';
+      const elAbove = document.getElementById('statAboveCount');
+      if (elAbove) elAbove.innerHTML = aboveCount + '<span class="text-sm font-normal text-slate-400 ml-1">종 (함량순)</span>';
+      const elBelow = document.getElementById('statBelowCount');
+      if (elBelow) elBelow.innerHTML = belowCount + '<span class="text-sm font-normal text-slate-400 ml-1">종 (순서 무관)</span>';
+      const elSumVal = document.getElementById('statSumVal');
+      if (elSumVal) elSumVal.innerHTML = sum.toFixed(2) + '<span class="text-sm font-normal ml-1">%</span>';
+      const elFootSum = document.getElementById('footerSum');
+      if (elFootSum) elFootSum.textContent = sum.toFixed(2) + ' %';
+      const elFootCount = document.getElementById('footerCount');
+      if (elFootCount) elFootCount.textContent = count;
+      const elFootCut = document.getElementById('footerCutoffInfo');
+      if (elFootCut) elFootCut.textContent = cutoff !== null ? '1% 기준선: 제 ' + (cutoff + 1) + '번째 성분 앞' : '1% 기준선: 감지되지 않음';
+
+      const badge = document.getElementById('statSumBadge');
+      const card = document.getElementById('statSumCard');
+
+      if (badge && card) {
+        if (sum === 100) {
+          badge.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold';
+          badge.textContent = '100% 일치';
+          card.className = 'p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 shadow-sm transition';
+        } else if (sum > 100) {
+          badge.className = 'text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-semibold';
+          badge.textContent = '+' + (sum - 100).toFixed(2) + '% 초과';
+          card.className = 'p-4 rounded-xl border border-rose-200 bg-rose-50/50 shadow-sm transition';
+        } else {
+          badge.className = 'text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold';
+          badge.textContent = (100 - sum).toFixed(2) + '% 부족';
+          card.className = 'p-4 rounded-xl border border-slate-200 bg-white shadow-sm transition';
+        }
+      }
+
+      // 역할 통계 카드 렌더링
+      const grid = document.getElementById('roleStatsGrid');
+      if (grid) {
+        grid.innerHTML = '';
+        ALL_ROLES.forEach(r => {
+          const rCount = analyzerState.ingredients.filter(i => i.role === r).length;
+          if (rCount === 0) return;
+          const color = ROLE_COLORS[r] || ROLE_COLORS['기타'];
+          const cardEl = document.createElement('div');
+          cardEl.className = 'p-3 rounded-xl border flex flex-col justify-between ' + color;
+          cardEl.innerHTML = `
+            <span class="text-xs font-bold">${r}</span>
+            <div class="flex items-baseline justify-between mt-2">
+              <span class="text-xl font-extrabold text-slate-800">${rCount}</span>
+              <span class="text-xs text-slate-500">${Math.round((rCount / count) * 100)}%</span>
+            </div>
+          `;
+          grid.appendChild(cardEl);
+        });
+      }
+    }
+
+    // 배합비(%) 예상 분배 로직
+    function applySmartEstimates() {
+      const count = analyzerState.ingredients.length;
+      if (count === 0) return;
+
+      const boundary = getEffectiveCutoff() !== null ? getEffectiveCutoff() : Math.min(Math.floor(count * 0.4), 10);
+      const highCount = boundary;
+      const lowCount = count - boundary;
+
+      let lowSum = 0;
+      if (lowCount > 0) {
+        for (let i = boundary; i < count; i++) {
+          const name = analyzerState.ingredients[i].name.toLowerCase();
+          let val = 0.2;
+          if (name.includes('아데노신')) val = 0.04;
+          else if (name.includes('디소듐이디티에이') || name.includes('edta')) val = 0.05;
+          else if (name.includes('소듐하이알루로네이트')) val = 0.05;
+          else if (name.includes('향료') || name.includes('fragrance')) val = 0.2;
+          else if (name.includes('페녹시에탄올')) val = 0.5;
+          else if (name.includes('에틸헥실글리세린')) val = 0.2;
+          else val = 0.2;
+          analyzerState.ingredients[i].percentage = val;
+          lowSum += val;
+        }
+      }
+
+      const highPool = 100 - lowSum;
+      if (highCount === 1) {
+        analyzerState.ingredients[0].percentage = parseFloat(highPool.toFixed(2));
+      } else if (highCount > 1) {
+        const weights = [];
+        for (let i = 0; i < highCount; i++) {
+          if (i === 0) weights.push(12.0);
+          else weights.push(Math.max(1.0, 5.0 / Math.pow(1.5, i)));
+        }
+        const totalW = weights.reduce((a, b) => a + b, 0);
+        let assigned = 0;
+        for (let i = 0; i < highCount; i++) {
+          const share = parseFloat(((weights[i] / totalW) * highPool).toFixed(2));
+          analyzerState.ingredients[i].percentage = share;
+          assigned += share;
+        }
+        const diff = parseFloat((highPool - assigned).toFixed(2));
+        analyzerState.ingredients[0].percentage = parseFloat((analyzerState.ingredients[0].percentage + diff).toFixed(2));
+      }
+
+      renderAnalyzerTable();
+    }
+
+    function copyTableAsTSV() {
+      if (analyzerState.ingredients.length === 0) return;
+      const cutoff = getEffectiveCutoff();
+      const headers = ['순번', '성분명', '함량(%)', '역할/분류', '1%구간구분'];
+      const rows = analyzerState.ingredients.map((ing, idx) => {
+        const section = cutoff !== null && idx >= cutoff ? '1% 이하 구간' : '1% 초과 구간';
+        return [ing.order, ing.name, ing.percentage, ing.role, section].join('\t');
+      });
+      const tsv = [headers.join('\t'), ...rows].join('\n');
+
+      navigator.clipboard.writeText(tsv).then(() => {
+        const btn = document.getElementById('btnCopy');
+        if (!btn) return;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span class="text-emerald-600 font-bold">✓ 복사완료!</span>';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      });
+    }
+
+    async function saveCurrentAnalyzerFormula() {
+      if (!currentUser) {
+        openAuthModal('login', '전성분 해체 결과 저장은 회원 로그인 후 이용 가능합니다.');
+        return;
+      }
+
+      if (!analyzerState || !analyzerState.ingredients || analyzerState.ingredients.length === 0) {
+        showToast('저장할 전성분 해체 분석 데이터가 없습니다. 먼저 전성분을 입력하고 해체해 주세요.');
+        return;
+      }
+
+      const titleInput = document.getElementById('analyzerFormulaTitleInput');
+      let title = (titleInput && titleInput.value.trim()) || '';
+      if (!title) {
+        const defaultTitle = analyzerState.ingredients[0] ? `${analyzerState.ingredients[0].name} 기반 전성분 해체 분석` : '전성분 해체 분석 처방';
+        const userTitle = prompt('저장할 전성분 해체 분석 제목을 입력하세요:', defaultTitle);
+        if (userTitle === null) return;
+        title = userTitle.trim() || defaultTitle;
+        if (titleInput) titleInput.value = title;
+      }
+
+      if (!currentUser.savedAnalyzers) currentUser.savedAnalyzers = [];
+
+      const rawText = document.getElementById('rawTextarea')?.value || '';
+      const totalCount = analyzerState.ingredients.length;
+      let totalSum = 0;
+      analyzerState.ingredients.forEach(i => { totalSum += (parseFloat(i.percentage) || 0); });
+
+      const newRecord = {
+        id: 'analyzer_' + Date.now(),
+        title: title,
+        rawText: rawText,
+        ingredients: JSON.parse(JSON.stringify(analyzerState.ingredients)),
+        cutoffIndex: analyzerState.cutoffIndex,
+        cutoffName: analyzerState.cutoffName,
+        manualCutoff: analyzerState.manualCutoff,
+        totalCount: totalCount,
+        totalSum: parseFloat(totalSum.toFixed(2)),
+        savedAt: new Date().toISOString()
+      };
+
+      currentUser.savedAnalyzers.unshift(newRecord);
+      saveUsersDb();
+      renderAuthHeader();
+      const countAnalyzer = currentUser.savedAnalyzers.length;
+      const countEl = document.getElementById('vaultCountAnalyzer');
+      if (countEl) countEl.textContent = countAnalyzer;
+      showToast(`연구노트에 "${title}" 분석 결과가 저장되었습니다!`);
+
+      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
+        try {
+          await sbClient.from('saved_analyzers').upsert({
+            id: newRecord.id,
+            user_id: currentUser.id,
+            title: newRecord.title,
+            raw_text: newRecord.rawText,
+            ingredients: newRecord.ingredients,
+            total_count: newRecord.totalCount,
+            total_sum: newRecord.totalSum
+          });
+        } catch (e) {
+          console.warn('Cloud save analyzer warning:', e);
+        }
+      }
     }
 
     // ==========================================
