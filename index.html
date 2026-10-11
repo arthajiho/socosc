@@ -2459,8 +2459,13 @@
     // ==========================================
     // SUPABASE CLOUD CLIENT & AUTH SYSTEM
     // ==========================================
-    const SUPABASE_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
+    const SUPABASE_URL = (window.SOCSOC_CONFIG && window.SOCSOC_CONFIG.SUPABASE_URL) || 
+                         (window.ENV && window.ENV.SUPABASE_URL) || 
+                         'https://yrnjvofldzkznxdvqdjv.supabase.co';
+
+    const SUPABASE_ANON_KEY = (window.SOCSOC_CONFIG && window.SOCSOC_CONFIG.SUPABASE_ANON_KEY) || 
+                             (window.ENV && window.ENV.SUPABASE_ANON_KEY) || 
+                             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
     
     let sbClient = null;
     try {
@@ -3826,37 +3831,23 @@
     }
 
     // ==========================================
-    // 화장품 배합기 한도 체크 & 자동 경고 시스템 (SUPABASE INGREDIENTS_TEST 연동)
+    // 화장품 배합기 실시간 한도 체크 시스템 (SUPABASE INGREDIENTS_TEST 실시간 연동)
     // ==========================================
-    const TEST_INGREDIENTS_DB = [
-      { id: 1, korean_name: '페녹시에탄올', inci_name: 'Phenoxyethanol', max_limit: 1.0 },
-      { id: 2, korean_name: '나이아신아마이드', inci_name: 'Niacinamide', max_limit: 5.0 },
-      { id: 3, korean_name: '티타늄디옥사이드', inci_name: 'Titanium Dioxide', max_limit: 25.0 },
-      { id: 4, korean_name: '글리세린', inci_name: 'Glycerin', max_limit: 100.0 },
-      { id: 5, korean_name: '정제수', inci_name: 'Water', max_limit: 100.0 }
-    ];
-
     async function fetchIngredientsLimitDb() {
-      if (sbClient) {
-        try {
-          const { data, error } = await sbClient
-            .from('ingredients_test')
-            .select('id, korean_name, inci_name, max_limit');
-          if (!error && Array.isArray(data) && data.length > 0) {
-            return data;
-          }
-          // 만약 원격 테이블이 생성되었으나 비어있는 경우 기본 5종 시딩 시도
-          if (!error && Array.isArray(data) && data.length === 0) {
-            try {
-              await sbClient.from('ingredients_test').insert(TEST_INGREDIENTS_DB);
-            } catch (seedErr) {}
-            return TEST_INGREDIENTS_DB;
-          }
-        } catch (e) {
-          console.warn('Supabase ingredients_test 테이블 조회 폴백 (테스트 DB 사용):', e);
-        }
+      if (!sbClient) {
+        throw new Error('Supabase 클라이언트가 초기화되지 않았습니다. 네트워크 연결 및 설정을 확인해 주세요.');
       }
-      return TEST_INGREDIENTS_DB;
+
+      const { data, error } = await sbClient
+        .from('ingredients_test')
+        .select('id, korean_name, inci_name, max_limit');
+
+      if (error) {
+        console.error('Supabase ingredients_test 실시간 조회 오류:', error);
+        throw new Error(`Supabase DB(ingredients_test) 조회 실패: ${error.message || JSON.stringify(error)}`);
+      }
+
+      return data || [];
     }
 
     function cleanIngStr(str) {
@@ -3929,29 +3920,58 @@
       const container = document.getElementById('limitCheckResultContainer');
       if (!container) return;
 
+      // 1. 배합표에 입력된 유효 원료 행 확인 (불필요한 네트워크 호출 방지)
+      const validRows = activeFormula.filter(row => {
+        const pct = parseFloat(row.percent) || 0;
+        const rawName = (row.name || '').trim();
+        const rawInci = (row.inci || '').trim();
+        return Boolean(rawName || rawInci || pct > 0);
+      });
+
+      if (validRows.length === 0) {
+        container.innerHTML = `
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500">
+            <p class="font-bold text-slate-700 mb-1">배합표에 입력된 원료가 없습니다.</p>
+            <p>원료명(또는 INCI명)과 배합비를 입력한 후 <strong>[한도 체크]</strong>를 눌러주세요.</p>
+          </div>
+        `;
+        return;
+      }
+
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>검증 중...</span>';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Supabase 실시간 조회 중...</span>';
       }
 
       try {
+        // 2. Supabase ingredients_test 테이블 실시간 쿼리
         const dbList = await fetchIngredientsLimitDb();
 
-        // 1. 배합표 유효 행 집계 (같은 원료 외에는 함량을 합치지 않음)
-        const aggregated = {};
-        let totalInputRows = 0;
+        if (!dbList || dbList.length === 0) {
+          container.innerHTML = `
+            <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+              <div class="font-bold flex items-center gap-1.5 mb-1">
+                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                <span>Supabase DB에 등록된 규제 성분 데이터가 없습니다.</span>
+              </div>
+              <p class="text-amber-700">Supabase <strong>ingredients_test</strong> 테이블에 성분(korean_name, inci_name, max_limit)을 등록해 주세요.</p>
+            </div>
+          `;
+          return;
+        }
 
-        activeFormula.forEach((row, idx) => {
+        // 3. 배합표 유효 행 집계 (같은 원료 외에는 함량을 합치지 않음)
+        const aggregated = {};
+
+        validRows.forEach((row, idx) => {
           const pct = parseFloat(row.percent) || 0;
           const rawName = (row.name || '').trim();
           const rawInci = (row.inci || '').trim();
-          if (!rawName && !rawInci && pct === 0) return;
-          totalInputRows++;
 
           const matched = findMatchedLimitIngredient(row, dbList);
           if (matched) {
             // 동일한 성분/원료 기준만 집계
-            const key = matched.korean_name;
+            const key = matched.korean_name || matched.inci_name;
             if (!aggregated[key]) {
               aggregated[key] = {
                 db: matched,
@@ -3969,17 +3989,28 @@
           }
         });
 
-        if (totalInputRows === 0) {
+        const items = Object.values(aggregated);
+
+        // Supabase DB에 등록된 규제 성분이 현재 처방에 없는 경우
+        if (items.length === 0) {
           container.innerHTML = `
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500">
-              <p class="font-bold text-slate-700 mb-1">배합표에 입력된 원료가 없습니다.</p>
-              <p>원료명(또는 INCI명)과 배합비를 입력한 후 <strong>[한도 체크]</strong>를 눌러주세요.</p>
+            <div class="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-emerald-900 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+              <div class="space-y-1">
+                <div class="font-extrabold text-sm sm:text-base text-emerald-700 flex items-center gap-1.5">
+                  ✅ 안전한 배합률입니다.
+                </div>
+                <div class="text-xs text-emerald-700 font-medium">
+                  현재 처방에 Supabase DB(ingredients_test) 기준 한도 초과 또는 주의가 필요한 고함량 성분이 없습니다.
+                </div>
+              </div>
+              <span class="px-2.5 py-1 text-xs font-black rounded-lg bg-emerald-200 text-emerald-800 shrink-0 self-start sm:self-center">
+                정상 배합
+              </span>
             </div>
           `;
           return;
         }
 
-        const items = Object.values(aggregated);
         const conditionAItems = []; // 법적 배합 한도 초과
         const conditionBItems = []; // 기능성 원료 고시 함량 초과
 
@@ -4056,7 +4087,7 @@
                   ✅ 안전한 배합률입니다.
                 </div>
                 <div class="text-xs text-emerald-700 font-medium">
-                  한도 초과 또는 고함량 주의 성분이 없습니다.
+                  검증된 성분(${items.map(it => it.db.korean_name).join(', ')}) 모두 법적 배합 한도 및 고시 기준을 준수합니다.
                 </div>
               </div>
               <span class="px-2.5 py-1 text-xs font-black rounded-lg bg-emerald-200 text-emerald-800 shrink-0 self-start sm:self-center">
@@ -4073,7 +4104,12 @@
         console.error('한도 체크 중 오류 발생:', err);
         container.innerHTML = `
           <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-            한도 검증 중 오류가 발생했습니다: ${err.message || err}
+            <div class="font-bold flex items-center gap-1.5 mb-1">
+              <i class="fa-solid fa-circle-exclamation text-red-600"></i>
+              <span>Supabase DB 연동 검증 실패</span>
+            </div>
+            <p class="font-mono text-[11px] bg-white/70 p-2 rounded border border-red-200 mt-1">${err.message || err}</p>
+            <p class="text-[11px] text-red-600 mt-1.5">Supabase 대시보드에서 <strong>ingredients_test</strong> 테이블 및 RLS(Row Level Security) 읽기 권한을 확인해 주세요.</p>
           </div>
         `;
       } finally {
