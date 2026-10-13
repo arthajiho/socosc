@@ -910,6 +910,7 @@
                 <h1 class="text-xl font-black text-slate-900">제형 개발 & 배치 계산기</h1>
               </div>
               <p class="text-xs text-slate-500">배합비 소수점 2자리(0.00%) 정밀 계산 및 비커 계량값(g)을 즉시 산출합니다.</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">🔒 서버에 저장되지 않는 로컬 보안 툴. 저장된 처방은 본인만 볼 수 있습니다.</p>
             </div>
             <div class="flex items-center gap-2 print-hide">
               <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
@@ -3840,14 +3841,20 @@
 
       const { data, error } = await sbClient
         .from('ingredients_test')
-        .select('id, korean_name, inci_name, max_limit');
+        .select('*');
 
       if (error) {
         console.error('Supabase ingredients_test 실시간 조회 오류:', error);
         throw new Error(`Supabase DB(ingredients_test) 조회 실패: ${error.message || JSON.stringify(error)}`);
       }
 
-      return data || [];
+      // Supabase 테이블의 실제 컬럼명 유연 대응 (korean_name, name, 성분명 등 호환)
+      return (data || []).map(r => ({
+        id: r.id,
+        korean_name: String(r.korean_name || r.name || r['성분명'] || r.ingredient_name || r.korean || '').trim(),
+        inci_name: String(r.inci_name || r.inci || r['INCI'] || r.english_name || '').trim(),
+        max_limit: parseFloat(r.max_limit !== undefined ? r.max_limit : (r.limit !== undefined ? r.limit : (r['한도'] !== undefined ? r['한도'] : 100.0))) || 100.0
+      }));
     }
 
     function cleanIngStr(str) {
@@ -6809,8 +6816,7 @@
       { name: '아데노신', en: 'adenosine', reason: '주름개선 기능성 고시 함량 0.04%' },
       { name: '잔탄검', en: 'xanthan gum', reason: '통상 0.1~0.5% 고분자 점증제' },
       { name: '카보머', en: 'carbomer', reason: '통상 0.1~0.5% 고분자 점증제' },
-      { name: '소듐하이알루로네이트', en: 'sodium hyaluronate', reason: '통상 원료 분말 0.01~0.1% 고분자 보습제' },
-      { name: '1,2-헥산다이올', en: '1,2-hexanediol', reason: '통상 1.0~2.0% 처방 보존/보습제' }
+      { name: '소듐하이알루로네이트', en: 'sodium hyaluronate', reason: '통상 원료 분말 0.01~0.1% 고분자 보습제' }
     ];
 
     // 3. 성분 역할 사전 및 매칭 규칙
@@ -6915,6 +6921,16 @@
       return result;
     }
 
+    function isHexanediol(name) {
+      const clean = (name || '').toLowerCase().replace(/\s+/g, '');
+      return clean.includes('헥산다이올') || clean.includes('헥산디올') || clean.includes('hexanediol');
+    }
+
+    function isFragrance(name) {
+      const clean = (name || '').toLowerCase().replace(/\s+/g, '');
+      return clean.includes('향료') || clean.includes('fragrance') || clean.includes('parfum') || clean.includes('착향제') || clean.includes('flavor');
+    }
+
     function runAnalysis() {
       const txtArea = document.getElementById('rawTextarea');
       if (!txtArea) return;
@@ -6936,11 +6952,6 @@
         const { isIndicator, reason } = checkIndicator(cleanName);
         const role = matchRole(cleanName);
 
-        if (isIndicator && detectedCutoff === null) {
-          detectedCutoff = list.length;
-          detectedCutoffName = cleanName;
-        }
-
         list.push({
           id: 'ing_' + Date.now() + '_' + idx,
           order: list.length + 1,
@@ -6951,6 +6962,35 @@
           indicatorReason: reason
         });
       });
+
+      // 1% 지표 및 절취선 감지 로직
+      // 향료가 2개 이상 들어간 경우 2번째 나오는 향료를 1% 지표 및 경계선으로 지정
+      const fragIndices = list
+        .map((item, idx) => isFragrance(item.name) ? idx : -1)
+        .filter(idx => idx !== -1);
+
+      if (fragIndices.length >= 2) {
+        const secondFragIdx = fragIndices[1];
+        // 2번째 향료 이전 성분들의 1% 지표 표시 해제 (1% 초과 영역)
+        for (let i = 0; i < secondFragIdx; i++) {
+          list[i].isIndicator = false;
+          list[i].indicatorReason = '';
+        }
+        // 2번째 향료를 1% 지표로 확정
+        list[secondFragIdx].isIndicator = true;
+        list[secondFragIdx].indicatorReason = '2번째 향료 (1% 경계 지표)';
+        detectedCutoff = secondFragIdx;
+        detectedCutoffName = list[secondFragIdx].name;
+      } else {
+        // 일반 규칙: 최초 감지된 1% 지표 성분을 절취선으로 설정
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].isIndicator) {
+            detectedCutoff = i;
+            detectedCutoffName = list[i].name;
+            break;
+          }
+        }
+      }
 
       analyzerState.ingredients = list;
       analyzerState.cutoffIndex = detectedCutoff;
@@ -7282,7 +7322,7 @@
       const card = document.getElementById('statSumCard');
 
       if (badge && card) {
-        if (sum === 100) {
+        if (Math.abs(sum - 100) < 0.001) {
           badge.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold';
           badge.textContent = '100% 일치';
           card.className = 'p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 shadow-sm transition';
@@ -7324,45 +7364,107 @@
       const count = analyzerState.ingredients.length;
       if (count === 0) return;
 
+      // 향료가 2개 이상 들어간 경우 2번째 나오는 향료를 1% 지표(경계선)로 설정
+      const fragIndices = analyzerState.ingredients
+        .map((item, idx) => isFragrance(item.name) ? idx : -1)
+        .filter(idx => idx !== -1);
+
+      if (fragIndices.length >= 2 && analyzerState.manualCutoff === null) {
+        const secondFragIdx = fragIndices[1];
+        for (let i = 0; i < secondFragIdx; i++) {
+          analyzerState.ingredients[i].isIndicator = false;
+          analyzerState.ingredients[i].indicatorReason = '';
+        }
+        analyzerState.ingredients[secondFragIdx].isIndicator = true;
+        analyzerState.ingredients[secondFragIdx].indicatorReason = '2번째 향료 (1% 경계 지표)';
+        analyzerState.cutoffIndex = secondFragIdx;
+        analyzerState.cutoffName = analyzerState.ingredients[secondFragIdx].name;
+      }
+
       const boundary = getEffectiveCutoff() !== null ? getEffectiveCutoff() : Math.min(Math.floor(count * 0.4), 10);
       const highCount = boundary;
       const lowCount = count - boundary;
 
+      // 1. 1% 이하 미량 구간 분배 (boundary <= i < count)
       let lowSum = 0;
       if (lowCount > 0) {
         for (let i = boundary; i < count; i++) {
-          const name = analyzerState.ingredients[i].name.toLowerCase();
+          const item = analyzerState.ingredients[i];
+          const name = item.name.toLowerCase();
           let val = 0.2;
-          if (name.includes('아데노신')) val = 0.04;
-          else if (name.includes('디소듐이디티에이') || name.includes('edta')) val = 0.05;
-          else if (name.includes('소듐하이알루로네이트')) val = 0.05;
-          else if (name.includes('향료') || name.includes('fragrance')) val = 0.2;
-          else if (name.includes('페녹시에탄올')) val = 0.5;
-          else if (name.includes('에틸헥실글리세린')) val = 0.2;
-          else val = 0.2;
-          analyzerState.ingredients[i].percentage = val;
+          if (isHexanediol(name)) {
+            val = 2.0; // 헥산디올은 2% 기재
+          } else if (name.includes('아데노신')) {
+            val = 0.04;
+          } else if (name.includes('디소듐이디티에이') || name.includes('edta')) {
+            val = 0.05;
+          } else if (name.includes('소듐하이알루로네이트')) {
+            val = 0.05;
+          } else if (isFragrance(name)) {
+            val = 0.2;
+          } else if (name.includes('페녹시에탄올')) {
+            val = 0.5;
+          } else if (name.includes('에틸헥실글리세린')) {
+            val = 0.2;
+          } else {
+            val = 0.2;
+          }
+          item.percentage = val;
           lowSum += val;
         }
       }
 
+      // 2. 1% 초과 고함량 구간 분배 (0 <= i < boundary)
       const highPool = 100 - lowSum;
       if (highCount === 1) {
-        analyzerState.ingredients[0].percentage = parseFloat(highPool.toFixed(2));
+        if (isHexanediol(analyzerState.ingredients[0].name)) {
+          analyzerState.ingredients[0].percentage = 2.0;
+        } else {
+          analyzerState.ingredients[0].percentage = parseFloat(highPool.toFixed(2));
+        }
       } else if (highCount > 1) {
-        const weights = [];
+        // 고함량 구간 내 헥산디올 분리
+        const hexIndices = [];
+        const nonHexIndices = [];
         for (let i = 0; i < highCount; i++) {
-          if (i === 0) weights.push(12.0);
-          else weights.push(Math.max(1.0, 5.0 / Math.pow(1.5, i)));
+          if (isHexanediol(analyzerState.ingredients[i].name)) {
+            hexIndices.push(i);
+          } else {
+            nonHexIndices.push(i);
+          }
         }
-        const totalW = weights.reduce((a, b) => a + b, 0);
-        let assigned = 0;
-        for (let i = 0; i < highCount; i++) {
-          const share = parseFloat(((weights[i] / totalW) * highPool).toFixed(2));
-          analyzerState.ingredients[i].percentage = share;
-          assigned += share;
+
+        // 헥산디올은 2% 고정
+        hexIndices.forEach(idx => {
+          analyzerState.ingredients[idx].percentage = 2.0;
+        });
+
+        const reservedForHex = hexIndices.length * 2.0;
+        const remainingHighPool = highPool - reservedForHex;
+
+        if (nonHexIndices.length === 0) {
+          const eachVal = parseFloat((highPool / hexIndices.length).toFixed(2));
+          hexIndices.forEach(idx => { analyzerState.ingredients[idx].percentage = eachVal; });
+        } else if (nonHexIndices.length === 1) {
+          analyzerState.ingredients[nonHexIndices[0]].percentage = parseFloat(remainingHighPool.toFixed(2));
+        } else {
+          // 비-헥산디올 성분들에 대한 지수 감쇠 가중치 배분
+          const weights = nonHexIndices.map((origIdx) => {
+            if (origIdx === 0) return 12.0;
+            return Math.max(1.0, 5.0 / Math.pow(1.5, origIdx));
+          });
+          const totalW = weights.reduce((a, b) => a + b, 0);
+          let assigned = 0;
+          for (let k = 0; k < nonHexIndices.length; k++) {
+            const origIdx = nonHexIndices[k];
+            const share = parseFloat(((weights[k] / totalW) * remainingHighPool).toFixed(2));
+            analyzerState.ingredients[origIdx].percentage = share;
+            assigned += share;
+          }
+          // 오차 보정: 첫 번째 주성분(비-헥산디올 중 첫 번째 성분)에 잔여값 반영하여 100.00% 일치
+          const diff = parseFloat((remainingHighPool - assigned).toFixed(2));
+          analyzerState.ingredients[nonHexIndices[0]].percentage = parseFloat((analyzerState.ingredients[nonHexIndices[0]].percentage + diff).toFixed(2));
         }
-        const diff = parseFloat((highPool - assigned).toFixed(2));
-        analyzerState.ingredients[0].percentage = parseFloat((analyzerState.ingredients[0].percentage + diff).toFixed(2));
       }
 
       renderAnalyzerTable();
