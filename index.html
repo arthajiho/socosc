@@ -5215,6 +5215,26 @@
                 });
                 if (!authErr2 && authData2?.user) {
                   loggedInUser.id = authData2.user.id;
+                } else if (authErr2) {
+                  // 기존 로컬 계정이 Supabase Auth에 아직 없다면 즉시 클라우드 계정으로 자동 등록하여 세션 연결
+                  try {
+                    const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
+                      email: foundLocal.email,
+                      password: foundLocal.password,
+                      options: {
+                        data: {
+                          username: foundLocal.username,
+                          name: foundLocal.name,
+                          nickname: foundLocal.nickname,
+                          phone: foundLocal.phone,
+                          company_type: foundLocal.companyType
+                        }
+                      }
+                    });
+                    if (!autoSignErr && autoSign?.user) {
+                      loggedInUser.id = autoSign.user.id;
+                    }
+                  } catch (signUpE) {}
                 }
               } catch (e) {}
             }
@@ -5916,11 +5936,33 @@
             }
             if (loginIdent) {
               try {
-                const { data: loginRes } = await sbClient.auth.signInWithPassword({
+                const { data: loginRes, error: loginErr } = await sbClient.auth.signInWithPassword({
                   email: loginIdent,
                   password: currentUser.password
                 });
-                if (loginRes?.user) authUser = loginRes.user;
+                if (loginRes?.user) {
+                  authUser = loginRes.user;
+                } else if (loginErr) {
+                  // 기존 로컬 계정이 Supabase Auth에 아직 없다면 즉시 클라우드 계정으로 자동 등록하여 세션 연결
+                  try {
+                    const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
+                      email: email || loginIdent,
+                      password: currentUser.password || targetNewPw || '123456',
+                      options: {
+                        data: {
+                          username: currentUser.username,
+                          name: name,
+                          nickname: nickname,
+                          phone: phone,
+                          company_type: companyType
+                        }
+                      }
+                    });
+                    if (!autoSignErr && autoSign?.user) {
+                      authUser = autoSign.user;
+                    }
+                  } catch (e) {}
+                }
               } catch (e) {}
             }
           }
@@ -5978,7 +6020,7 @@
         saveUsersDb();
         renderAuthHeader();
         closeMyPageModal();
-        showToast('회원 정보가 성공적으로 변경되었습니다. (슈퍼베이스 실시간 동기화 완료)');
+        showToast('회원 정보가 성공적으로 변경되었습니다.');
       } catch (err) {
         console.error('MyPage save error:', err);
         if (errMsg) {
