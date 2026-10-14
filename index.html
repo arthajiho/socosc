@@ -2684,11 +2684,15 @@
         // 2. 만약 여전히 authUserId가 없으면 profiles 테이블에서 username 또는 email로 id 조회
         if (!authUserId) {
           try {
-            const { data: profRow } = await sbClient
-              .from('profiles')
-              .select('id, role')
-              .or(`username.eq.${user.username},email.eq.${user.email}`)
-              .maybeSingle();
+            let profRow = null;
+            if (user.username) {
+              const { data: r1 } = await sbClient.from('profiles').select('id, role').eq('username', user.username).maybeSingle();
+              if (r1) profRow = r1;
+            }
+            if (!profRow && user.email) {
+              const { data: r2 } = await sbClient.from('profiles').select('id, role').eq('email', user.email).maybeSingle();
+              if (r2) profRow = r2;
+            }
             if (profRow && profRow.id) {
               authUserId = profRow.id;
               user.id = authUserId;
@@ -2696,7 +2700,33 @@
           } catch (e) {}
         }
 
-        // 3. Supabase Auth user_metadata 동기화 (세션이 활성화된 경우)
+        // 3. 만약 여전히 authUserId가 없거나 로컬 ID인 경우(기존 계정), Supabase Auth에 클라우드 계정 자동 생성 및 승격
+        if (!authUserId || String(user.id).startsWith('local_')) {
+          const userEmail = (user.email && user.email.includes('@')) ? user.email.trim() : `${user.username}@socsoc.kr`;
+          const userPw = user.password || '123456';
+          try {
+            const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
+              email: userEmail,
+              password: userPw,
+              options: {
+                data: {
+                  username: user.username,
+                  name: user.name || '',
+                  nickname: user.nickname || '',
+                  phone: user.phone || '',
+                  company_type: user.companyType || '기타'
+                }
+              }
+            });
+            if (!autoSignErr && autoSign?.user) {
+              authUserId = autoSign.user.id;
+              user.id = authUserId;
+              currentAuthUser = autoSign.user;
+            }
+          } catch (e) {}
+        }
+
+        // 4. Supabase Auth user_metadata 동기화 (세션이 활성화된 경우)
         if (currentAuthUser) {
           try {
             await sbClient.auth.updateUser({
@@ -2713,7 +2743,7 @@
           }
         }
 
-        // 4. Supabase profiles 테이블 동기화 (항상 최신 정보로 일치)
+        // 5. Supabase profiles 테이블 동기화 (항상 최신 정보로 일치)
         const isUserAdmin = checkIsAdmin(user.username) || user.role === 'admin';
         const finalRole = isUserAdmin ? 'admin' : (user.role || 'member');
         user.role = finalRole;
@@ -2771,11 +2801,13 @@
           } catch (e) {}
         }
 
-        // D. profiles 테이블에 행이 아예 없는 경우 upsert
-        if (!isSynced && (authUserId || user.id)) {
+        // D. profiles 테이블에 행이 아예 없는 경우 upsert (UUID가 유효할 때만)
+        const targetUpsertId = (authUserId && !String(authUserId).startsWith('local_')) ? authUserId :
+                               (user.id && !String(user.id).startsWith('local_')) ? user.id : null;
+        if (!isSynced && targetUpsertId) {
           try {
             const upsertRow = {
-              id: authUserId || user.id,
+              id: targetUpsertId,
               username: user.username,
               ...profileFields
             };
@@ -5123,7 +5155,7 @@
         if (sbClient) {
           let emailToLogin = idInput;
 
-          // 만약 사용자가 아이디(username)를 입력했다면 profiles 테이블에서 이메일 조회
+          // 만약 사용자가 아이디(username)를 입력했다면 profiles 테이블 또는 로컬 DB에서 이메일 조회
           if (!idInput.includes('@')) {
             const { data: prof } = await sbClient
               .from('profiles')
@@ -5133,6 +5165,11 @@
 
             if (prof && prof.email) {
               emailToLogin = prof.email;
+            } else {
+              const localMatch = usersDb.find(u => (u.username || '').toLowerCase() === idInput.toLowerCase());
+              if (localMatch && localMatch.email) {
+                emailToLogin = localMatch.email;
+              }
             }
           }
 
@@ -5921,9 +5958,10 @@
           const { data: sessionData } = await sbClient.auth.getSession();
           let authUser = sessionData?.session?.user;
 
-          // 세션이 없으면 현재 비밀번호/이메일로 세션 복구 시도
-          if (!authUser && currentUser.password && (currentUser.email || currentUser.username)) {
-            let loginIdent = currentUser.email;
+          // 세션이 없으면 현재 비밀번호/이메일로 세션 복구 및 클라우드 계정 승격 시도
+          if (!authUser) {
+            const localUser = usersDb.find(u => (u.username || '').toLowerCase() === (currentUser.username || '').toLowerCase());
+            let loginIdent = email || currentUser.email || localUser?.email;
             if (!loginIdent && currentUser.username) {
               try {
                 const { data: profLookup } = await sbClient
@@ -5934,11 +5972,16 @@
                 if (profLookup && profLookup.email) loginIdent = profLookup.email;
               } catch (e) {}
             }
-            if (loginIdent) {
+            if (!loginIdent) {
+              loginIdent = `${currentUser.username}@socsoc.kr`;
+            }
+
+            const effectivePw = currentUser.password || localUser?.password || targetNewPw || '123456';
+            if (loginIdent && effectivePw) {
               try {
                 const { data: loginRes, error: loginErr } = await sbClient.auth.signInWithPassword({
                   email: loginIdent,
-                  password: currentUser.password
+                  password: effectivePw
                 });
                 if (loginRes?.user) {
                   authUser = loginRes.user;
@@ -5946,8 +5989,8 @@
                   // 기존 로컬 계정이 Supabase Auth에 아직 없다면 즉시 클라우드 계정으로 자동 등록하여 세션 연결
                   try {
                     const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
-                      email: email || loginIdent,
-                      password: currentUser.password || targetNewPw || '123456',
+                      email: loginIdent,
+                      password: effectivePw,
                       options: {
                         data: {
                           username: currentUser.username,
