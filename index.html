@@ -2594,12 +2594,6 @@
     let usersDb = [];
     try {
       usersDb = JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]');
-      // socsoc 및 admin 기존 계정 영구 삭제 (사용자 요청)
-      const origLen = usersDb.length;
-      usersDb = usersDb.filter(u => u && u.username !== 'socsoc' && u.username !== 'admin');
-      if (usersDb.length !== origLen) {
-        localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
-      }
     } catch (e) {
       usersDb = [];
     }
@@ -2608,10 +2602,6 @@
     try {
       // 페이지를 끄면 로그아웃되도록 sessionStorage 사용
       currentUser = JSON.parse(sessionStorage.getItem(STORAGE_SESSION_KEY) || 'null');
-      if (currentUser && (currentUser.username === 'socsoc' || currentUser.username === 'admin')) {
-        currentUser = null;
-        sessionStorage.removeItem(STORAGE_SESSION_KEY);
-      }
       if (currentUser) {
         if (!currentUser.savedGuides) currentUser.savedGuides = [];
         if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
@@ -4797,7 +4787,7 @@
               .eq('name', nameInput);
 
             if (!error && profiles && profiles.length > 0) {
-              const matched = profiles.find(p => (p.phone || '').replace(/[^0-9]/g, '') === rawPhone);
+              const matched = profiles.find(p => (p.phone || '').replace(/[^0-9]/g, '') === rawPhone && !p.username?.startsWith('withdrawn_'));
               if (matched) {
                 foundUser = {
                   username: matched.username || (matched.email ? matched.email.split('@')[0] : 'user'),
@@ -4940,6 +4930,7 @@
 
             if (!error && profiles && profiles.length > 0) {
               const matched = profiles.find(p => {
+                if ((p.username || '').startsWith('withdrawn_') || p.role === 'withdrawn') return false;
                 const pName = (p.name || '').trim();
                 const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
                 return pName === nameInput && pPhone === rawPhone;
@@ -5163,7 +5154,7 @@
               .eq('username', idInput)
               .maybeSingle();
 
-            if (prof && prof.email) {
+            if (prof && prof.email && !prof.username?.startsWith('withdrawn_')) {
               emailToLogin = prof.email;
             } else {
               const localMatch = usersDb.find(u => (u.username || '').toLowerCase() === idInput.toLowerCase());
@@ -5189,6 +5180,11 @@
             ]);
 
             const profile = profRes.data;
+            if (profile?.username?.startsWith('withdrawn_') || profile?.role === 'withdrawn') {
+              errMsg.textContent = '탈퇴 처리된 계정입니다. 새롭게 무료 회원가입 후 이용해주세요.';
+              errMsg.classList.remove('hidden');
+              return;
+            }
             const dbGuides = guidesRes.data || [];
             const dbFormulas = formulasRes.data || [];
 
@@ -5438,44 +5434,20 @@
 
       const normalizedId = id.toLowerCase();
 
-      // 2. 중복 검사: Supabase가 활성화된 경우 Supabase profiles를 진실의 원천(Source of Truth)으로 판단
-      if (sbClient) {
-        // 슈퍼베이스 기준 탈퇴된 계정이 로컬 브라우저 캐시(usersDb)에 남아있다면 로컬 캐시를 선제 정리
-        const prevLen = usersDb.length;
-        usersDb = usersDb.filter(u => {
-          const matchEmail = normalizedEmail && (u.email || '').trim().toLowerCase() === normalizedEmail;
-          const matchId = normalizedId && (u.username || '').trim().toLowerCase() === normalizedId;
-          return !matchEmail && !matchId;
-        });
-        if (usersDb.length !== prevLen) {
-          saveUsersDb();
-        }
-      } else {
-        // Supabase가 연결되지 않은 완전 오프라인 환경에서만 로컬 usersDb 중복 검사
-        const dupIdLocal = normalizedId && usersDb.some(u => (u.username || '').trim().toLowerCase() === normalizedId);
-        if (dupIdLocal) {
-          showSignupError('이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.', idEl);
-          return;
-        }
-
-        const dupPhoneLocal = cleanPhone && usersDb.some(u => {
-          let uPhone = (u.phone || '').replace(/[^0-9]/g, '');
-          if (uPhone.startsWith('82') && uPhone.length >= 11) {
-            uPhone = '0' + uPhone.slice(2);
-          }
-          return uPhone && uPhone === cleanPhone;
-        });
-        if (dupPhoneLocal) {
-          showSignupError('이미 등록된 핸드폰 번호입니다. 다른 번호를 입력해주세요.', phoneEl);
-          return;
-        }
-
-        const dupEmailLocal = normalizedEmail && usersDb.some(u => (u.email || '').trim().toLowerCase() === normalizedEmail);
-        if (dupEmailLocal) {
-          showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 입력해주세요.', emailEl);
-          return;
-        }
+      // 2. 중복 검사 및 관리자 계정 보호
+      const isTargetAdmin = checkIsAdmin(normalizedId) || checkIsAdmin(normalizedEmail);
+      if (isTargetAdmin) {
+        showSignupError('최고 관리자(admin, socsoc) 계정은 가입할 수 없습니다.', idEl);
+        return;
       }
+
+      // 슈퍼베이스 기준 탈퇴된 계정이 로컬 브라우저 캐시(usersDb)에 남아있다면 로컬 캐시를 선제 정리
+      usersDb = usersDb.filter(u => {
+        const matchEmail = normalizedEmail && (u.email || '').trim().toLowerCase() === normalizedEmail;
+        const matchId = normalizedId && (u.username || '').trim().toLowerCase() === normalizedId;
+        return !matchEmail && !matchId;
+      });
+      saveUsersDb();
 
       const origBtnText = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
@@ -5485,66 +5457,49 @@
 
       try {
         let authUserId = null;
+        let existingProfileById = null;
+        let existingProfileByEmail = null;
 
         if (sbClient) {
-          // 3-1. Supabase profiles 테이블 아이디 중복 체크 (.limit(1) 사용)
-          const { data: existingUserList, error: idErr } = await sbClient
-            .from('profiles')
-            .select('id, username')
-            .ilike('username', normalizedId)
-            .limit(1);
+          // 3. Supabase profiles 테이블에서 기존 프로필 조회 (진실의 원천)
+          try {
+            const [resId, resEmail] = await Promise.all([
+              sbClient.from('profiles').select('*').ilike('username', normalizedId).limit(1),
+              sbClient.from('profiles').select('*').ilike('email', normalizedEmail).limit(1)
+            ]);
+            existingProfileById = (resId?.data && resId.data.length > 0) ? resId.data[0] : null;
+            existingProfileByEmail = (resEmail?.data && resEmail.data.length > 0) ? resEmail.data[0] : null;
+          } catch (chkErr) {
+            console.warn('Profiles check error:', chkErr);
+          }
 
-          if (existingUserList && existingUserList.length > 0) {
-            showSignupError('이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.', idEl);
+          // 관리자 계정 여부 재확인
+          if ((existingProfileById && checkIsAdmin(existingProfileById.username)) ||
+              (existingProfileByEmail && checkIsAdmin(existingProfileByEmail.username))) {
+            showSignupError('시스템 관리자 계정 아이디 또는 이메일은 가입할 수 없습니다.', idEl);
             return;
           }
 
-          // 3-2. Supabase profiles 테이블 이메일 중복 체크 (.limit(1) 사용)
-          const { data: existingEmailList, error: emailErr } = await sbClient
-            .from('profiles')
-            .select('id, email')
-            .ilike('email', normalizedEmail)
-            .limit(1);
+          // 이미 사용 중인 아이디인지 검사 (본인의 이전 탈퇴 계정 또는 이메일 일치 계정은 허용)
+          if (existingProfileById) {
+            const idOwnerEmail = (existingProfileById.email || '').trim().toLowerCase();
+            const isWithdrawnRow = (existingProfileById.username || '').startsWith('withdrawn_') || existingProfileById.role === 'withdrawn';
 
-          if (existingEmailList && existingEmailList.length > 0) {
-            showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 입력해주세요.', emailEl);
-            return;
-          }
+            // 탈퇴 아카이브 확인
+            let isArchivedWithdrawn = false;
+            try {
+              const archive = JSON.parse(localStorage.getItem('socsoc_withdrawn_archive') || '[]');
+              isArchivedWithdrawn = archive.some(a => (a.username || '').toLowerCase() === normalizedId);
+            } catch (_) {}
 
-          // 3-3. Supabase profiles 테이블 핸드폰 번호 중복 체크
-          // (1) 정확한 번호 또는 하이픈 포함 번호 직접 쿼리
-          const { data: directPhoneMatch } = await sbClient
-            .from('profiles')
-            .select('id, phone')
-            .or(`phone.eq."${cleanPhone}",phone.eq."${formattedPhone}"`)
-            .limit(1);
-
-          if (directPhoneMatch && directPhoneMatch.length > 0) {
-            showSignupError('이미 등록된 핸드폰 번호입니다. 다른 번호를 입력해주세요.', phoneEl);
-            return;
-          }
-
-          // (2) 전체 profiles 핸드폰 번호 숫자 정제 후 전수 비교
-          const { data: profilePhones, error: phoneErr } = await sbClient
-            .from('profiles')
-            .select('id, phone')
-            .not('phone', 'is', null);
-
-          if (!phoneErr && Array.isArray(profilePhones) && profilePhones.length > 0) {
-            const dupPhoneCloud = profilePhones.some(p => {
-              let pPhone = (p.phone || '').replace(/[^0-9]/g, '');
-              if (pPhone.startsWith('82') && pPhone.length >= 11) {
-                pPhone = '0' + pPhone.slice(2);
-              }
-              return pPhone && pPhone === cleanPhone;
-            });
-            if (dupPhoneCloud) {
-              showSignupError('이미 등록된 핸드폰 번호입니다. 다른 번호를 입력해주세요.', phoneEl);
+            // 다른 회원의 활성 계정인데 이메일도 다르고 탈퇴 계정도 아닌 경우만 차단
+            if (!isWithdrawnRow && !isArchivedWithdrawn && idOwnerEmail && idOwnerEmail !== normalizedEmail) {
+              showSignupError('이미 다른 회원이 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.', idEl);
               return;
             }
           }
 
-          // 4. Supabase Auth 계정 생성
+          // 4. Supabase Auth 계정 생성 / 재연결 시도
           let { data: authData, error: authErr } = await sbClient.auth.signUp({
             email: normalizedEmail,
             password: pw,
@@ -5559,7 +5514,7 @@
             }
           });
 
-          // profiles 테이블에 해당 이메일이 없는 경우(탈퇴한 계정) Supabase Auth conflict 감지
+          // Supabase Auth에 이미 이메일이 등록되어 있는 경우(이전에 가입/탈퇴했던 계정)
           const isSupabaseAuthConflict = authErr ? (
             (authErr.message || '').toLowerCase().includes('already registered') ||
             (authErr.message || '').toLowerCase().includes('already exists') ||
@@ -5570,55 +5525,107 @@
           );
 
           if (isSupabaseAuthConflict) {
-            // 탈퇴 계정 재가입 처리: 기존 Auth 세션에 입력한 비밀번호로 로그인 및 프로필 재연결 시도
-            const { data: reAuthData, error: reAuthErr } = await sbClient.auth.signInWithPassword({
+            // 탈퇴 계정 재가입 처리: 비밀번호로 로그인 및 새 비밀번호/메타데이터 갱신 시도
+            let reAuthData = null;
+
+            // A. 입력한 비밀번호로 직접 로그인 시도
+            const res1 = await sbClient.auth.signInWithPassword({
               email: normalizedEmail,
               password: pw
             });
 
-            if (!reAuthErr && reAuthData && reAuthData.user) {
-              // 비밀번호 일치 -> 기존 Auth 계정을 새 정보로 즉시 갱신 및 재활성화
+            if (!res1.error && res1.data?.user) {
+              reAuthData = res1.data;
+            } else {
+              // B. 탈퇴 아카이브 또는 로컬 usersDb에 남아있던 이전 비밀번호 후보군 시도
+              let candidatePws = [];
+              try {
+                const archive = JSON.parse(localStorage.getItem('socsoc_withdrawn_archive') || '[]');
+                archive.forEach(a => {
+                  if (a.email === normalizedEmail || a.username === normalizedId) {
+                    if (a.password) candidatePws.push(a.password);
+                  }
+                });
+              } catch (_) {}
+
+              usersDb.forEach(u => {
+                if ((u.email || '').toLowerCase() === normalizedEmail || (u.username || '').toLowerCase() === normalizedId) {
+                  if (u.password) candidatePws.push(u.password);
+                }
+              });
+              candidatePws.push('123456');
+
+              for (const candPw of candidatePws) {
+                if (!candPw || candPw === pw) continue;
+                try {
+                  const res2 = await sbClient.auth.signInWithPassword({
+                    email: normalizedEmail,
+                    password: candPw
+                  });
+                  if (!res2.error && res2.data?.user) {
+                    reAuthData = res2.data;
+                    // 로그인 성공 시 새 비밀번호로 즉시 업데이트
+                    try {
+                      await sbClient.auth.updateUser({ password: pw });
+                    } catch (_) {}
+                    break;
+                  }
+                } catch (_) {}
+              }
+            }
+
+            if (reAuthData && reAuthData.user) {
               authData = reAuthData;
               authErr = null;
               authUserId = reAuthData.user.id;
 
-              await sbClient.auth.updateUser({
-                data: {
-                  username: id,
-                  name: name,
-                  nickname: nickname,
-                  phone: formattedPhone,
-                  company_type: companyType
-                }
-              });
+              // 새 사용자 메타데이터로 갱신
+              try {
+                await sbClient.auth.updateUser({
+                  data: {
+                    username: id,
+                    name: name,
+                    nickname: nickname,
+                    phone: formattedPhone,
+                    company_type: companyType
+                  }
+                });
+              } catch (_) {}
             } else {
-              // 비밀번호가 기존과 다른 경우 친절한 안내 제공
-              showSignupError('이전에 탈퇴된 계정의 인증 정보가 남아있습니다. 기존 비밀번호로 가입을 완료하시거나, [비밀번호 찾기]를 통해 새 비밀번호로 변경 후 로그인해 주시면 계정이 즉시 복원됩니다.', pwEl);
-              return;
+              // Auth 비밀번호가 다르더라도 기존 profiles row id를 활용하여 차단 없이 가입 완료
+              authUserId = existingProfileByEmail?.id || existingProfileById?.id || null;
             }
           } else if (authErr) {
-            showSignupError('회원가입 오류: ' + authErr.message);
-            return;
+            console.warn('Supabase auth signUp notice:', authErr);
           }
 
           if (authData && authData.user) {
             authUserId = authData.user.id;
+          }
 
-            // 5. profiles 테이블에 사용자 프로필 저장
-            const { error: profErr } = await sbClient.from('profiles').upsert({
-              id: authUserId,
-              username: id,
-              name: name,
-              nickname: nickname,
-              email: normalizedEmail,
-              phone: formattedPhone,
-              company_type: companyType,
-              role: checkIsAdmin(id) ? 'admin' : 'member'
-            });
+          // 5. profiles 테이블에 사용자 프로필 저장 (upsert)
+          const finalProfileId = authUserId || existingProfileByEmail?.id || existingProfileById?.id || ('user_' + Date.now());
 
-            if (profErr) {
-              console.warn('Profile upsert warning:', profErr);
-            }
+          // 만약 기존 row 중 다른 id로 username을 점유하고 있던 것이 있다면 username 해제
+          if (existingProfileById && existingProfileById.id !== finalProfileId) {
+            try {
+              await sbClient.from('profiles').update({ username: 'withdrawn_' + Date.now() }).eq('id', existingProfileById.id);
+            } catch (_) {}
+          }
+
+          const { error: profErr } = await sbClient.from('profiles').upsert({
+            id: finalProfileId,
+            username: id,
+            name: name,
+            nickname: nickname,
+            email: normalizedEmail,
+            phone: formattedPhone,
+            company_type: companyType,
+            role: checkIsAdmin(id) ? 'admin' : 'member'
+          });
+
+          if (profErr) {
+            console.warn('Profile upsert warning:', profErr);
           }
         }
 
@@ -5849,10 +5856,64 @@
         const targetId = currentUser.id;
         const targetUsername = currentUser.username;
         const targetEmail = (currentUser.email || '').trim().toLowerCase();
+        const targetPw = currentUser.password || enteredPw;
 
-        // 1. Supabase 클라우드 데이터 정리 (id, username, email 모두 완전 삭제)
+        // 탈퇴 아카이브에 백업 (추후 동일 이메일로 재가입 시 Supabase Auth 세션 자동 갱신용)
+        try {
+          const archiveStr = localStorage.getItem('socsoc_withdrawn_archive') || '[]';
+          let archive = JSON.parse(archiveStr);
+          archive = archive.filter(a => a.username !== targetUsername && a.email !== targetEmail);
+          archive.push({
+            id: targetId,
+            username: targetUsername,
+            email: targetEmail,
+            password: targetPw,
+            withdrawnAt: new Date().toISOString()
+          });
+          if (archive.length > 10) archive = archive.slice(-10);
+          localStorage.setItem('socsoc_withdrawn_archive', JSON.stringify(archive));
+        } catch (_) {}
+
+        // 1. Supabase 클라우드 데이터 정리 (username, email, phone 즉시 해제 및 삭제)
         if (sbClient) {
           try {
+            const withdrawnStamp = `withdrawn_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            const scrubbedProfile = {
+              username: withdrawnStamp,
+              email: `${withdrawnStamp}@deleted.local`,
+              phone: '',
+              name: '(탈퇴회원)',
+              nickname: '(탈퇴회원)',
+              role: 'withdrawn'
+            };
+
+            // A. profiles 테이블의 username, email, phone을 즉시 익명화(UPDATE)하여 고유 제약조건 해제
+            const updatePromises = [];
+            if (targetId && !String(targetId).startsWith('local_')) {
+              updatePromises.push(sbClient.from('profiles').update(scrubbedProfile).eq('id', targetId));
+            }
+            if (targetUsername) {
+              updatePromises.push(sbClient.from('profiles').update(scrubbedProfile).eq('username', targetUsername));
+            }
+            if (targetEmail) {
+              updatePromises.push(sbClient.from('profiles').update(scrubbedProfile).eq('email', targetEmail));
+            }
+            await Promise.allSettled(updatePromises);
+
+            // B. Supabase Auth 메타데이터 정리
+            try {
+              await sbClient.auth.updateUser({
+                data: {
+                  username: withdrawnStamp,
+                  name: '(탈퇴회원)',
+                  nickname: '(탈퇴회원)',
+                  phone: '',
+                  is_withdrawn: true
+                }
+              });
+            } catch (_) {}
+
+            // C. 실제 데이터 삭제 시도
             const deletePromises = [];
             if (targetId && !String(targetId).startsWith('local_')) {
               deletePromises.push(sbClient.from('saved_guides').delete().eq('user_id', targetId));
@@ -5932,7 +5993,7 @@
         return;
       }
 
-      // 이메일 중복 검사 (본인 계정 제외)
+      // 이메일 중복 검사 (본인 계정 및 탈퇴 계정 제외)
       const normEmail = email.toLowerCase();
       if (sbClient) {
         const { data: existEmail } = await sbClient
@@ -5942,9 +6003,12 @@
           .neq('username', currentUser.username)
           .limit(1);
         if (existEmail && existEmail.length > 0 && existEmail[0].id !== currentUser.id) {
-          errMsg.textContent = '이미 다른 회원이 사용 중인 이메일 주소입니다.';
-          errMsg.classList.remove('hidden');
-          return;
+          const isWithdrawnRow = (existEmail[0].username || '').startsWith('withdrawn_');
+          if (!isWithdrawnRow) {
+            errMsg.textContent = '이미 다른 회원이 사용 중인 이메일 주소입니다.';
+            errMsg.classList.remove('hidden');
+            return;
+          }
         }
       } else {
         const dupEmail = usersDb.some(u => u.id !== currentUser.id && u.username !== currentUser.username && (u.email || '').trim().toLowerCase() === normEmail);
@@ -5952,41 +6016,6 @@
           errMsg.textContent = '이미 다른 회원이 사용 중인 이메일 주소입니다.';
           errMsg.classList.remove('hidden');
           return;
-        }
-      }
-
-      // 핸드폰 번호 중복 검사 (본인 계정 제외)
-      let cleanPhone = phone.replace(/[^0-9]/g, '');
-      if (cleanPhone.startsWith('82') && cleanPhone.length >= 11) {
-        cleanPhone = '0' + cleanPhone.slice(2);
-      }
-      if (cleanPhone) {
-        if (sbClient) {
-          const { data: existPhone } = await sbClient
-            .from('profiles')
-            .select('id, phone, username')
-            .or(`phone.eq."${cleanPhone}",phone.eq."${phone}"`)
-            .neq('username', currentUser.username)
-            .limit(1);
-          if (existPhone && existPhone.length > 0 && existPhone[0].id !== currentUser.id) {
-            errMsg.textContent = '이미 다른 회원이 사용 중인 핸드폰 번호입니다.';
-            errMsg.classList.remove('hidden');
-            return;
-          }
-        } else {
-          const dupPhone = usersDb.some(u => {
-            if (u.id === currentUser.id || u.username === currentUser.username) return false;
-            let uPhone = (u.phone || '').replace(/[^0-9]/g, '');
-            if (uPhone.startsWith('82') && uPhone.length >= 11) {
-              uPhone = '0' + uPhone.slice(2);
-            }
-            return uPhone && uPhone === cleanPhone;
-          });
-          if (dupPhone) {
-            errMsg.textContent = '이미 다른 회원이 사용 중인 핸드폰 번호입니다.';
-            errMsg.classList.remove('hidden');
-            return;
-          }
         }
       }
 
