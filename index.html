@@ -5340,6 +5340,7 @@
       const agreePrivacy = document.getElementById('agreeTermPrivacy') ? document.getElementById('agreeTermPrivacy').checked : false;
       const errMsg = document.getElementById('signupErrorMessage');
       const submitBtn = e.target.querySelector('button[type="submit"]');
+      const origBtnText = submitBtn ? submitBtn.innerHTML : '';
 
       if (errMsg) errMsg.classList.add('hidden');
 
@@ -5353,6 +5354,10 @@
         }
         if (focusEl) {
           focusEl.focus();
+        }
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          if (origBtnText) submitBtn.innerHTML = origBtnText;
         }
       }
 
@@ -5449,7 +5454,6 @@
       });
       saveUsersDb();
 
-      const origBtnText = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>가입 확인 중...</span>';
@@ -5500,6 +5504,11 @@
           }
 
           // 4. Supabase Auth 계정 생성 / 재연결 시도
+          // 기존 세션이 브라우저에 남아있을 경우 새 사용자 가입/등록과의 충돌을 방지하기 위해 선제 로그아웃
+          try {
+            await sbClient.auth.signOut();
+          } catch (_) {}
+
           let { data: authData, error: authErr } = await sbClient.auth.signUp({
             email: normalizedEmail,
             password: pw,
@@ -5519,7 +5528,8 @@
             (authErr.message || '').toLowerCase().includes('already registered') ||
             (authErr.message || '').toLowerCase().includes('already exists') ||
             (authErr.message || '').toLowerCase().includes('user already registered') ||
-            (authErr.message || '').toLowerCase().includes('email exists')
+            (authErr.message || '').toLowerCase().includes('email exists') ||
+            authErr.code === 'user_already_exists'
           ) : (
             authData?.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0
           );
@@ -5592,29 +5602,57 @@
                 });
               } catch (_) {}
             } else {
-              // Auth 비밀번호가 다르더라도 기존 profiles row id를 활용하여 차단 없이 가입 완료
-              authUserId = existingProfileByEmail?.id || existingProfileById?.id || null;
+              // 인증 세션을 획득하지 못한 경우(이메일이 이미 Auth에 등록되어 있고 비밀번호가 다름)
+              showSignupError('이미 등록된 이메일 계정입니다. 이전 비밀번호와 일치하지 않아 계정을 연동할 수 없습니다. 기존 비밀번호로 가입/로그인하시거나 다른 이메일 주소를 사용해주세요.', emailEl);
+              return;
             }
           } else if (authErr) {
-            console.warn('Supabase auth signUp notice:', authErr);
+            let userMsg = authErr.message || '인증 계정 생성 실패';
+            if (userMsg.toLowerCase().includes('rate limit')) {
+              userMsg = '이메일 가입 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
+            } else if (userMsg.toLowerCase().includes('password')) {
+              userMsg = '비밀번호 규칙이 올바르지 않습니다. (최소 6자 이상)';
+            }
+            showSignupError('회원가입 실패: ' + userMsg, emailEl);
+            return;
+          }
+
+          // 세션 활성화 보장 (PostgREST RLS 통과를 위해 Bearer 토큰이 반드시 필요)
+          if (authData?.session) {
+            try {
+              await sbClient.auth.setSession(authData.session);
+            } catch (_) {}
+          } else if (normalizedEmail && pw) {
+            try {
+              const loginCheck = await sbClient.auth.signInWithPassword({
+                email: normalizedEmail,
+                password: pw
+              });
+              if (loginCheck.data?.session) {
+                authData = loginCheck.data;
+              }
+            } catch (_) {}
           }
 
           if (authData && authData.user) {
             authUserId = authData.user.id;
           }
 
-          // 5. profiles 테이블에 사용자 프로필 저장 (upsert)
-          const finalProfileId = authUserId || existingProfileByEmail?.id || existingProfileById?.id || ('user_' + Date.now());
+          if (!authUserId) {
+            showSignupError('슈퍼베이스 인증 사용자 식별자(UUID)를 획득하지 못했습니다. 다시 시도해주세요.');
+            return;
+          }
 
-          // 만약 기존 row 중 다른 id로 username을 점유하고 있던 것이 있다면 username 해제
-          if (existingProfileById && existingProfileById.id !== finalProfileId) {
+          // 만약 기존 row 중 다른 id로 username을 점유하고 있던 것이 있다면 username 해제 (고유 제약조건 충돌 방지)
+          if (existingProfileById && existingProfileById.id !== authUserId) {
             try {
               await sbClient.from('profiles').update({ username: 'withdrawn_' + Date.now() }).eq('id', existingProfileById.id);
             } catch (_) {}
           }
 
-          const { error: profErr } = await sbClient.from('profiles').upsert({
-            id: finalProfileId,
+          // 5. profiles 테이블에 사용자 프로필 저장 (upsert)
+          const profileRow = {
+            id: authUserId,
             username: id,
             name: name,
             nickname: nickname,
@@ -5622,10 +5660,18 @@
             phone: formattedPhone,
             company_type: companyType,
             role: checkIsAdmin(id) ? 'admin' : 'member'
-          });
+          };
+
+          const { error: profErr } = await sbClient.from('profiles').upsert(profileRow);
 
           if (profErr) {
-            console.warn('Profile upsert warning:', profErr);
+            console.error('Supabase profile upsert error:', profErr);
+            let pMsg = profErr.message || '프로필 데이터베이스 동기화에 실패했습니다.';
+            if (profErr.code === '23505') {
+              pMsg = '이미 존재하는 아이디 또는 이메일입니다.';
+            }
+            showSignupError('회원가입 실패 (슈퍼베이스): ' + pMsg);
+            return;
           }
         }
 
