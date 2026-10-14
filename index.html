@@ -2626,21 +2626,13 @@
     } catch (e) {}
 
     function saveUsersDb() {
-      try {
-        localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
-      } catch (e) {
-        console.warn('Failed to save usersDb to localStorage:', e);
-      }
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
       if (currentUser) {
-        const idx = usersDb.findIndex(u => u.username === currentUser.username || (currentUser.id && u.id === currentUser.id));
+        const idx = usersDb.findIndex(u => u.username === currentUser.username);
         if (idx !== -1) {
           usersDb[idx] = currentUser;
-        } else {
-          usersDb.push(currentUser);
-        }
-        try {
           localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
-        } catch (e) {}
+        }
         sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
       }
     }
@@ -2653,22 +2645,7 @@
       try {
         let authUserId = (user.id && !String(user.id).startsWith('local_')) ? user.id : null;
 
-        // 1. profiles 테이블에서 username 또는 email로 실제 Supabase UUID 조회
-        if (!authUserId && user.username) {
-          try {
-            const { data: pData } = await sbClient
-              .from('profiles')
-              .select('id, email, username')
-              .eq('username', user.username)
-              .maybeSingle();
-            if (pData && pData.id) {
-              authUserId = pData.id;
-              user.id = pData.id;
-            }
-          } catch (e) {}
-        }
-
-        // 2. Supabase Auth 세션 확인 및 없으면 백그라운드 로그인 시도 (실제 클라우드 세션 확보)
+        // 1. Supabase Auth 세션 확인 및 없으면 백그라운드 로그인 시도 (실제 클라우드 세션 확보)
         const { data: sessionData } = await sbClient.auth.getSession();
         let currentAuthUser = sessionData?.session?.user;
 
@@ -2692,8 +2669,6 @@
               });
               if (authLogin && authLogin.user) {
                 currentAuthUser = authLogin.user;
-                authUserId = currentAuthUser.id;
-                user.id = authUserId;
               }
             } catch (loginErr) {
               console.warn('Supabase auth background session notice:', loginErr);
@@ -2706,7 +2681,52 @@
           user.id = authUserId; // UUID 동기화
         }
 
-        // 3. Supabase Auth user_metadata 동기화 (세션이 활성화된 경우)
+        // 2. 만약 여전히 authUserId가 없으면 profiles 테이블에서 username 또는 email로 id 조회
+        if (!authUserId) {
+          try {
+            let profRow = null;
+            if (user.username) {
+              const { data: r1 } = await sbClient.from('profiles').select('id, role').eq('username', user.username).maybeSingle();
+              if (r1) profRow = r1;
+            }
+            if (!profRow && user.email) {
+              const { data: r2 } = await sbClient.from('profiles').select('id, role').eq('email', user.email).maybeSingle();
+              if (r2) profRow = r2;
+            }
+            if (profRow && profRow.id) {
+              authUserId = profRow.id;
+              user.id = authUserId;
+            }
+          } catch (e) {}
+        }
+
+        // 3. 만약 여전히 authUserId가 없거나 로컬 ID인 경우(기존 계정), Supabase Auth에 클라우드 계정 자동 생성 및 승격
+        if (!authUserId || String(user.id).startsWith('local_')) {
+          const userEmail = (user.email && user.email.includes('@')) ? user.email.trim() : `${user.username}@socsoc.kr`;
+          const userPw = user.password || '123456';
+          try {
+            const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
+              email: userEmail,
+              password: userPw,
+              options: {
+                data: {
+                  username: user.username,
+                  name: user.name || '',
+                  nickname: user.nickname || '',
+                  phone: user.phone || '',
+                  company_type: user.companyType || '기타'
+                }
+              }
+            });
+            if (!autoSignErr && autoSign?.user) {
+              authUserId = autoSign.user.id;
+              user.id = authUserId;
+              currentAuthUser = autoSign.user;
+            }
+          } catch (e) {}
+        }
+
+        // 4. Supabase Auth user_metadata 동기화 (세션이 활성화된 경우)
         if (currentAuthUser) {
           try {
             await sbClient.auth.updateUser({
@@ -2723,7 +2743,7 @@
           }
         }
 
-        // 4. Supabase profiles 테이블 동기화 (항상 최신 정보로 일치)
+        // 5. Supabase profiles 테이블 동기화 (항상 최신 정보로 일치)
         const isUserAdmin = checkIsAdmin(user.username) || user.role === 'admin';
         const finalRole = isUserAdmin ? 'admin' : (user.role || 'member');
         user.role = finalRole;
@@ -2734,21 +2754,18 @@
           email: user.email || '',
           phone: user.phone || '',
           company_type: user.companyType || '기타',
-          role: finalRole,
-          updated_at: new Date().toISOString()
+          role: finalRole
         };
 
         let isSynced = false;
 
         // A. id로 직접 update
-        const targetId = (authUserId && !String(authUserId).startsWith('local_')) ? authUserId :
-                         (user.id && !String(user.id).startsWith('local_')) ? user.id : null;
-        if (targetId) {
+        if (authUserId) {
           try {
             const { data: d1, error: err1 } = await sbClient
               .from('profiles')
               .update(profileFields)
-              .eq('id', targetId)
+              .eq('id', authUserId)
               .select();
             if (!err1 && d1 && d1.length > 0) {
               isSynced = true;
@@ -2785,16 +2802,20 @@
         }
 
         // D. profiles 테이블에 행이 아예 없는 경우 upsert (UUID가 유효할 때만)
-        if (!isSynced && targetId) {
+        const targetUpsertId = (authUserId && !String(authUserId).startsWith('local_')) ? authUserId :
+                               (user.id && !String(user.id).startsWith('local_')) ? user.id : null;
+        if (!isSynced && targetUpsertId) {
           try {
             const upsertRow = {
-              id: targetId,
+              id: targetUpsertId,
               username: user.username,
               ...profileFields
             };
             const { error: upsertErr } = await sbClient.from('profiles').upsert(upsertRow);
             if (!upsertErr) {
               isSynced = true;
+            } else {
+              console.warn('Profile upsert fallback warning:', upsertErr);
             }
           } catch (e) {}
         }
@@ -2849,74 +2870,7 @@
           }
         }
 
-        // 2. Cloud Profiles 실시간 불러오기 (socsoc, admin 제외한 나머지 모든 슈퍼베이스 계정 자동 반영!)
-        try {
-          const { data: cloudProfiles, error: cpErr } = await sbClient
-            .from('profiles')
-            .select('*');
-
-          if (!cpErr && Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
-            let dbChanged = false;
-            cloudProfiles.forEach(cp => {
-              if (!cp.username || cp.username === 'socsoc' || cp.username === 'admin') return;
-
-              const existIdx = usersDb.findIndex(u => (u.username && u.username.toLowerCase() === cp.username.toLowerCase()) || u.id === cp.id);
-              if (existIdx !== -1) {
-                const prev = usersDb[existIdx];
-                usersDb[existIdx] = {
-                  ...prev,
-                  id: cp.id, // Supabase 실제 UUID로 즉시 승격!
-                  username: cp.username,
-                  name: cp.name || prev.name || '',
-                  nickname: cp.nickname || prev.nickname || cp.username,
-                  email: cp.email || prev.email || '',
-                  phone: cp.phone || prev.phone || '',
-                  companyType: cp.company_type || prev.companyType || '제조사',
-                  role: cp.role || prev.role || 'member'
-                };
-                dbChanged = true;
-              } else {
-                usersDb.push({
-                  id: cp.id,
-                  username: cp.username,
-                  password: '',
-                  name: cp.name || '',
-                  nickname: cp.nickname || cp.username,
-                  email: cp.email || '',
-                  phone: cp.phone || '',
-                  companyType: cp.company_type || '제조사',
-                  provider: 'normal',
-                  role: cp.role || 'member',
-                  savedGuides: [],
-                  savedFormulas: [],
-                  savedAnalyzers: [],
-                  createdAt: cp.created_at || new Date().toISOString()
-                });
-                dbChanged = true;
-              }
-
-              // 현재 로그인된 유저 세션이 있다면 Supabase UUID 및 프로필로 최신 반영
-              if (currentUser && (currentUser.username === cp.username || currentUser.id === cp.id)) {
-                currentUser.id = cp.id;
-                currentUser.name = cp.name || currentUser.name;
-                currentUser.nickname = cp.nickname || currentUser.nickname;
-                currentUser.email = cp.email || currentUser.email;
-                currentUser.phone = cp.phone || currentUser.phone;
-                currentUser.companyType = cp.company_type || currentUser.companyType;
-                currentUser.role = cp.role || currentUser.role;
-                sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
-              }
-            });
-
-            if (dbChanged) {
-              saveUsersDb();
-            }
-          }
-        } catch (profSyncErr) {
-          console.warn('Cloud profiles sync warning:', profSyncErr);
-        }
-
-        // 3. 로그인 세션 확인 및 복원
+        // 2. 로그인 세션 확인 및 복원
         const { data: sessionData } = await sbClient.auth.getSession();
         const session = sessionData?.session;
 
@@ -5200,19 +5154,17 @@
 
         if (sbClient) {
           let emailToLogin = idInput;
-          let matchedCloudProf = null;
 
           // 만약 사용자가 아이디(username)를 입력했다면 profiles 테이블 또는 로컬 DB에서 이메일 조회
           if (!idInput.includes('@')) {
             const { data: prof } = await sbClient
               .from('profiles')
-              .select('*')
+              .select('email, id, username')
               .eq('username', idInput)
               .maybeSingle();
 
-            if (prof) {
-              matchedCloudProf = prof;
-              if (prof.email) emailToLogin = prof.email;
+            if (prof && prof.email) {
+              emailToLogin = prof.email;
             } else {
               const localMatch = usersDb.find(u => (u.username || '').toLowerCase() === idInput.toLowerCase());
               if (localMatch && localMatch.email) {
@@ -5221,27 +5173,11 @@
             }
           }
 
-          // Supabase Auth로 로그인 시도 (후보 이메일 순차 시도)
-          const localMatch = usersDb.find(u => (u.username || '').toLowerCase() === idInput.toLowerCase() || (u.email || '').toLowerCase() === idInput.toLowerCase());
-          const candidateEmails = [emailToLogin, matchedCloudProf?.email, localMatch?.email].filter(Boolean);
-          const uniqueEmails = [...new Set(candidateEmails)];
-
-          let authData = null;
-          let authErr = null;
-
-          for (const candEmail of uniqueEmails) {
-            const res = await sbClient.auth.signInWithPassword({
-              email: candEmail,
-              password: pw
-            });
-            if (!res.error && res.data?.user) {
-              authData = res.data;
-              authErr = null;
-              break;
-            } else {
-              authErr = res.error;
-            }
-          }
+          // Supabase Auth로 로그인 시도
+          const { data: authData, error: authErr } = await sbClient.auth.signInWithPassword({
+            email: emailToLogin,
+            password: pw
+          });
 
           if (!authErr && authData && authData.user) {
             const user = authData.user;
@@ -5252,11 +5188,11 @@
               sbClient.from('saved_formulas').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
             ]);
 
-            const profile = profRes.data || matchedCloudProf;
+            const profile = profRes.data;
             const dbGuides = guidesRes.data || [];
             const dbFormulas = formulasRes.data || [];
 
-            const uname = profile?.username || user.user_metadata?.username || (user.email ? user.email.split('@')[0] : idInput);
+            const uname = profile?.username || user.user_metadata?.username || (user.email ? user.email.split('@')[0] : 'user');
             const isUserAdmin = checkIsAdmin(uname) || checkIsAdmin(profile?.username) || checkIsAdmin(idInput);
             const finalRole = isUserAdmin ? 'admin' : (profile?.role || 'member');
 
@@ -5288,8 +5224,8 @@
                 savedAt: f.created_at
               })),
               savedAnalyzers: (function() {
-                const lm = usersDb.find(u => u.username === uname || u.id === user.id);
-                return (lm && Array.isArray(lm.savedAnalyzers)) ? lm.savedAnalyzers : [];
+                const localMatch = usersDb.find(u => u.username === uname || u.id === user.id);
+                return (localMatch && Array.isArray(localMatch.savedAnalyzers)) ? localMatch.savedAnalyzers : [];
               })()
             };
 
@@ -5307,28 +5243,37 @@
           if (foundLocal) {
             loggedInUser = foundLocal;
 
-            // 만약 Supabase profiles에 등록된 계정이라면 실제 UUID로 즉시 승격!
-            if (matchedCloudProf && matchedCloudProf.id) {
-              loggedInUser.id = matchedCloudProf.id;
-              foundLocal.id = matchedCloudProf.id;
-              if (!foundLocal.email && matchedCloudProf.email) foundLocal.email = matchedCloudProf.email;
-            }
-
             // 만약 foundLocal에 이메일이 있다면 Supabase Auth 백그라운드 로그인 시도하여 실제 세션 확보
-            if (sbClient && (foundLocal.email || matchedCloudProf?.email) && foundLocal.password) {
-              const bgEmails = [foundLocal.email, matchedCloudProf?.email].filter(Boolean);
-              for (const bgEmail of bgEmails) {
-                try {
-                  const { data: authData2, error: authErr2 } = await sbClient.auth.signInWithPassword({
-                    email: bgEmail,
-                    password: foundLocal.password
-                  });
-                  if (!authErr2 && authData2?.user) {
-                    loggedInUser.id = authData2.user.id;
-                    break;
-                  }
-                } catch (e) {}
-              }
+            if (sbClient && foundLocal.email && foundLocal.password) {
+              try {
+                const { data: authData2, error: authErr2 } = await sbClient.auth.signInWithPassword({
+                  email: foundLocal.email,
+                  password: foundLocal.password
+                });
+                if (!authErr2 && authData2?.user) {
+                  loggedInUser.id = authData2.user.id;
+                } else if (authErr2) {
+                  // 기존 로컬 계정이 Supabase Auth에 아직 없다면 즉시 클라우드 계정으로 자동 등록하여 세션 연결
+                  try {
+                    const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
+                      email: foundLocal.email,
+                      password: foundLocal.password,
+                      options: {
+                        data: {
+                          username: foundLocal.username,
+                          name: foundLocal.name,
+                          nickname: foundLocal.nickname,
+                          phone: foundLocal.phone,
+                          company_type: foundLocal.companyType
+                        }
+                      }
+                    });
+                    if (!autoSignErr && autoSign?.user) {
+                      loggedInUser.id = autoSign.user.id;
+                    }
+                  } catch (signUpE) {}
+                }
+              } catch (e) {}
             }
           }
         }
@@ -6013,77 +5958,53 @@
           const { data: sessionData } = await sbClient.auth.getSession();
           let authUser = sessionData?.session?.user;
 
-          // profiles 테이블에서 해당 회원의 실제 Supabase UUID 조회 및 currentUser.id 연동
-          let cloudProf = null;
-          if (currentUser.username) {
-            try {
-              const { data: pData } = await sbClient
-                .from('profiles')
-                .select('*')
-                .eq('username', currentUser.username)
-                .maybeSingle();
-              if (pData) cloudProf = pData;
-            } catch (e) {}
-          }
-          if (!cloudProf && currentUser.email) {
-            try {
-              const { data: pData2 } = await sbClient
-                .from('profiles')
-                .select('*')
-                .eq('email', currentUser.email)
-                .maybeSingle();
-              if (pData2) cloudProf = pData2;
-            } catch (e) {}
-          }
-
-          if (cloudProf && cloudProf.id) {
-            currentUser.id = cloudProf.id;
-          }
-
           // 세션이 없으면 현재 비밀번호/이메일로 세션 복구 및 클라우드 계정 승격 시도
           if (!authUser) {
             const localUser = usersDb.find(u => (u.username || '').toLowerCase() === (currentUser.username || '').toLowerCase());
-            const possibleEmails = [
-              currentUser.email,
-              cloudProf?.email,
-              localUser?.email,
-              email
-            ].filter(Boolean);
-            const uniqueEmails = [...new Set(possibleEmails)];
+            let loginIdent = email || currentUser.email || localUser?.email;
+            if (!loginIdent && currentUser.username) {
+              try {
+                const { data: profLookup } = await sbClient
+                  .from('profiles')
+                  .select('email')
+                  .eq('username', currentUser.username)
+                  .maybeSingle();
+                if (profLookup && profLookup.email) loginIdent = profLookup.email;
+              } catch (e) {}
+            }
+            if (!loginIdent) {
+              loginIdent = `${currentUser.username}@socsoc.kr`;
+            }
 
             const effectivePw = currentUser.password || localUser?.password || targetNewPw || '123456';
-            for (const candEmail of uniqueEmails) {
-              if (authUser) break;
+            if (loginIdent && effectivePw) {
               try {
-                const { data: loginRes } = await sbClient.auth.signInWithPassword({
-                  email: candEmail,
+                const { data: loginRes, error: loginErr } = await sbClient.auth.signInWithPassword({
+                  email: loginIdent,
                   password: effectivePw
                 });
                 if (loginRes?.user) {
                   authUser = loginRes.user;
-                  currentUser.id = authUser.id;
-                }
-              } catch (e) {}
-            }
-
-            if (!authUser && email && effectivePw) {
-              try {
-                const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
-                  email: email,
-                  password: effectivePw,
-                  options: {
-                    data: {
-                      username: currentUser.username,
-                      name: name,
-                      nickname: nickname,
-                      phone: phone,
-                      company_type: companyType
+                } else if (loginErr) {
+                  // 기존 로컬 계정이 Supabase Auth에 아직 없다면 즉시 클라우드 계정으로 자동 등록하여 세션 연결
+                  try {
+                    const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
+                      email: loginIdent,
+                      password: effectivePw,
+                      options: {
+                        data: {
+                          username: currentUser.username,
+                          name: name,
+                          nickname: nickname,
+                          phone: phone,
+                          company_type: companyType
+                        }
+                      }
+                    });
+                    if (!autoSignErr && autoSign?.user) {
+                      authUser = autoSign.user;
                     }
-                  }
-                });
-                if (!autoSignErr && autoSign?.user) {
-                  authUser = autoSign.user;
-                  currentUser.id = authUser.id;
+                  } catch (e) {}
                 }
               } catch (e) {}
             }
@@ -6121,49 +6042,6 @@
                 return;
               }
             }
-          }
-
-          // ★ profiles 테이블 직접 업데이트 (UUID 및 username 양방향 실시간 동기화)
-          const finalRole = checkIsAdmin(currentUser.username) ? 'admin' : (currentUser.role || 'member');
-          const profileDirectPayload = {
-            name: name,
-            nickname: nickname,
-            email: email,
-            phone: phone,
-            company_type: companyType,
-            role: finalRole,
-            updated_at: new Date().toISOString()
-          };
-
-          try {
-            let directUpdated = false;
-            if (currentUser.id && !String(currentUser.id).startsWith('local_')) {
-              const { data: d1, error: e1 } = await sbClient
-                .from('profiles')
-                .update(profileDirectPayload)
-                .eq('id', currentUser.id)
-                .select();
-              if (!e1 && d1 && d1.length > 0) directUpdated = true;
-            }
-
-            if (currentUser.username) {
-              const { data: d2, error: e2 } = await sbClient
-                .from('profiles')
-                .update(profileDirectPayload)
-                .eq('username', currentUser.username)
-                .select();
-              if (!e2 && d2 && d2.length > 0) directUpdated = true;
-            }
-
-            if (!directUpdated && currentUser.id && !String(currentUser.id).startsWith('local_')) {
-              await sbClient.from('profiles').upsert({
-                id: currentUser.id,
-                username: currentUser.username,
-                ...profileDirectPayload
-              });
-            }
-          } catch (profDirectErr) {
-            console.warn('Direct profile update warning:', profDirectErr);
           }
         }
 
