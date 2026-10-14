@@ -2718,31 +2718,74 @@
         const finalRole = isUserAdmin ? 'admin' : (user.role || 'member');
         user.role = finalRole;
 
-        const profilePayload = {
-          username: user.username,
+        const profileFields = {
           name: user.name || '',
           nickname: user.nickname || user.name || user.username,
           email: user.email || '',
           phone: user.phone || '',
           company_type: user.companyType || '기타',
-          role: finalRole,
-          updated_at: new Date().toISOString()
+          role: finalRole
         };
 
+        let isSynced = false;
+
+        // A. id로 직접 update
         if (authUserId) {
-          profilePayload.id = authUserId;
-          // upsert로 확실하게 생성 또는 갱신
-          const { error: upsertErr } = await sbClient.from('profiles').upsert(profilePayload);
-          if (upsertErr) {
-            console.warn('Profile upsert with id error, fallback to username update:', upsertErr);
-            await sbClient.from('profiles').update(profilePayload).eq('username', user.username);
-          }
-        } else {
-          // id가 없는 경우 username 기준으로 update 시도
-          const { error: updateErr } = await sbClient.from('profiles').update(profilePayload).eq('username', user.username);
-          if (updateErr) {
-            console.warn('Profile update by username error:', updateErr);
-          }
+          try {
+            const { data: d1, error: err1 } = await sbClient
+              .from('profiles')
+              .update(profileFields)
+              .eq('id', authUserId)
+              .select();
+            if (!err1 && d1 && d1.length > 0) {
+              isSynced = true;
+            }
+          } catch (e) {}
+        }
+
+        // B. username으로 직접 update
+        if (user.username) {
+          try {
+            const { data: d2, error: err2 } = await sbClient
+              .from('profiles')
+              .update(profileFields)
+              .eq('username', user.username)
+              .select();
+            if (!err2 && d2 && d2.length > 0) {
+              isSynced = true;
+            }
+          } catch (e) {}
+        }
+
+        // C. email로 직접 update
+        if (!isSynced && user.email) {
+          try {
+            const { data: d3, error: err3 } = await sbClient
+              .from('profiles')
+              .update(profileFields)
+              .eq('email', user.email)
+              .select();
+            if (!err3 && d3 && d3.length > 0) {
+              isSynced = true;
+            }
+          } catch (e) {}
+        }
+
+        // D. profiles 테이블에 행이 아예 없는 경우 upsert
+        if (!isSynced && (authUserId || user.id)) {
+          try {
+            const upsertRow = {
+              id: authUserId || user.id,
+              username: user.username,
+              ...profileFields
+            };
+            const { error: upsertErr } = await sbClient.from('profiles').upsert(upsertRow);
+            if (!upsertErr) {
+              isSynced = true;
+            } else {
+              console.warn('Profile upsert fallback warning:', upsertErr);
+            }
+          } catch (e) {}
         }
 
         return true;
@@ -2826,6 +2869,10 @@
             companyType: profile?.company_type || '제조사',
             role: finalRole,
             provider: 'normal',
+            password: (function() {
+              const localMatch = usersDb.find(u => u.username === uname || u.id === user.id);
+              return localMatch?.password || currentUser?.password || '';
+            })(),
             savedGuides: dbGuides.map(g => ({
               uid: g.recipe_uid,
               title: g.title,
@@ -5158,6 +5205,19 @@
           const foundLocal = usersDb.find(u => (u.username === idInput || u.email === idInput) && u.password === pw);
           if (foundLocal) {
             loggedInUser = foundLocal;
+
+            // 만약 foundLocal에 이메일이 있다면 Supabase Auth 백그라운드 로그인 시도하여 실제 세션 확보
+            if (sbClient && foundLocal.email && foundLocal.password) {
+              try {
+                const { data: authData2, error: authErr2 } = await sbClient.auth.signInWithPassword({
+                  email: foundLocal.email,
+                  password: foundLocal.password
+                });
+                if (!authErr2 && authData2?.user) {
+                  loggedInUser.id = authData2.user.id;
+                }
+              } catch (e) {}
+            }
           }
         }
 
