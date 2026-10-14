@@ -2594,6 +2594,12 @@
     let usersDb = [];
     try {
       usersDb = JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]');
+      // socsoc 및 admin 기존 계정 영구 삭제 (사용자 요청)
+      const origLen = usersDb.length;
+      usersDb = usersDb.filter(u => u && u.username !== 'socsoc' && u.username !== 'admin');
+      if (usersDb.length !== origLen) {
+        localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
+      }
     } catch (e) {
       usersDb = [];
     }
@@ -2602,6 +2608,10 @@
     try {
       // 페이지를 끄면 로그아웃되도록 sessionStorage 사용
       currentUser = JSON.parse(sessionStorage.getItem(STORAGE_SESSION_KEY) || 'null');
+      if (currentUser && (currentUser.username === 'socsoc' || currentUser.username === 'admin')) {
+        currentUser = null;
+        sessionStorage.removeItem(STORAGE_SESSION_KEY);
+      }
       if (currentUser) {
         if (!currentUser.savedGuides) currentUser.savedGuides = [];
         if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
@@ -2741,46 +2751,25 @@
     }
 
     function initAuth() {
-      // Ensure default admin account exists
-      if (!usersDb.some(u => u.username === 'admin')) {
-        usersDb.push({
-          id: 'admin_local',
-          username: 'admin',
-          password: 'admin',
-          name: '관리자',
-          nickname: '시스템관리자',
-          email: 'socsoc_contact@naver.com',
-          phone: '010-0000-0000',
-          companyType: '제조사',
-          provider: 'normal',
-          role: 'admin',
-          savedGuides: [],
-          savedFormulas: [],
-          savedAnalyzers: [],
-          createdAt: new Date().toISOString()
-        });
+      // socsoc 및 admin 계정 완전 삭제 (사용자 요청 반영)
+      const prevLength = usersDb.length;
+      usersDb = usersDb.filter(u => u && u.username !== 'socsoc' && u.username !== 'admin');
+      if (usersDb.length !== prevLength) {
         saveUsersDb();
       }
 
-      // Ensure default socsoc admin account exists
-      if (!usersDb.some(u => u.username === 'socsoc')) {
-        usersDb.push({
-          id: 'socsoc_admin_local',
-          username: 'socsoc',
-          password: 'socsoc1234',
-          name: '속속 관리자',
-          nickname: '최고관리자',
-          email: 'socsoc_contact@naver.com',
-          phone: '010-0000-0000',
-          companyType: '제조사',
-          provider: 'normal',
-          role: 'admin',
-          savedGuides: [],
-          savedFormulas: [],
-          savedAnalyzers: [],
-          createdAt: new Date().toISOString()
-        });
-        saveUsersDb();
+      // 현재 세션이 socsoc 또는 admin인 경우 세션도 정리
+      if (currentUser && (currentUser.username === 'socsoc' || currentUser.username === 'admin')) {
+        currentUser = null;
+        sessionStorage.removeItem(STORAGE_SESSION_KEY);
+        localStorage.removeItem(STORAGE_SESSION_KEY);
+      }
+
+      // Supabase 클라우드 profiles에서도 socsoc 및 admin 삭제 시도
+      if (sbClient) {
+        try {
+          sbClient.from('profiles').delete().in('username', ['socsoc', 'admin']).then();
+        } catch (e) {}
       }
 
       // 최고 관리자(socsoc 및 admin) 권한 자동 부여 및 동기화
@@ -5204,7 +5193,7 @@
       const normalizedId = id.toLowerCase();
 
       // 2. 로컬 브라우저 DB(usersDb) 기준 중복 검사 (아이디, 핸드폰번호, 이메일)
-      const dupIdLocal = normalizedId && (usersDb.some(u => (u.username || '').trim().toLowerCase() === normalizedId) || ADMIN_USERNAMES.includes(normalizedId));
+      const dupIdLocal = normalizedId && usersDb.some(u => (u.username || '').trim().toLowerCase() === normalizedId);
       if (dupIdLocal) {
         showSignupError('이미 사용 중인 아이디입니다. 다른 아이디를 입력해주세요.', idEl);
         return;
