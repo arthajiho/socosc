@@ -662,8 +662,11 @@
         font-size: 9.5px !important;
       }
 
-      /* When in Explorer Mode: Print recipe article in full */
-      body.mode-exp #modeCalculator {
+      /* ======================================================== */
+      /* Mode 1: Explorer (가이드 처방 도서관) Print Styles */
+      /* ======================================================== */
+      body.mode-exp #modeCalculator,
+      body.mode-exp #modeAnalyzer {
         display: none !important;
       }
 
@@ -671,6 +674,10 @@
         display: block !important;
         overflow: visible !important;
         height: auto !important;
+        position: static !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
       body.mode-exp aside {
@@ -678,10 +685,244 @@
       }
 
       body.mode-exp main {
+        display: block !important;
         overflow: visible !important;
         height: auto !important;
         padding: 0 !important;
+        margin: 0 !important;
         width: 100% !important;
+        background: transparent !important;
+      }
+
+      body.mode-exp main > div.max-w-4xl {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      body.mode-exp main .space-y-6 {
+        display: block !important;
+      }
+
+      body.mode-exp main .space-y-6 > * {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+      }
+
+      /* Hide interactive buttons & edit controls in guide print */
+      body.mode-exp button,
+      body.mode-exp #saveGuideRecipeBtn,
+      body.mode-exp #recipeBottomEditSection,
+      body.mode-exp #recipeArticleCard > div:first-child,
+      body.mode-exp .kboard-document-action,
+      body.mode-exp .kboard-button-print {
+        display: none !important;
+      }
+
+      /* Top Article Header Card */
+      body.mode-exp .guide-article-header-card,
+      body.mode-exp main .bg-white.rounded-xl.border.border-slate-200.p-6 {
+        display: block !important;
+        padding: 4px 8px !important;
+        margin-bottom: 5px !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      body.mode-exp #articleTitle {
+        font-size: 14px !important;
+        font-weight: 900 !important;
+        color: #0f172a !important;
+        line-height: 1.25 !important;
+        margin-top: 1px !important;
+      }
+
+      body.mode-exp #recipeArticleCard {
+        display: block !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+      }
+
+      /* Page 1: Form Information & Table */
+      body.mode-exp .guide-print-page1 {
+        display: block !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+
+      /* Page Break between Table and Manufacturing Procedure */
+      body.mode-exp .guide-print-page-break {
+        display: block !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        clear: both !important;
+      }
+
+      /* Page 2: Manufacturing Procedure, Specifications, and Disclaimer */
+      body.mode-exp .guide-print-page2 {
+        display: block !important;
+        padding-top: 2px !important;
+      }
+
+      /* In 2-page mode: force page 2 to start on a new page */
+      body.mode-exp.guide-print-2page .guide-print-page-break {
+        display: block !important;
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+
+      body.mode-exp.guide-print-2page .guide-print-page2 {
+        page-break-before: always !important;
+        break-before: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      body.mode-exp.guide-print-2page .guide-print-page2-header {
+        display: block !important;
+      }
+
+      /* In 1-page mode: content flows continuously on 1 page without extra break */
+      body.mode-exp.guide-print-1page .guide-print-page-break {
+        display: none !important;
+      }
+
+      body.mode-exp.guide-print-1page .guide-print-page2 {
+        page-break-before: auto !important;
+        break-before: auto !important;
+        padding-top: 4px !important;
+      }
+
+      body.mode-exp.guide-print-1page .guide-print-page2-header {
+        display: none !important;
+      }
+
+      body.mode-exp .guide-print-page2-header {
+        display: block !important;
+        text-align: center !important;
+        padding-bottom: 3px !important;
+        margin-bottom: 6px !important;
+        border-bottom: 1.5px solid #0f172a !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      body.mode-exp .guide-print-page2-subtitle {
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        color: #334155 !important;
+        line-height: 1.25 !important;
+        margin-top: 1px !important;
+      }
+
+      /* Body Text & Table Styling in Print - Easy to read comfortable sizes */
+      body.mode-exp .original-content-body {
+        font-size: 10.5px !important;
+        line-height: 1.4 !important;
+        color: #0f172a !important;
+      }
+
+      body.mode-exp .original-content-body p,
+      body.mode-exp .original-content-body span,
+      body.mode-exp .original-content-body li {
+        font-size: 10.5px !important;
+        line-height: 1.4 !important;
+      }
+
+      body.mode-exp .original-content-body strong {
+        color: #0f172a !important;
+        font-weight: 800 !important;
+        font-size: 11px !important;
+      }
+
+      body.mode-exp .guide-print-page1 table,
+      body.mode-exp .original-content-body table {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        table-layout: auto !important;
+        border-collapse: collapse !important;
+        margin: 5px 0 !important;
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 3px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      body.mode-exp .original-content-body table tr {
+        height: auto !important;
+        page-break-inside: avoid !important;
+      }
+
+      body.mode-exp .original-content-body table th {
+        background-color: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 4px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        line-height: 1.3 !important;
+        height: auto !important;
+      }
+
+      body.mode-exp .original-content-body table td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 3.5px 6px !important;
+        font-size: 10px !important;
+        line-height: 1.3 !important;
+        color: #1e293b !important;
+        height: auto !important;
+      }
+
+      body.mode-exp .original-content-body table td span,
+      body.mode-exp .original-content-body table th span {
+        font-size: inherit !important;
+        line-height: inherit !important;
+      }
+
+      /* Compact Manufacturing Procedure & Specs & Disclaimer */
+      body.mode-exp .guide-print-page2-body ol,
+      body.mode-exp .guide-print-page2-body ul,
+      body.mode-exp .original-content-body ol,
+      body.mode-exp .original-content-body ul {
+        margin: 3px 0 6px 0 !important;
+        padding-left: 18px !important;
+      }
+
+      body.mode-exp .guide-print-page2-body li,
+      body.mode-exp .original-content-body li {
+        margin-bottom: 2px !important;
+        font-size: 10px !important;
+        line-height: 1.38 !important;
+      }
+
+      body.mode-exp .guide-print-page2-body br + br {
+        display: none !important;
+      }
+
+      /* Disclaimer font styling in print */
+      body.mode-exp .original-content-body span[style*="font-size:10pt"],
+      body.mode-exp .original-content-body span[style*="font-size: 10pt"] {
+        font-size: 8.8px !important;
+        line-height: 1.3 !important;
+        color: #475569 !important;
       }
 
       /* Mode 3: Analyzer (화장품 전성분 해체기) Print Styles */
@@ -872,7 +1113,7 @@
           </div>
 
           <!-- Article Header Card -->
-          <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="guide-article-header-card bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <div class="flex items-center gap-2">
                 <span id="articleCategoryBadge" class="px-2.5 py-0.5 rounded text-xs font-bold uppercase bg-blue-100 text-blue-800">
@@ -891,7 +1132,7 @@
                 오일리 바디 스플래시 2상 (Oily Body Splash, 2-Phases with CORN PO4 PH "B")
               </h1>
               <button id="saveGuideRecipeBtn" onclick="toggleSaveCurrentGuideRecipe()"
-                class="shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95">
+                class="print-hide shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95">
                 <span id="saveGuideRecipeIcon">
                   <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
                 </span>
@@ -992,25 +1233,27 @@
           <div class="bg-white rounded-2xl border border-neutral-200/80 p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4 print-hide">
             <div class="space-y-1">
               <div class="flex items-center gap-2">
-                <span class="bg-[#0f2137] text-white text-[11px] font-black px-2.5 py-0.5 rounded-md shadow-sm">R&D LAB</span>
-                <h1 class="text-xl font-black text-neutral-900 tracking-tight">제형 개발 & 배치 계산기</h1>
+                <span class="bg-[#0f2137] text-white text-xs font-black px-2.5 py-0.5 rounded-md shadow-sm">R&D LAB</span>
+                <h1 class="text-2xl font-black text-neutral-900 tracking-tight">제형 개발 & 배치 계산기</h1>
               </div>
-              <p class="text-xs text-neutral-500">배합비 소수점 2자리(0.00%) 정밀 계산 및 비커 계량값(g)을 즉시 산출합니다.</p>
-              <p class="text-[11px] text-neutral-400 mt-0.5">🔒 서버에 저장되지 않는 로컬 보안 툴. 저장된 처방은 본인만 볼 수 있습니다.</p>
+              <p class="text-sm text-neutral-500 mt-1">배합비 소수점 2자리(0.00%) 정밀 계산 및 비커 계량값(g)을 즉시 산출합니다.</p>
             </div>
-            <div class="flex items-center gap-2 print-hide">
-              <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95">
-                <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                <span>빈 시트로 초기화</span>
-              </button>
-              <button onclick="exportCalculatorToExcel()" class="px-3.5 py-2 text-xs font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95" title="현재 작성된 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
-                <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
-                <span>엑셀 내보내기</span>
-              </button>
-              <button onclick="saveCurrentCustomFormula()" class="px-3.5 py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
-                <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                <span>내 처방으로 저장</span>
-              </button>
+            <div class="flex flex-col items-start md:items-end gap-1.5 print-hide">
+              <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95">
+                  <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  <span>빈 시트로 초기화</span>
+                </button>
+                <button onclick="exportCalculatorToExcel()" class="px-3.5 py-2 text-xs font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95" title="현재 작성된 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
+                  <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
+                  <span>엑셀 내보내기</span>
+                </button>
+                <button onclick="saveCurrentCustomFormula()" class="px-3.5 py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                  <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                  <span>내 처방으로 저장</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-neutral-400 mt-0.5">🔒 서버에 저장되지 않는 로컬 보안 툴. 저장된 처방은 본인만 볼 수 있습니다.</p>
             </div>
           </div>
 
@@ -1271,12 +1514,12 @@
 
           <!-- 상단 대시보드 헤더 (인쇄 시 숨김) -->
           <div class="no-print bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-[#0f2137] rounded-full text-xs font-bold tracking-wide border border-slate-200 mb-2">
+            <div class="space-y-1">
+              <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-[#0f2137] rounded-full text-xs font-bold tracking-wide border border-slate-200 mb-1">
                 <span class="w-2 h-2 rounded-full bg-[#0f2137] animate-pulse"></span>
                 Cosmetic Reverse-Engineering Engine v2.4
               </div>
-              <h1 class="text-2xl md:text-3xl font-black tracking-tight text-neutral-900">
+              <h1 class="text-2xl font-black tracking-tight text-neutral-900">
                 화장품 전성분 해체기
               </h1>
               <p class="text-sm text-neutral-500 mt-1">
@@ -1284,11 +1527,19 @@
               </p>
             </div>
 
-            <div class="flex items-center gap-2 text-xs text-slate-700 bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-full shrink-0 font-bold shadow-2xs">
-              <svg class="w-4 h-4 text-[#0f2137] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <span>100% 로컬 브라우저 연산 (외부 서버 전송 없음)</span>
+            <div class="flex flex-col items-start md:items-end gap-1.5 shrink-0">
+              <button
+                type="button"
+                onclick="saveCurrentAnalyzerFormula()"
+                class="px-3.5 py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                title="전성분 해체 분석 결과를 내 연구노트에 저장합니다"
+              >
+                <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                <span>해체 결과 저장</span>
+              </button>
+              <p class="text-[11px] text-neutral-400 mt-0.5">🔒 서버에 저장되지 않는 로컬 보안 툴. 저장된 처방은 본인만 볼 수 있습니다.</p>
             </div>
           </div>
 
@@ -1328,15 +1579,8 @@
               class="w-full p-4 rounded-xl border border-neutral-200 bg-neutral-50/60 text-neutral-900 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0f2137] focus:bg-white transition resize-y font-mono"
             ></textarea>
 
-            <!-- 안심 문구 및 해체 시작 버튼 -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-              <div class="flex items-center gap-2 text-xs text-neutral-500">
-                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-neutral-100 text-neutral-500">
-                  🔒
-                </span>
-                <span class="font-normal">서버에 저장되지 않는 로컬 보안 툴. 입력하신 데이터는 브라우저 내에서만 연산됩니다.</span>
-              </div>
-
+            <!-- 해체 시작 버튼 -->
+            <div class="flex items-center justify-end pt-1">
               <button
                 type="button"
                 onclick="runAnalysis()"
@@ -3173,6 +3417,15 @@
       } else {
         document.body.classList.add('mode-exp');
         document.body.classList.remove('mode-calc', 'mode-analyzer');
+        if (currentRecipe) {
+          if (isShortGuideRecipe(currentRecipe)) {
+            document.body.classList.add('guide-print-1page');
+            document.body.classList.remove('guide-print-2page');
+          } else {
+            document.body.classList.add('guide-print-2page');
+            document.body.classList.remove('guide-print-1page');
+          }
+        }
         document.querySelectorAll('input').forEach(inp => {
           inp.setAttribute('value', inp.value);
         });
@@ -3208,6 +3461,15 @@
       } else {
         document.body.classList.add('mode-exp');
         document.body.classList.remove('mode-calc', 'mode-analyzer');
+        if (currentRecipe) {
+          if (isShortGuideRecipe(currentRecipe)) {
+            document.body.classList.add('guide-print-1page');
+            document.body.classList.remove('guide-print-2page');
+          } else {
+            document.body.classList.add('guide-print-2page');
+            document.body.classList.remove('guide-print-1page');
+          }
+        }
       }
       document.querySelectorAll('input').forEach(inp => {
         inp.setAttribute('value', inp.value);
@@ -3261,9 +3523,36 @@
       setAppMode('calculator');
     }
 
+    function isShortGuideRecipe(recipe) {
+      if (!recipe) return false;
+      const ingCount = (recipe.ingredients && recipe.ingredients.length) ? recipe.ingredients.length : 0;
+      let postLen = 0;
+      if (recipe.contentHtml) {
+        const tIdx = recipe.contentHtml.indexOf('</table>');
+        if (tIdx !== -1) {
+          postLen = recipe.contentHtml.substring(tIdx + 8).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        }
+      } else if (recipe.procedure) {
+        postLen = recipe.procedure.length;
+      }
+      const descLen = (recipe.description || '').length;
+      // 전체 내용이 1페이지(약 1040px 인쇄 공간) 안에 여유 있게 들어가는지 종합 판정
+      const estHeight = 180 + (ingCount * 23) + (descLen * 0.35) + (postLen * 0.42);
+      return ingCount <= 8 && postLen <= 750 && estHeight <= 720;
+    }
+
     function showRecipeOriginalArticle(recipe) {
       currentRecipe = recipe;
       updateSaveGuideRecipeBtnState(recipe);
+
+      const isShort = isShortGuideRecipe(recipe);
+      if (isShort) {
+        document.body.classList.add('guide-print-1page');
+        document.body.classList.remove('guide-print-2page');
+      } else {
+        document.body.classList.add('guide-print-2page');
+        document.body.classList.remove('guide-print-1page');
+      }
 
       const meta = extractRecipeMetadata(recipe);
 
@@ -3283,15 +3572,54 @@
         cleanedHtml = cleanedHtml.replace(/<div[^>]*class="[^"]*kboard-document-action[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>/gi, '');
         cleanedHtml = cleanedHtml.replace(/<button[^>]*class="[^"]*kboard-button-print[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '');
         cleanedHtml = cleanedHtml.replace(/<button[^>]*onclick="[^"]*print[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '');
+
+        // 1페이지/2페이지 인쇄 분할
+        const tableEndIdx = cleanedHtml.indexOf('</table>');
+        if (tableEndIdx !== -1) {
+          const page1Html = cleanedHtml.substring(0, tableEndIdx + 8);
+          let page2Html = cleanedHtml.substring(tableEndIdx + 8);
+          page2Html = page2Html.replace(/^(\s*<br\s*\/?>)+/gi, '');
+
+          if (isShort) {
+            // [1페이지 인쇄 모드]: 내용이 적을 때는 강제 페이지 넘김 없이 1페이지에 자연스럽게 연속 출력
+            cleanedHtml = `
+              <div class="guide-print-page1">
+                ${page1Html}
+              </div>
+              <div class="guide-print-page2">
+                <div class="guide-print-page2-body">
+                  ${page2Html}
+                </div>
+              </div>
+            `;
+          } else {
+            // [2페이지 인쇄 모드]: 내용이 많을 때는 테이블은 1페이지, 제조공정/규격/면책고지는 2페이지로 분할
+            cleanedHtml = `
+              <div class="guide-print-page1">
+                ${page1Html}
+              </div>
+              <div class="guide-print-page-break print-only"></div>
+              <div class="guide-print-page2">
+                <div class="guide-print-page2-header print-only">
+                  <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 &amp; 제형 개발 워크벤치</div>
+                  <div class="guide-print-page2-subtitle">【제조공정 · 규격 및 특성 · 면책고지】 - ${escapeHtml(recipe.title || '')} (${escapeHtml(meta.formulaCode || '')})</div>
+                </div>
+                <div class="guide-print-page2-body">
+                  ${page2Html}
+                </div>
+              </div>
+            `;
+          }
+        }
         container.innerHTML = cleanedHtml;
       } else {
-        let html = '';
-        if (meta.supplier) html += `<p class="mb-2"><strong>제공사:</strong> ${meta.supplier}</p>`;
-        if (meta.formulaCode) html += `<p class="mb-2"><strong>처방번호:</strong> ${meta.formulaCode}</p>`;
-        if (recipe.description) html += `<p class="mb-4 bg-slate-50 p-3 rounded border border-slate-100"><strong>제형설명:</strong> ${recipe.description}</p>`;
+        let p1Html = '';
+        if (meta.supplier) p1Html += `<p class="mb-2"><strong>제공사:</strong> ${meta.supplier}</p>`;
+        if (meta.formulaCode) p1Html += `<p class="mb-2"><strong>처방번호:</strong> ${meta.formulaCode}</p>`;
+        if (recipe.description) p1Html += `<p class="mb-4 bg-slate-50 p-3 rounded border border-slate-100"><strong>제형설명:</strong> ${recipe.description}</p>`;
         
         if (recipe.ingredients && recipe.ingredients.length > 0) {
-          html += `
+          p1Html += `
             <table class="my-4">
               <thead>
                 <tr>
@@ -3306,7 +3634,7 @@
           `;
           recipe.ingredients.forEach(ing => {
             const pVal = Number(ing.percent || 0).toFixed(2);
-            html += `
+            p1Html += `
               <tr>
                 <td><strong>${ing.phase || 'Phase A'}</strong></td>
                 <td>${ing.name}</td>
@@ -3316,13 +3644,42 @@
               </tr>
             `;
           });
-          html += `</tbody></table>`;
+          p1Html += `</tbody></table>`;
         }
 
+        let p2Html = '';
         if (recipe.procedure) {
-          html += `<div class="mt-4"><h3 class="font-bold text-sm text-slate-900 mb-2">제조공정</h3><p class="whitespace-pre-line bg-slate-50 p-3 rounded border border-slate-100 text-xs">${recipe.procedure}</p></div>`;
+          p2Html += `<div class="mt-4"><h3 class="font-bold text-sm text-slate-900 mb-2">제조공정</h3><p class="whitespace-pre-line bg-slate-50 p-3 rounded border border-slate-100 text-xs">${recipe.procedure}</p></div>`;
         }
-        container.innerHTML = html;
+
+        if (isShort) {
+          container.innerHTML = `
+            <div class="guide-print-page1">
+              ${p1Html}
+            </div>
+            <div class="guide-print-page2">
+              <div class="guide-print-page2-body">
+                ${p2Html}
+              </div>
+            </div>
+          `;
+        } else {
+          container.innerHTML = `
+            <div class="guide-print-page1">
+              ${p1Html}
+            </div>
+            <div class="guide-print-page-break print-only"></div>
+            <div class="guide-print-page2">
+              <div class="guide-print-page2-header print-only">
+                <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 &amp; 제형 개발 워크벤치</div>
+                <div class="guide-print-page2-subtitle">【제조공정 · 규격 및 특성 · 면책고지】 - ${escapeHtml(recipe.title || '')} (${escapeHtml(meta.formulaCode || '')})</div>
+              </div>
+              <div class="guide-print-page2-body">
+                ${p2Html}
+              </div>
+            </div>
+          `;
+        }
       }
 
       // 수정된 처방인지 여부에 따라 상단 배지 갱신
@@ -6775,6 +7132,7 @@
       } else {
         const origContainer = document.getElementById('originalContentContainer');
         contentHtmlToEdit = origContainer ? origContainer.innerHTML : '';
+        contentHtmlToEdit = contentHtmlToEdit.replace(/<div class="guide-print-page1">\s*([\s\S]*?)\s*<\/div>\s*<div class="guide-print-page-break[^"]*"><\/div>\s*<div class="guide-print-page2">\s*<div class="guide-print-page2-header[^"]*">[\s\S]*?<\/div>\s*<div class="guide-print-page2-body">\s*([\s\S]*?)\s*<\/div>\s*<\/div>/gi, '$1$2');
       }
 
       // Clean print buttons if any
