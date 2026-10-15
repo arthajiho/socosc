@@ -1597,24 +1597,12 @@
           <!-- 2. 결과 대시보드 뷰 -->
           <div id="resultsContainer" class="space-y-6 hidden">
 
-            <!-- 결과 대시보드 상단 툴바 (보관함 저장 지원) -->
+            <!-- 결과 대시보드 상단 툴바 -->
             <div class="no-print flex items-center justify-between border-b border-neutral-200/80 pb-2.5 mb-4">
               <div class="flex items-center gap-2">
                 <span class="text-lg">📋</span>
                 <h2 class="text-base font-black text-neutral-800 tracking-tight">성분 해체 및 배합비 시뮬레이션 워크시트</h2>
               </div>
-
-              <button
-                type="button"
-                onclick="saveCurrentAnalyzerFormula()"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0f2137] hover:bg-[#1e3a5f] text-white font-black text-xs shadow-sm transition active:scale-95 cursor-pointer"
-                title="전성분 해체 분석 결과를 내 연구노트에 저장합니다"
-              >
-                <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                </svg>
-                <span>해체 결과 저장</span>
-              </button>
             </div>
 
             <!-- [에디터 탭 영역] -->
@@ -1661,11 +1649,9 @@
                   <button type="button" onclick="addNewIngredientRow()" class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 font-bold transition cursor-pointer">
                     <span>➕</span> 성분 추가
                   </button>
-                  <button type="button" onclick="copyTableAsTSV()" id="btnCopy" class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 font-bold transition cursor-pointer">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    엑셀/표 복사
+                  <button type="button" onclick="exportAnalyzerToExcel()" id="btnExportAnalyzerExcel" class="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold transition cursor-pointer shadow-2xs active:scale-95" title="전성분 해체 분석 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
+                    <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
+                    <span>엑셀 내보내기</span>
                   </button>
                 </div>
               </div>
@@ -8744,6 +8730,107 @@
       }
 
       renderAnalyzerTable();
+    }
+
+    function exportAnalyzerToExcel() {
+      if (!analyzerState || !analyzerState.ingredients || analyzerState.ingredients.length === 0) {
+        showToast('내보낼 전성분 해체 분석 데이터가 없습니다. 먼저 전성분을 입력하고 해체해 주세요.');
+        return;
+      }
+
+      const titleInput = document.getElementById('analyzerFormulaTitleInput');
+      const title = (titleInput && titleInput.value.trim()) || '전성분_해체분석';
+      const today = new Date().toISOString().substring(0, 10);
+      const effectiveCutoff = getEffectiveCutoff();
+      const cutoffInfo = effectiveCutoff !== null ? `약 ${effectiveCutoff + 1}번째 성분 후 (1% 추정 절취선)` : '미탐지';
+      const totalCount = analyzerState.ingredients.length;
+
+      let totalSum = 0;
+      analyzerState.ingredients.forEach(it => {
+        const v = parseFloat(it.percentage);
+        if (!isNaN(v)) totalSum += v;
+      });
+      totalSum = parseFloat(totalSum.toFixed(2));
+
+      // 엑셀 시트 2차원 배열 데이터 구성
+      const rows = [];
+      rows.push(['[속속(SOCSOC) 화장품 전성분 해체 분석 워크시트]']);
+      rows.push(['분석 제목', title, '', '분석일자', today]);
+      rows.push(['총 성분 수', `${totalCount} 개`, '', '1% 절취선 위치', cutoffInfo]);
+      rows.push(['배합비 합계', `${totalSum.toFixed(2)} %`, '', '분석 엔진', 'Cosmetic Reverse-Engineering Engine v2.4']);
+      rows.push([]); // 빈 줄 구분
+      rows.push(['순번', '성분명 (영문/국문)', '함량 (%)', '역할 / 분류', '구간 구분 (1% 기준)']);
+
+      analyzerState.ingredients.forEach((ing, index) => {
+        const p = parseFloat(Number(ing.percentage || 0).toFixed(2));
+        const isAbove = effectiveCutoff === null ? true : (index < effectiveCutoff);
+        const sectionLabel = isAbove ? '고함량 (1% 초과 구간)' : '미량 (1% 이하 구간)';
+        rows.push([
+          ing.order || (index + 1),
+          ing.name || '',
+          p,
+          ing.role || '',
+          sectionLabel
+        ]);
+      });
+
+      const fitStatus = Math.abs(totalSum - 100) < 0.005 ? '100.00% 일치' : `${(100 - totalSum).toFixed(2)}% 차이`;
+      rows.push(['합계', '', totalSum, '', fitStatus]);
+
+      const rawText = document.getElementById('rawTextarea')?.value || '';
+      if (rawText && rawText.trim()) {
+        rows.push([]);
+        rows.push(['■ 원본 전성분 텍스트']);
+        rows.push([rawText.trim()]);
+      }
+
+      const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
+      const safeFileName = `[SOCSOC_해체]_${safeTitle}_${today}.xlsx`;
+
+      // 1. SheetJS (xlsx.js) 라이브러리를 통한 정식 .xlsx 파일 생성
+      if (typeof XLSX !== 'undefined') {
+        try {
+          const ws = XLSX.utils.aoa_to_sheet(rows);
+
+          // 열 너비 자동 최적화
+          ws['!cols'] = [
+            { wch: 10 }, // 순번
+            { wch: 38 }, // 성분명
+            { wch: 14 }, // 함량 (%)
+            { wch: 24 }, // 역할 / 분류
+            { wch: 24 }  // 구간 구분
+          ];
+
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, '전성분해체결과');
+          XLSX.writeFile(wb, safeFileName);
+          showToast(`전성분 해체 엑셀 파일("${safeFileName}")이 다운로드되었습니다.`);
+          return;
+        } catch (e) {
+          console.warn('XLSX export fallback to CSV:', e);
+        }
+      }
+
+      // 2. Fallback: UTF-8 BOM CSV 파일 다운로드
+      let csvContent = "\uFEFF";
+      rows.forEach(r => {
+        const line = r.map(c => {
+          const str = String(c !== undefined && c !== null ? c : '');
+          return `"${str.replace(/"/g, '""')}"`;
+        }).join(',');
+        csvContent += line + "\r\n";
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `[SOCSOC_해체]_${safeTitle}_${today}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('엑셀 파일(CSV)이 다운로드되었습니다.');
     }
 
     function copyTableAsTSV() {
