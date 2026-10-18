@@ -1653,7 +1653,7 @@
                     <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
                     <span>엑셀 내보내기</span>
                   </button>
-                  <button type="button" onclick="transferAnalyzerToCalculator()" id="btnTransferToCalculator" class="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-[#0f2137] font-bold transition cursor-pointer shadow-2xs active:scale-95" title="해체된 성분들과 배합비를 제형 개발 계산기(Phase A)로 적용하여 이동합니다">
+                  <button type="button" onclick="transferAnalyzerToCalculator()" id="btnTransferToCalculator" class="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-[#0f2137] font-bold transition cursor-pointer shadow-2xs active:scale-95" title="해체된 성분들과 배합비를 제형 개발 계산기로 적용하여 이동합니다">
                     <i class="fa-solid fa-calculator text-blue-600 text-sm"></i>
                     <span>제형 개발 계산기 이동</span>
                   </button>
@@ -1873,7 +1873,7 @@
       <!-- Notice Banner (로그인 필요 시 알림) -->
       <div id="authNoticeBanner" class="hidden mx-5 mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-bold flex items-center gap-2">
         <svg class="w-3.5 h-3.5 fill-current text-[#0f2137] shrink-0" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
-        <span id="authNoticeMessage">가이드 처방을 저장하려면 로그인이 필요합니다.</span>
+        <span id="authNoticeMessage">무료회원 가입 시 내 처방전을 안전하게 보관하고 언제든 불러올 수 있습니다.</span>
       </div>
 
       <!-- Modal Sub Header / Navigation Bar (로그인 우측 회원가입 탭 제거 및 깔끔한 헤더 적용) -->
@@ -7390,7 +7390,7 @@
     // ==========================================
     async function toggleSaveCurrentGuideRecipe() {
       if (!currentUser) {
-        openAuthModal('login', '가이드 처방 저장은 회원 로그인 후 이용 가능합니다.');
+        openAuthModal('login', '무료회원 가입 시 내 처방전을 안전하게 보관하고 언제든 불러올 수 있습니다.');
         return;
       }
 
@@ -7475,7 +7475,7 @@
     // ==========================================
     async function saveCurrentCustomFormula() {
       if (!currentUser) {
-        openAuthModal('login', '내 처방 저장은 회원 로그인 후 이용 가능합니다.');
+        openAuthModal('login', '무료회원 가입 시 내 처방전을 안전하게 보관하고 언제든 불러올 수 있습니다.');
         return;
       }
 
@@ -7531,7 +7531,7 @@
 
     function openSavedItemsModal(defaultTab = 'guide') {
       if (!currentUser) {
-        openAuthModal('login', '연구노트 열람은 회원 로그인 후 이용 가능합니다.');
+        openAuthModal('login', '무료회원 가입 시 내 처방전을 안전하게 보관하고 언제든 불러올 수 있습니다.');
         return;
       }
 
@@ -8937,7 +8937,7 @@
       const calcPane = document.querySelector('#modeCalculator .overflow-y-auto');
       if (calcPane) calcPane.scrollTo({ top: 0, behavior: 'smooth' });
 
-      showToast(`전성분 해체 데이터(${activeFormula.length}개 성분)가 제형 개발 계산기(Phase A)로 적용되었습니다.`);
+      showToast('전성분 해체 데이터가 제형 개발 계산기로 적용되었습니다.');
     }
 
     function copyTableAsTSV() {
@@ -8959,7 +8959,7 @@
 
     async function saveCurrentAnalyzerFormula() {
       if (!currentUser) {
-        openAuthModal('login', '전성분 해체 결과 저장은 회원 로그인 후 이용 가능합니다.');
+        openAuthModal('login', '무료회원 가입 시 내 처방전을 안전하게 보관하고 언제든 불러올 수 있습니다.');
         return;
       }
 
