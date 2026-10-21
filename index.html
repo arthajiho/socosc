@@ -2798,7 +2798,7 @@
       if (window.supabase && typeof window.supabase.createClient === 'function') {
         sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           auth: {
-            storage: window.localStorage,
+            storage: window.sessionStorage,
             persistSession: true,
             autoRefreshToken: true
           }
@@ -2834,7 +2834,8 @@
 
         let currentUser = null;
     try {
-      currentUser = JSON.parse(sessionStorage.getItem(STORAGE_SESSION_KEY) || localStorage.getItem(STORAGE_SESSION_KEY) || 'null');
+      // 인터넷 창을 닫으면 자동으로 로그아웃되도록 브라우저 세션 저장소(sessionStorage)만 사용
+      currentUser = JSON.parse(sessionStorage.getItem(STORAGE_SESSION_KEY) || 'null');
       if (currentUser) {
         if (!currentUser.savedGuides) currentUser.savedGuides = [];
         if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
@@ -2843,6 +2844,16 @@
     } catch (e) {
       currentUser = null;
     }
+
+    // 창을 닫은 후 재접속 시 영구 자동 로그인이 되지 않도록 localStorage의 세션 및 잔여 토큰 정리
+    try {
+      localStorage.removeItem(STORAGE_SESSION_KEY);
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {}
 
     function saveUsersDb() {
       localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
@@ -2853,7 +2864,6 @@
           localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
         }
         try {
-          localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
           sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
         } catch (_) {}
       }
@@ -5938,8 +5948,8 @@ function initAuth() {
           if (!currentUser.savedAnalyzers) currentUser.savedAnalyzers = [];
 
           try {
-            localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
             sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+            localStorage.removeItem(STORAGE_SESSION_KEY);
           } catch (_) {}
 
           if (sbClient) {
