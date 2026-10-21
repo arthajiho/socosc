@@ -3204,7 +3204,11 @@
           try {
             await syncUserToSupabase(currentUser);
             if (currentUser.id && !String(currentUser.id).startsWith("local_")) {
-              await cloudFetchSavedGuides();
+              await Promise.allSettled([
+                cloudFetchSavedGuides(),
+                cloudFetchSavedFormulas(),
+                cloudFetchSavedAnalyzers()
+              ]);
             }
           } catch (e) {}
         }
@@ -5887,7 +5891,7 @@ function initAuth() {
                         savedAt: g.saved_at || g.created_at
                       }));
                     }
-                    if (formulasRes.data && formulasRes.data.length > 0) {
+                    if (formulasRes.data) {
                       foundLocal.savedFormulas = formulasRes.data.map(f => ({
                         id: f.id,
                         title: f.title,
@@ -5898,6 +5902,23 @@ function initAuth() {
                         savedAt: f.saved_at || f.created_at
                       }));
                     }
+                    try {
+                      const { data: aData2 } = await sbClient.from('saved_analyzers').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false });
+                      if (aData2 && Array.isArray(aData2) && aData2.length > 0) {
+                        foundLocal.savedAnalyzers = aData2.map(a => ({
+                          id: a.id,
+                          title: a.title,
+                          rawText: a.raw_text,
+                          ingredients: a.ingredients,
+                          cutoffIndex: a.cutoff_index,
+                          cutoffName: a.cutoff_name,
+                          manualCutoff: a.manual_cutoff,
+                          totalCount: a.total_count,
+                          totalSum: a.total_sum,
+                          savedAt: a.saved_at || a.created_at
+                        }));
+                      }
+                    } catch (_) {}
                   } catch (_) {}
                 } else {
                   // 프로필이 없는 경우 signUp / upsert 마이그레이션 시도
@@ -7835,6 +7856,236 @@ function initAuth() {
       }
     }
 
+    // ==========================================================================
+    // CUSTOM FORMULA CLOUD SYNC LOGIC (Supabase saved_formulas 실시간 연동)
+    // ==========================================================================
+    /** 
+     * Supabase saved_formulas 테이블에 연구 처방 저장 (RLS 403 방지: 삭제 후 신규 INSERT)
+     */
+    async function cloudSaveCustomFormula(record) {
+      if (!sbClient || !currentUser || !record) return false;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) {
+          console.warn('Supabase Auth User ID not available for cloudSaveCustomFormula');
+          return false;
+        }
+
+        // 1. 기존 레코드 삭제 (RLS UPDATE 충돌 회피)
+        await sbClient
+          .from('saved_formulas')
+          .delete()
+          .eq('user_id', targetUserId)
+          .eq('id', record.id);
+
+        // 2. 신규 레코드 삽입 (POST 201 Created)
+        const { error } = await sbClient
+          .from('saved_formulas')
+          .insert({
+            id: record.id,
+            user_id: targetUserId,
+            title: record.title || '신규 연구 처방',
+            batch_size: record.batchSize || 100,
+            formula: {
+              ingredients: record.formula || [],
+              procedure: record.procedure || ''
+            },
+            total_percent: record.totalPercent || 0,
+            saved_at: record.savedAt || new Date().toISOString()
+          });
+
+        if (error) {
+          console.error('Supabase cloudSaveCustomFormula insert error:', error);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error('Supabase cloudSaveCustomFormula exception:', err);
+        return false;
+      }
+    }
+
+    /** 
+     * Supabase saved_formulas 테이블에서 연구 처방 삭제
+     */
+    async function cloudDeleteCustomFormula(id) {
+      if (!sbClient || !currentUser || !id) return false;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) return false;
+
+        const { error } = await sbClient
+          .from('saved_formulas')
+          .delete()
+          .eq('user_id', targetUserId)
+          .eq('id', id);
+
+        if (error) {
+          console.error('Supabase cloudDeleteCustomFormula error:', error);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error('Supabase cloudDeleteCustomFormula exception:', err);
+        return false;
+      }
+    }
+
+    /** 
+     * Supabase saved_formulas 테이블에서 최신 저장 목록 실시간 동기화(불러오기)
+     */
+    async function cloudFetchSavedFormulas() {
+      if (!sbClient || !currentUser) return;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) return;
+
+        const { data, error } = await sbClient
+          .from('saved_formulas')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .order('saved_at', { ascending: false });
+
+        if (!error && Array.isArray(data)) {
+          currentUser.savedFormulas = data.map(f => ({
+            id: f.id,
+            title: f.title,
+            batchSize: f.batch_size,
+            formula: (Array.isArray(f.formula) ? f.formula : (f.formula?.ingredients || [])),
+            procedure: f.procedure || f.formula?.procedure || '',
+            totalPercent: f.total_percent,
+            savedAt: f.saved_at || f.created_at
+          }));
+          saveUsersDb();
+          renderAuthHeader();
+          const countEl = document.getElementById('vaultCountCustom');
+          if (countEl) countEl.textContent = (currentUser.savedFormulas || []).length;
+          if (currentVaultTab === 'custom') {
+            renderSavedCustomFormulas();
+          }
+        }
+      } catch (err) {
+        console.warn('cloudFetchSavedFormulas error:', err);
+      }
+    }
+
+    // ==========================================================================
+    // ANALYZER FORMULA CLOUD SYNC LOGIC (Supabase saved_analyzers 실시간 연동)
+    // ==========================================================================
+    /** 
+     * Supabase saved_analyzers 테이블에 전성분 해체 분석 결과 저장 (RLS 403 방지: 삭제 후 신규 INSERT)
+     */
+    async function cloudSaveAnalyzerFormula(record) {
+      if (!sbClient || !currentUser || !record) return false;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) {
+          console.warn('Supabase Auth User ID not available for cloudSaveAnalyzerFormula');
+          return false;
+        }
+
+        // 1. 기존 레코드 삭제 (RLS UPDATE 충돌 회피)
+        await sbClient
+          .from('saved_analyzers')
+          .delete()
+          .eq('user_id', targetUserId)
+          .eq('id', record.id);
+
+        // 2. 신규 레코드 삽입 (POST 201 Created)
+        const { error } = await sbClient
+          .from('saved_analyzers')
+          .insert({
+            id: record.id,
+            user_id: targetUserId,
+            title: record.title || '전성분 해체 분석',
+            raw_text: record.rawText || '',
+            ingredients: record.ingredients || [],
+            cutoff_index: record.cutoffIndex !== undefined ? record.cutoffIndex : null,
+            cutoff_name: record.cutoffName || null,
+            manual_cutoff: !!record.manualCutoff,
+            total_count: record.totalCount || 0,
+            total_sum: record.totalSum || 0,
+            saved_at: record.savedAt || new Date().toISOString()
+          });
+
+        if (error) {
+          console.warn('Supabase cloudSaveAnalyzerFormula insert notice:', error.message || error);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.warn('Supabase cloudSaveAnalyzerFormula exception:', err);
+        return false;
+      }
+    }
+
+    /** 
+     * Supabase saved_analyzers 테이블에서 전성분 해체 분석 삭제
+     */
+    async function cloudDeleteAnalyzerFormula(id) {
+      if (!sbClient || !currentUser || !id) return false;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) return false;
+
+        const { error } = await sbClient
+          .from('saved_analyzers')
+          .delete()
+          .eq('user_id', targetUserId)
+          .eq('id', id);
+
+        if (error) {
+          console.warn('Supabase cloudDeleteAnalyzerFormula error:', error);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.warn('Supabase cloudDeleteAnalyzerFormula exception:', err);
+        return false;
+      }
+    }
+
+    /** 
+     * Supabase saved_analyzers 테이블에서 최신 저장 목록 실시간 동기화(불러오기)
+     */
+    async function cloudFetchSavedAnalyzers() {
+      if (!sbClient || !currentUser) return;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) return;
+
+        const { data, error } = await sbClient
+          .from('saved_analyzers')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .order('saved_at', { ascending: false });
+
+        if (!error && Array.isArray(data)) {
+          currentUser.savedAnalyzers = data.map(a => ({
+            id: a.id,
+            title: a.title,
+            rawText: a.raw_text,
+            ingredients: a.ingredients,
+            cutoffIndex: a.cutoff_index,
+            cutoffName: a.cutoff_name,
+            manualCutoff: a.manual_cutoff,
+            totalCount: a.total_count,
+            totalSum: a.total_sum,
+            savedAt: a.saved_at || a.created_at
+          }));
+          saveUsersDb();
+          renderAuthHeader();
+          const countEl = document.getElementById('vaultCountAnalyzer');
+          if (countEl) countEl.textContent = (currentUser.savedAnalyzers || []).length;
+          if (currentVaultTab === 'analyzer') {
+            renderSavedAnalyzers();
+          }
+        }
+      } catch (err) {
+        console.warn('cloudFetchSavedAnalyzers notice:', err);
+      }
+    }
+
     // ==========================================
     // CUSTOM FORMULA SAVE LOGIC (계산기 처방 저장)
     // ==========================================
@@ -7872,24 +8123,7 @@ function initAuth() {
       renderAuthHeader();
       showToast(`[연구노트]에 "${title}" 처방이 저장되었습니다!`);
 
-      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-        try {
-          await sbClient.from('saved_formulas').upsert({
-            id: newRecord.id,
-            user_id: currentUser.id,
-            title: newRecord.title,
-            batch_size: newRecord.batchSize,
-            formula: {
-              ingredients: newRecord.formula,
-              procedure: newRecord.procedure || ''
-            },
-            total_percent: newRecord.totalPercent,
-            saved_at: newRecord.savedAt
-          });
-        } catch (e) {
-          console.warn('Cloud save formula warning:', e);
-        }
-      }
+      cloudSaveCustomFormula(newRecord);
     }
 
     // ==========================================
@@ -7914,13 +8148,15 @@ function initAuth() {
       document.getElementById('savedItemsModal').classList.remove('hidden');
       switchVaultTab(defaultTab);
 
-      // 클라우드와 실시간 양방향 동기화: 항상 최신 Supabase saved_guides 데이터 보장
+      // 클라우드와 실시간 양방향 동기화: 항상 최신 Supabase 데이터 보장
       if (sbClient && currentUser) {
-        cloudFetchSavedGuides().then(() => {
-          if (currentVaultTab === 'guide') {
-            renderSavedGuides();
-          }
-        });
+        if (currentVaultTab === 'guide') {
+          cloudFetchSavedGuides().then(() => renderSavedGuides());
+        } else if (currentVaultTab === 'custom') {
+          cloudFetchSavedFormulas().then(() => renderSavedCustomFormulas());
+        } else if (currentVaultTab === 'analyzer') {
+          cloudFetchSavedAnalyzers().then(() => renderSavedAnalyzers());
+        }
       }
     }
 
@@ -7966,12 +8202,15 @@ function initAuth() {
       if (tab === 'guide') {
         if (viewGuide) viewGuide.classList.remove('hidden');
         renderSavedGuides();
+        if (sbClient && currentUser) cloudFetchSavedGuides().then(() => { if (currentVaultTab === 'guide') renderSavedGuides(); });
       } else if (tab === 'custom') {
         if (viewCustom) viewCustom.classList.remove('hidden');
         renderSavedCustomFormulas();
+        if (sbClient && currentUser) cloudFetchSavedFormulas().then(() => { if (currentVaultTab === 'custom') renderSavedCustomFormulas(); });
       } else if (tab === 'analyzer') {
         if (viewAnalyzer) viewAnalyzer.classList.remove('hidden');
         renderSavedAnalyzers();
+        if (sbClient && currentUser) cloudFetchSavedAnalyzers().then(() => { if (currentVaultTab === 'analyzer') renderSavedAnalyzers(); });
       }
     }
 
@@ -8123,9 +8362,29 @@ function initAuth() {
       cloudDeleteGuideRecipe(uid);
     }
 
-    function loadCustomFormulaFromVault(id) {
-      if (!currentUser || !currentUser.savedFormulas) return;
-      const found = currentUser.savedFormulas.find(f => f.id === id);
+    async function loadCustomFormulaFromVault(id) {
+      if (!currentUser) return;
+      if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
+      let found = currentUser.savedFormulas.find(f => f.id === id);
+      if (!found && sbClient) {
+        try {
+          const { data: fRow } = await sbClient.from('saved_formulas').select('*').eq('id', id).maybeSingle();
+          if (fRow) {
+            found = {
+              id: fRow.id,
+              title: fRow.title,
+              batchSize: fRow.batch_size,
+              formula: (Array.isArray(fRow.formula) ? fRow.formula : (fRow.formula?.ingredients || [])),
+              procedure: fRow.procedure || fRow.formula?.procedure || '',
+              totalPercent: fRow.total_percent,
+              savedAt: fRow.saved_at || fRow.created_at
+            };
+            currentUser.savedFormulas.unshift(found);
+            saveUsersDb();
+            renderAuthHeader();
+          }
+        } catch (_) {}
+      }
       if (!found) return;
 
       document.getElementById('calcFormulaTitleInput').value = found.title;
@@ -8152,13 +8411,7 @@ function initAuth() {
       renderAuthHeader();
       showToast('연구 처방이 삭제되었습니다.');
 
-      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-        try {
-          await sbClient.from('saved_formulas').delete().eq('user_id', currentUser.id).eq('id', id);
-        } catch (e) {
-          console.warn('Cloud delete formula warning:', e);
-        }
-      }
+      cloudDeleteCustomFormula(id);
     }
 
     function renderSavedAnalyzers() {
@@ -8210,9 +8463,32 @@ function initAuth() {
       });
     }
 
-    function loadAnalyzerFormulaFromVault(id) {
-      if (!currentUser || !currentUser.savedAnalyzers) return;
-      const found = currentUser.savedAnalyzers.find(a => a.id === id);
+    async function loadAnalyzerFormulaFromVault(id) {
+      if (!currentUser) return;
+      if (!currentUser.savedAnalyzers) currentUser.savedAnalyzers = [];
+      let found = currentUser.savedAnalyzers.find(a => a.id === id);
+      if (!found && sbClient) {
+        try {
+          const { data: aRow } = await sbClient.from('saved_analyzers').select('*').eq('id', id).maybeSingle();
+          if (aRow) {
+            found = {
+              id: aRow.id,
+              title: aRow.title,
+              rawText: aRow.raw_text,
+              ingredients: aRow.ingredients,
+              cutoffIndex: aRow.cutoff_index,
+              cutoffName: aRow.cutoff_name,
+              manualCutoff: aRow.manual_cutoff,
+              totalCount: aRow.total_count,
+              totalSum: aRow.total_sum,
+              savedAt: aRow.saved_at || aRow.created_at
+            };
+            currentUser.savedAnalyzers.unshift(found);
+            saveUsersDb();
+            renderAuthHeader();
+          }
+        } catch (_) {}
+      }
       if (!found) return;
 
       const rawTextEl = document.getElementById('rawTextarea');
@@ -8249,13 +8525,7 @@ function initAuth() {
       if (document.getElementById('vaultCountAnalyzer')) document.getElementById('vaultCountAnalyzer').textContent = countAnalyzer;
       showToast('전성분 해체 분석 처방이 삭제되었습니다.');
 
-      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-        try {
-          await sbClient.from('saved_analyzers').delete().eq('user_id', currentUser.id).eq('id', id);
-        } catch (e) {
-          console.warn('Cloud delete analyzer warning:', e);
-        }
-      }
+      cloudDeleteAnalyzerFormula(id);
     }
 
     // ==========================================
@@ -9430,22 +9700,7 @@ function initAuth() {
       if (countEl) countEl.textContent = countAnalyzer;
       showToast(`연구노트에 "${title}" 분석 결과가 저장되었습니다!`);
 
-      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-        try {
-          await sbClient.from('saved_analyzers').upsert({
-            id: newRecord.id,
-            user_id: currentUser.id,
-            title: newRecord.title,
-            raw_text: newRecord.rawText,
-            ingredients: newRecord.ingredients,
-            total_count: newRecord.totalCount,
-            total_sum: newRecord.totalSum,
-            saved_at: newRecord.savedAt
-          });
-        } catch (e) {
-          console.warn('Cloud save analyzer warning:', e);
-        }
-      }
+      cloudSaveAnalyzerFormula(newRecord);
     }
 
     // ==========================================
