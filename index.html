@@ -3203,6 +3203,9 @@
           // Supabase 세션이 끊겼으나 로컬 로그인 정보가 있는 경우 Supabase 재동기화
           try {
             await syncUserToSupabase(currentUser);
+            if (currentUser.id && !String(currentUser.id).startsWith("local_")) {
+              await cloudFetchSavedGuides();
+            }
           } catch (e) {}
         }
       } catch (err) {
@@ -5874,7 +5877,7 @@ function initAuth() {
                       sbClient.from('saved_guides').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false }),
                       sbClient.from('saved_formulas').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false })
                     ]);
-                    if (guidesRes.data && guidesRes.data.length > 0) {
+                    if (guidesRes.data) {
                       foundLocal.savedGuides = guidesRes.data.map(g => ({
                         uid: g.recipe_uid,
                         title: g.title,
@@ -5962,6 +5965,8 @@ function initAuth() {
           closeAuthModal();
           renderAuthHeader();
           if (currentRecipe) updateSaveGuideRecipeBtnState(currentRecipe);
+          updateCategoryPillCounts();
+          filterRecipes();
           showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
         } else {
           errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. (회원가입 후 이용해주세요)';
@@ -7317,20 +7322,8 @@ function initAuth() {
           });
           saveUsersDb();
 
-          if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-            try {
-              await sbClient.from('saved_guides').upsert({
-                user_id: currentUser.id,
-                recipe_uid: newRec.uid,
-                title: newRec.title,
-                category: newRec.category,
-                supplier: newRec.supplier,
-                formula_code: newRec.formulaCode,
-                saved_at: new Date().toISOString()
-              });
-            } catch (gErr) {
-              console.warn('Cloud guide save error:', gErr);
-            }
+          if (sbClient && currentUser) {
+            cloudSaveGuideRecipe(newRec);
           }
         }
       }
@@ -7559,6 +7552,7 @@ function initAuth() {
           currentUser.savedGuides[bIdx].supplier = currentRecipe.supplier;
           currentUser.savedGuides[bIdx].formulaCode = currentRecipe.formulaCode;
           saveUsersDb();
+          cloudSaveGuideRecipe(currentRecipe);
         }
       }
 
@@ -7657,9 +7651,125 @@ function initAuth() {
       showToast(`처방 [${targetTitle}]이(가) 성공적으로 삭제되었습니다.`);
     }
 
-    // ==========================================
-    // GUIDE RECIPE BOOKMARK LOGIC
-    // ==========================================
+    // ==========================================================================
+    // GUIDE RECIPE CLOUD SYNC & BOOKMARK LOGIC (Supabase saved_guides 실시간 연동)
+    // ==========================================================================
+    async function ensureSupabaseAuthUser() {
+      if (!sbClient || !currentUser) return null;
+      if (currentUser.id && !String(currentUser.id).startsWith('local_')) {
+        return currentUser.id;
+      }
+      try {
+        await syncUserToSupabase(currentUser);
+        if (currentUser.id && !String(currentUser.id).startsWith('local_')) {
+          return currentUser.id;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    /** 
+     * Supabase saved_guides 테이블에 처방 저장 (기존 행 삭제 후 신규 INSERT로 RLS 403 완벽 방지)
+     */
+    async function cloudSaveGuideRecipe(recipe) {
+      if (!sbClient || !currentUser || !recipe) return false;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) {
+          console.warn('Supabase Auth User ID not available for cloudSaveGuideRecipe');
+          return false;
+        }
+
+        // 1. 기존 동일 레코드 삭제 (중복 방지 및 RLS UPDATE 차단 회피)
+        await sbClient
+          .from('saved_guides')
+          .delete()
+          .eq('user_id', targetUserId)
+          .eq('recipe_uid', recipe.uid);
+
+        // 2. 신규 레코드 삽입 (POST 201 Created)
+        const { error } = await sbClient
+          .from('saved_guides')
+          .insert({
+            user_id: targetUserId,
+            recipe_uid: recipe.uid,
+            title: recipe.title || '가이드 처방',
+            category: recipe.category || 'ETC',
+            supplier: recipe.supplier || '',
+            formula_code: recipe.formulaCode || '',
+            saved_at: new Date().toISOString()
+          });
+
+        if (error) {
+          console.error('Supabase cloudSaveGuideRecipe insert error:', error);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error('Supabase cloudSaveGuideRecipe exception:', err);
+        return false;
+      }
+    }
+
+    /** 
+     * Supabase saved_guides 테이블에서 처방 저장 해제(삭제)
+     */
+    async function cloudDeleteGuideRecipe(recipeUid) {
+      if (!sbClient || !currentUser || !recipeUid) return false;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) return false;
+
+        const { error } = await sbClient
+          .from('saved_guides')
+          .delete()
+          .eq('user_id', targetUserId)
+          .eq('recipe_uid', recipeUid);
+
+        if (error) {
+          console.error('Supabase cloudDeleteGuideRecipe error:', error);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error('Supabase cloudDeleteGuideRecipe exception:', err);
+        return false;
+      }
+    }
+
+    /** 
+     * Supabase saved_guides 테이블에서 최신 저장 목록을 실시간 동기화(불러오기)
+     */
+    async function cloudFetchSavedGuides() {
+      if (!sbClient || !currentUser) return;
+      try {
+        const targetUserId = await ensureSupabaseAuthUser();
+        if (!targetUserId) return;
+
+        const { data, error } = await sbClient
+          .from('saved_guides')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .order('saved_at', { ascending: false });
+
+        if (!error && Array.isArray(data)) {
+          currentUser.savedGuides = data.map(g => ({
+            uid: g.recipe_uid,
+            title: g.title,
+            category: g.category,
+            formulaCode: g.formula_code,
+            supplier: g.supplier,
+            savedAt: g.saved_at || g.created_at
+          }));
+          saveUsersDb();
+          renderAuthHeader();
+          if (currentRecipe) updateSaveGuideRecipeBtnState(currentRecipe);
+        }
+      } catch (err) {
+        console.warn('cloudFetchSavedGuides error:', err);
+      }
+    }
+
     async function toggleSaveCurrentGuideRecipe() {
       if (!currentUser) {
         openAuthModal('login', '무료회원 가입 시 내 처방전을 안전하게 보관하고 언제든 불러올 수 있습니다.');
@@ -7672,20 +7782,16 @@ function initAuth() {
       const idx = currentUser.savedGuides.findIndex(item => item.uid === currentRecipe.uid);
 
       if (idx !== -1) {
+        // 이미 보관되어 있는 경우: 보관 해제
         currentUser.savedGuides.splice(idx, 1);
         saveUsersDb();
         updateSaveGuideRecipeBtnState(currentRecipe);
         renderAuthHeader();
         showToast('가이드 처방 저장이 해제되었습니다.');
 
-        if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-          try {
-            await sbClient.from('saved_guides').delete().eq('user_id', currentUser.id).eq('recipe_uid', currentRecipe.uid);
-          } catch (e) {
-            console.warn('Cloud guide delete warning:', e);
-          }
-        }
+        cloudDeleteGuideRecipe(currentRecipe.uid);
       } else {
+        // 새로 저장하는 경우
         currentUser.savedGuides.unshift({
           uid: currentRecipe.uid,
           title: currentRecipe.title,
@@ -7699,21 +7805,7 @@ function initAuth() {
         renderAuthHeader();
         showToast('[연구노트]에 가이드 처방이 저장되었습니다!');
 
-        if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-          try {
-            await sbClient.from('saved_guides').upsert({
-              user_id: currentUser.id,
-              recipe_uid: currentRecipe.uid,
-              title: currentRecipe.title,
-              category: currentRecipe.category || 'ETC',
-              supplier: currentRecipe.supplier || '',
-              formula_code: currentRecipe.formulaCode || '',
-              saved_at: new Date().toISOString()
-            });
-          } catch (e) {
-            console.warn('Cloud guide save warning:', e);
-          }
-        }
+        cloudSaveGuideRecipe(currentRecipe);
       }
     }
 
@@ -7821,6 +7913,15 @@ function initAuth() {
 
       document.getElementById('savedItemsModal').classList.remove('hidden');
       switchVaultTab(defaultTab);
+
+      // 클라우드와 실시간 양방향 동기화: 항상 최신 Supabase saved_guides 데이터 보장
+      if (sbClient && currentUser) {
+        cloudFetchSavedGuides().then(() => {
+          if (currentVaultTab === 'guide') {
+            renderSavedGuides();
+          }
+        });
+      }
     }
 
     function closeSavedItemsModal() {
@@ -7970,13 +8071,43 @@ function initAuth() {
       });
     }
 
-    function loadGuideRecipeFromVault(uid) {
-      const found = allRecipes.find(r => r.uid === uid);
+    async function loadGuideRecipeFromVault(uid) {
+      let found = allRecipes.find(r => r.uid === uid);
+      if (!found && sbClient) {
+        try {
+          const { data: recRow } = await sbClient.from('recipes').select('*').eq('uid', uid).maybeSingle();
+          if (recRow) {
+            found = {
+              uid: recRow.uid,
+              title: recRow.title,
+              category: recRow.category || 'ETC',
+              supplier: recRow.supplier || '',
+              formulaCode: recRow.formula_code || '처방코드 미기재',
+              email: recRow.email || '',
+              description: recRow.description || '',
+              ingredients: Array.isArray(recRow.ingredients) ? recRow.ingredients : [],
+              procedure: recRow.procedure || '',
+              specification: recRow.specification || '',
+              etc: recRow.etc || '',
+              contentHtml: recRow.content_html || '',
+              sourceUrl: recRow.source_url || window.location.href,
+              author: recRow.author_nickname || '연구원',
+              isCustomCreated: true
+            };
+            extractRecipeMetadata(found);
+            allRecipes.unshift(found);
+            updateCategoryPillCounts();
+            filterRecipes();
+          }
+        } catch (_) {}
+      }
       if (found) {
         showRecipeOriginalArticle(found);
         setAppMode('explorer');
         closeSavedItemsModal();
         showToast(`가이드 처방 "${found.title}"을(를) 열었습니다.`);
+      } else {
+        showToast('해당 가이드 처방 데이터를 불러올 수 없습니다.');
       }
     }
 
@@ -7989,13 +8120,7 @@ function initAuth() {
       updateSaveGuideRecipeBtnState(currentRecipe);
       showToast('보관함에서 가이드 처방이 삭제되었습니다.');
 
-      if (sbClient && currentUser.id && !currentUser.id.startsWith('local_')) {
-        try {
-          await sbClient.from('saved_guides').delete().eq('user_id', currentUser.id).eq('recipe_uid', uid);
-        } catch (e) {
-          console.warn('Cloud delete guide warning:', e);
-        }
-      }
+      cloudDeleteGuideRecipe(uid);
     }
 
     function loadCustomFormulaFromVault(id) {
