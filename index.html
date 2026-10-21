@@ -8355,36 +8355,44 @@ function initAuth() {
         }
       }
 
-      // 향료가 2개 이상 들어간 경우 2번째 나오는 향료를 1% 지표 및 경계선으로 지정
+            // 향료가 2개 이상 들어간 경우 1번째 나오는 향료는 1% 이하 추정구간에 적용하지 않음 (1% 지표 해제)
       const fragIndices = list
         .map((item, idx) => isFragrance(item.name) ? idx : -1)
         .filter(idx => idx !== -1);
 
       if (fragIndices.length >= 2) {
+        const firstFragIdx = fragIndices[0];
+        // 1번째 향료는 1% 이하 추정구간에 적용하지 않으므로 1% 지표에서 제외 (1% 초과 구간 유지)
+        list[firstFragIdx].isIndicator = false;
+        list[firstFragIdx].indicatorReason = '';
+
+        // 2번째 향료는 1% 이하 지표 유지 (단, 헥산디올 이후인 경우)
         const secondFragIdx = fragIndices[1];
         if (hexIdx === -1 || secondFragIdx > hexIdx) {
-          // 2번째 향료 이전 성분들의 1% 지표 표시 해제 (1% 초과 영역)
-          for (let i = 0; i < secondFragIdx; i++) {
-            list[i].isIndicator = false;
-            list[i].indicatorReason = '';
-          }
-          // 2번째 향료를 1% 지표로 확정
           list[secondFragIdx].isIndicator = true;
           list[secondFragIdx].indicatorReason = '2번째 향료 (1% 경계 지표)';
-          detectedCutoff = secondFragIdx;
-          detectedCutoffName = list[secondFragIdx].name;
         }
       }
 
-      if (detectedCutoff === null) {
-        // 일반 규칙: 헥산디올 이후(또는 처음부터) 최초 감지된 1% 지표 성분을 절취선으로 설정
-        const searchStart = (hexIdx !== -1) ? hexIdx + 1 : 0;
-        for (let i = searchStart; i < list.length; i++) {
-          if (list[i].isIndicator) {
-            detectedCutoff = i;
-            detectedCutoffName = list[i].name;
-            break;
-          }
+      // 1% 이하 추정구간 절취선 감지 (기존대로 진행: 헥산디올 이후 또는 처음부터 최초 감지된 1% 지표 성분을 절취선으로 설정)
+      // 1번째 향료는 지표에서 제외되었으므로 절취선으로 지정되지 않음
+      const searchStart = (hexIdx !== -1) ? hexIdx + 1 : 0;
+      for (let i = searchStart; i < list.length; i++) {
+        if (list[i].isIndicator) {
+          detectedCutoff = i;
+          detectedCutoffName = list[i].name;
+          break;
+        }
+      }
+
+      // 만약 향료가 2개 이상이고 아직 절취선이 감지되지 않았으며, 2번째 향료가 searchStart 이후에 있다면 2번째 향료를 절취선으로 설정
+      if (detectedCutoff === null && fragIndices.length >= 2) {
+        const secondFragIdx = fragIndices[1];
+        if (secondFragIdx >= searchStart) {
+          detectedCutoff = secondFragIdx;
+          detectedCutoffName = list[secondFragIdx].name;
+          list[secondFragIdx].isIndicator = true;
+          list[secondFragIdx].indicatorReason = '2번째 향료 (1% 경계 지표)';
         }
       }
 
@@ -8828,21 +8836,22 @@ function initAuth() {
         }
       }
 
-      // 2. 1% 절취선 경계(boundary) 산출
+            // 2. 1% 절취선 경계(boundary) 산출
       const fragIndices = analyzerState.ingredients
         .map((item, idx) => isFragrance(item.name) ? idx : -1)
         .filter(idx => idx !== -1);
 
-      if (fragIndices.length >= 2 && analyzerState.manualCutoff === null) {
-        const validFrag = fragIndices.find(idx => hexIdx === -1 || idx > hexIdx) || fragIndices[1];
-        for (let i = 0; i < validFrag; i++) {
-          analyzerState.ingredients[i].isIndicator = false;
-          analyzerState.ingredients[i].indicatorReason = '';
+      if (fragIndices.length >= 2) {
+        // 향료가 2개인 경우 1번째 향료는 1% 이하 추정구간 산출 지표에서 제외
+        const firstFragIdx = fragIndices[0];
+        analyzerState.ingredients[firstFragIdx].isIndicator = false;
+        analyzerState.ingredients[firstFragIdx].indicatorReason = '';
+
+        const secondFragIdx = fragIndices[1];
+        if (hexIdx === -1 || secondFragIdx > hexIdx) {
+          analyzerState.ingredients[secondFragIdx].isIndicator = true;
+          analyzerState.ingredients[secondFragIdx].indicatorReason = '2번째 향료 (1% 경계 지표)';
         }
-        analyzerState.ingredients[validFrag].isIndicator = true;
-        analyzerState.ingredients[validFrag].indicatorReason = '2번째 향료 (1% 경계 지표)';
-        analyzerState.cutoffIndex = validFrag;
-        analyzerState.cutoffName = analyzerState.ingredients[validFrag].name;
       }
 
       let boundary = getEffectiveCutoff();
@@ -8870,8 +8879,22 @@ function initAuth() {
           analyzerState.cutoffIndex = boundary;
         }
       } else if (boundary === null) {
-        boundary = Math.min(Math.floor(count * 0.4), 10);
-        if (hexIdx !== -1) boundary = Math.max(boundary, hexIdx + 1);
+        // 절취선 미지정 시 유효 지표 성분 탐색 (1번째 향료는 지표 제외 상태)
+        let foundIdx = -1;
+        const sStart = (hexIdx !== -1) ? hexIdx + 1 : 0;
+        for (let i = sStart; i < count; i++) {
+          if (analyzerState.ingredients[i].isIndicator) {
+            foundIdx = i;
+            analyzerState.cutoffName = analyzerState.ingredients[i].name;
+            break;
+          }
+        }
+        if (foundIdx !== -1) {
+          boundary = foundIdx;
+        } else {
+          boundary = Math.min(Math.floor(count * 0.4), 10);
+          if (hexIdx !== -1) boundary = Math.max(boundary, hexIdx + 1);
+        }
         analyzerState.cutoffIndex = boundary;
       }
 
