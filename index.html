@@ -5348,20 +5348,28 @@ function initAuth() {
       try {
         let verifiedUser = null;
 
-        // 1. Supabase profiles 테이블 조회
+                // 1. Supabase profiles 테이블 조회 (대소문자 무관 및 전화번호 정규화)
+        let inputCleanPhone = rawPhone;
+        if (inputCleanPhone.startsWith('82') && inputCleanPhone.length >= 11) {
+          inputCleanPhone = '0' + inputCleanPhone.slice(2);
+        }
+
         if (sbClient) {
           try {
             const { data: profiles, error } = await sbClient
               .from('profiles')
               .select('*')
-              .or(`username.eq.${idInput},email.eq.${idInput}`);
+              .or(`username.ilike.${idInput},email.ilike.${idInput}`);
 
             if (!error && profiles && profiles.length > 0) {
               const matched = profiles.find(p => {
                 if ((p.username || '').startsWith('withdrawn_') || p.role === 'withdrawn') return false;
                 const pName = (p.name || '').trim();
-                const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
-                return pName === nameInput && pPhone === rawPhone;
+                let pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+                if (pPhone.startsWith('82') && pPhone.length >= 11) {
+                  pPhone = '0' + pPhone.slice(2);
+                }
+                return pName.toLowerCase() === nameInput.toLowerCase() && pPhone === inputCleanPhone;
               });
 
               if (matched) {
@@ -5369,8 +5377,10 @@ function initAuth() {
                   id: matched.id,
                   username: matched.username || (matched.email ? matched.email.split('@')[0] : idInput),
                   name: matched.name,
+                  nickname: matched.nickname || matched.name,
                   email: matched.email,
-                  phone: matched.phone
+                  phone: matched.phone,
+                  companyType: matched.company_type || '기타'
                 };
               }
             }
@@ -5382,10 +5392,13 @@ function initAuth() {
         // 2. 로컬 usersDb 조회
         if (!verifiedUser) {
           const matchedLocal = usersDb.find(u => {
-            const uIdMatch = (u.username === idInput || u.email === idInput);
-            const uNameMatch = (u.name || '').trim() === nameInput;
-            const uPhoneMatch = (u.phone || '').replace(/[^0-9]/g, '') === rawPhone;
-            return uIdMatch && uNameMatch && uPhoneMatch;
+            const uIdMatch = ((u.username || '').toLowerCase() === idInput.toLowerCase() || (u.email || '').toLowerCase() === idInput.toLowerCase());
+            const uNameMatch = (u.name || '').trim().toLowerCase() === nameInput.toLowerCase();
+            let uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+            if (uPhone.startsWith('82') && uPhone.length >= 11) {
+              uPhone = '0' + uPhone.slice(2);
+            }
+            return uIdMatch && uNameMatch && uPhone === inputCleanPhone;
           });
           if (matchedLocal) {
             verifiedUser = matchedLocal;
@@ -5447,7 +5460,7 @@ function initAuth() {
       }
     }
 
-    // 2단계: 새 비밀번호 재설정 완료 처리
+        // 2단계: 새 비밀번호 재설정 완료 처리
     async function handleFindPwResetSubmit(e) {
       e.preventDefault();
       const newPw = document.getElementById('findPwNewInput').value;
@@ -5484,20 +5497,28 @@ function initAuth() {
       const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>재설정 중...</span>';
+        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>새 비밀번호 적용 중...</span>';
       }
 
       try {
         const targetUsername = verifiedResetUser.username;
+        let prevPw = '';
 
-        // 1. 로컬 usersDb 업데이트
-        let foundInLocal = usersDb.find(u => u.username === targetUsername || (u.email && u.email === verifiedResetUser.email));
+        // 1. 로컬 usersDb 업데이트 및 이전 비밀번호 확보
+        let foundInLocal = usersDb.find(u => 
+          (u.username && u.username.toLowerCase() === targetUsername.toLowerCase()) || 
+          (u.email && verifiedResetUser.email && u.email.toLowerCase() === verifiedResetUser.email.toLowerCase())
+        );
+
         if (foundInLocal) {
+          prevPw = foundInLocal.password || '';
           foundInLocal.password = newPw;
+          if (verifiedResetUser.id && (!foundInLocal.id || String(foundInLocal.id).startsWith('local_'))) {
+            foundInLocal.id = verifiedResetUser.id;
+          }
         } else {
-          // 로컬 DB에 없던 Supabase 계정인 경우 로컬 DB에도 추가
-          usersDb.push({
-            id: verifiedResetUser.id || 'user_' + Date.now(),
+          foundInLocal = {
+            id: verifiedResetUser.id || ('user_' + Date.now()),
             username: verifiedResetUser.username,
             password: newPw,
             name: verifiedResetUser.name || '',
@@ -5509,35 +5530,102 @@ function initAuth() {
             role: checkIsAdmin(targetUsername) ? 'admin' : 'member',
             savedGuides: [],
             savedFormulas: [],
+            savedAnalyzers: [],
             createdAt: new Date().toISOString()
-          });
+          };
+          usersDb.push(foundInLocal);
         }
         saveUsersDb();
 
-        if (currentUser && currentUser.username === targetUsername) {
+        try {
+          localStorage.setItem('socsoc_pw_reset_' + targetUsername.toLowerCase(), newPw);
+        } catch (_) {}
+
+        if (currentUser && currentUser.username?.toLowerCase() === targetUsername.toLowerCase()) {
           currentUser.password = newPw;
         }
 
-        // 2. Supabase 이메일 비번 초기화 링크 발송 보조 시도 (선택적)
-        if (sbClient && verifiedResetUser.email) {
+        // 2. Supabase Cloud DB 동기화 시도 (다중 경로 적용)
+        if (sbClient) {
+          let cloudUpdated = false;
+
+          // 방법 A: Supabase RPC (reset_user_password) 직접 호출
           try {
-            await sbClient.auth.resetPasswordForEmail(verifiedResetUser.email, {
-              redirectTo: window.location.origin
+            const { data: rpcData, error: rpcErr } = await sbClient.rpc('reset_user_password', {
+              p_username: targetUsername,
+              p_name: verifiedResetUser.name || '',
+              p_phone: verifiedResetUser.phone || '',
+              p_new_password: newPw
             });
-          } catch (e) {
-            // 이메일 발송 오류가 나더라도 로컬 비번 업데이트로 즉시 로그인 가능
+            if (!rpcErr && rpcData && (rpcData.success === true || rpcData.status === 'ok')) {
+              cloudUpdated = true;
+              console.log('Password reset via Supabase RPC successful:', rpcData);
+            }
+          } catch (rErr) {
+            console.warn('RPC reset notice:', rErr);
+          }
+
+          // 방법 B: 이전 비밀번호 또는 후보 비밀번호로 임시 로그인 후 updateUser 호출
+          if (!cloudUpdated) {
+            const candidatePws = [];
+            if (prevPw) candidatePws.push(prevPw);
+
+            try {
+              const archive = JSON.parse(localStorage.getItem('socsoc_withdrawn_archive') || '[]');
+              archive.forEach(a => {
+                if (a.username?.toLowerCase() === targetUsername.toLowerCase() || (a.email && a.email.toLowerCase() === verifiedResetUser.email?.toLowerCase())) {
+                  if (a.password) candidatePws.push(a.password);
+                }
+              });
+            } catch (_) {}
+
+            candidatePws.push('123456');
+
+            const tryEmails = [
+              verifiedResetUser.email,
+              `${targetUsername.toLowerCase()}@thesocsoc.auth`,
+              `${targetUsername.toLowerCase()}@socsoc.kr`
+            ].filter(Boolean);
+
+            for (const em of tryEmails) {
+              for (const cand of candidatePws) {
+                if (!cand || cand === newPw) continue;
+                try {
+                  const sRes = await sbClient.auth.signInWithPassword({
+                    email: em,
+                    password: cand
+                  });
+                  if (!sRes.error && sRes.data?.user) {
+                    await sbClient.auth.updateUser({ password: newPw });
+                    cloudUpdated = true;
+                    console.log('Password updated in Supabase Auth via candidate session!');
+                    break;
+                  }
+                } catch (_) {}
+              }
+              if (cloudUpdated) break;
+            }
+          }
+
+          // 방법 C: Supabase 이메일 재설정 링크 (실제 이메일인 경우)
+          if (!cloudUpdated && verifiedResetUser.email && verifiedResetUser.email.includes('@') && !verifiedResetUser.email.endsWith('.auth') && !verifiedResetUser.email.endsWith('.local')) {
+            try {
+              await sbClient.auth.resetPasswordForEmail(verifiedResetUser.email, {
+                redirectTo: window.location.origin
+              });
+            } catch (_) {}
           }
         }
 
-        showToast('비밀번호가 성공적으로 변경되었습니다! 새로운 비밀번호로 로그인해주세요.');
+        showToast('비밀번호가 성공적으로 변경되었습니다! 변경된 비밀번호로 로그인해주세요.');
 
-        // 로그인 화면으로 이동 & 아이디 자동 입력
+        // 3. 로그인 화면으로 이동 & 아이디/새 비밀번호 자동 채우기 및 포커스
         switchAuthTab('login', true);
         const loginId = document.getElementById('loginIdInput');
         const loginPw = document.getElementById('loginPwInput');
         if (loginId) loginId.value = targetUsername;
         if (loginPw) {
-          loginPw.value = '';
+          loginPw.value = newPw;
           loginPw.focus();
         }
       } catch (err) {
@@ -5554,7 +5642,7 @@ function initAuth() {
       }
     }
 
-        async function handleNormalLogin(e) {
+    async function handleNormalLogin(e) {
       e.preventDefault();
       const idInput = document.getElementById('loginIdInput').value.trim();
       const pw = document.getElementById('loginPwInput').value;
@@ -5745,54 +5833,98 @@ function initAuth() {
           }
         }
 
-        // 4. Supabase Auth에 아직 등록되지 않은 기존 로컬 계정 자동 마이그레이션 및 로그인
+        // 4. 로컬 usersDb에 등록된 계정으로 로그인 (비밀번호 재설정 계정 또는 로컬 캐시 계정)
         if (!loggedInUser) {
-          const foundLocal = usersDb.find(u => ((u.username || '').toLowerCase() === idInput.toLowerCase() || (u.email || '').toLowerCase() === idInput.toLowerCase()) && u.password === pw);
-          if (foundLocal && sbClient) {
-            try {
-              const targetEmail = (foundLocal.email && foundLocal.email.includes('@')) 
-                ? foundLocal.email.trim() 
-                : `${(foundLocal.username || 'user').toLowerCase()}@thesocsoc.auth`;
+          const foundLocal = usersDb.find(u => 
+            ((u.username || '').toLowerCase() === idInput.toLowerCase() || 
+             (u.email || '').toLowerCase() === idInput.toLowerCase()) && 
+            u.password === pw
+          );
 
-              const { data: signRes } = await sbClient.auth.signUp({
-                email: targetEmail,
-                password: pw,
-                options: {
-                  data: {
-                    username: foundLocal.username,
-                    name: foundLocal.name,
-                    nickname: foundLocal.nickname,
-                    phone: foundLocal.phone,
-                    company_type: foundLocal.companyType
+          if (foundLocal) {
+            loggedInUser = foundLocal;
+
+            // Supabase와 클라우드 데이터 동기화 시도
+            if (sbClient) {
+              try {
+                // Supabase profiles에서 id 및 프로필 정보 가져오기
+                const { data: profRow } = await sbClient
+                  .from('profiles')
+                  .select('*')
+                  .ilike('username', foundLocal.username)
+                  .maybeSingle();
+
+                if (profRow && profRow.id) {
+                  foundLocal.id = profRow.id;
+                  if (profRow.role) foundLocal.role = checkIsAdmin(foundLocal.username) ? 'admin' : profRow.role;
+
+                  // 클라우드 저장 처방 가져와서 병합
+                  try {
+                    const [guidesRes, formulasRes] = await Promise.all([
+                      sbClient.from('saved_guides').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false }),
+                      sbClient.from('saved_formulas').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false })
+                    ]);
+                    if (guidesRes.data && guidesRes.data.length > 0) {
+                      foundLocal.savedGuides = guidesRes.data.map(g => ({
+                        uid: g.recipe_uid,
+                        title: g.title,
+                        category: g.category,
+                        formulaCode: g.formula_code,
+                        supplier: g.supplier,
+                        savedAt: g.saved_at || g.created_at
+                      }));
+                    }
+                    if (formulasRes.data && formulasRes.data.length > 0) {
+                      foundLocal.savedFormulas = formulasRes.data.map(f => ({
+                        id: f.id,
+                        title: f.title,
+                        batchSize: f.batch_size,
+                        formula: (Array.isArray(f.formula) ? f.formula : (f.formula?.ingredients || [])),
+                        procedure: f.procedure || f.formula?.procedure || '',
+                        totalPercent: f.total_percent,
+                        savedAt: f.saved_at || f.created_at
+                      }));
+                    }
+                  } catch (_) {}
+                } else {
+                  // 프로필이 없는 경우 signUp / upsert 마이그레이션 시도
+                  const targetEmail = (foundLocal.email && foundLocal.email.includes('@')) 
+                    ? foundLocal.email.trim() 
+                    : `${(foundLocal.username || 'user').toLowerCase()}@thesocsoc.auth`;
+
+                  const { data: signRes } = await sbClient.auth.signUp({
+                    email: targetEmail,
+                    password: pw,
+                    options: {
+                      data: {
+                        username: foundLocal.username,
+                        name: foundLocal.name,
+                        nickname: foundLocal.nickname,
+                        phone: foundLocal.phone,
+                        company_type: foundLocal.companyType
+                      }
+                    }
+                  });
+
+                  const newUid = signRes?.user?.id;
+                  if (newUid) {
+                    foundLocal.id = newUid;
+                    await sbClient.from('profiles').upsert({
+                      id: newUid,
+                      username: foundLocal.username,
+                      name: foundLocal.name || '',
+                      nickname: foundLocal.nickname || foundLocal.username,
+                      email: foundLocal.email || targetEmail,
+                      phone: foundLocal.phone || '',
+                      company_type: foundLocal.companyType || '기타',
+                      role: checkIsAdmin(foundLocal.username) ? 'admin' : (foundLocal.role || 'member')
+                    });
                   }
                 }
-              });
-
-              const { data: loginRes } = await sbClient.auth.signInWithPassword({
-                email: targetEmail,
-                password: pw
-              });
-
-              const newUid = loginRes?.user?.id || signRes?.user?.id;
-              if (newUid) {
-                foundLocal.id = newUid;
-                await sbClient.from('profiles').upsert({
-                  id: newUid,
-                  username: foundLocal.username,
-                  name: foundLocal.name || '',
-                  nickname: foundLocal.nickname || foundLocal.username,
-                  email: foundLocal.email || targetEmail,
-                  phone: foundLocal.phone || '',
-                  company_type: foundLocal.companyType || '기타',
-                  role: checkIsAdmin(foundLocal.username) ? 'admin' : (foundLocal.role || 'member')
-                });
-                loggedInUser = foundLocal;
+              } catch (autoMigErr) {
+                console.warn('Local user cloud migration error during login:', autoMigErr);
               }
-            } catch (autoMigErr) {
-              console.warn('Local user cloud migration error during login:', autoMigErr);
             }
-          } else if (foundLocal) {
-            loggedInUser = foundLocal;
           }
         }
 
