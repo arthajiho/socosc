@@ -2853,17 +2853,23 @@
     } catch (e) {}
 
     function saveUsersDb() {
-      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
       if (currentUser) {
-        const idx = usersDb.findIndex(u => u.username === currentUser.username);
+        const curUname = (currentUser.username || '').toLowerCase();
+        const curId = currentUser.id;
+        const idx = usersDb.findIndex(u => 
+          (u.username && u.username.toLowerCase() === curUname) || 
+          (curId && u.id && u.id === curId)
+        );
         if (idx !== -1) {
-          usersDb[idx] = currentUser;
-          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
+          usersDb[idx] = Object.assign({}, usersDb[idx], currentUser);
+        } else {
+          usersDb.push(currentUser);
         }
         try {
           sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
         } catch (_) {}
       }
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
     }
 
     /**
@@ -5383,7 +5389,15 @@ function initAuth() {
                 if (pPhone.startsWith('82') && pPhone.length >= 11) {
                   pPhone = '0' + pPhone.slice(2);
                 }
-                return pName.toLowerCase() === nameInput.toLowerCase() && pPhone === inputCleanPhone;
+                const isNameMatch = pName.replace(/\s+/g, '').toLowerCase() === nameInput.replace(/\s+/g, '').toLowerCase();
+                const isPhoneMatch = (pPhone === inputCleanPhone) || 
+                  (pPhone.length >= 10 && inputCleanPhone.length >= 10 && (
+                    pPhone.endsWith(inputCleanPhone.slice(-8)) || 
+                    inputCleanPhone.endsWith(pPhone.slice(-8)) || 
+                    pPhone.startsWith(inputCleanPhone) || 
+                    inputCleanPhone.startsWith(pPhone)
+                  ));
+                return isNameMatch && isPhoneMatch;
               });
 
               if (matched) {
@@ -5658,8 +5672,12 @@ function initAuth() {
 
     async function handleNormalLogin(e) {
       e.preventDefault();
-      const idInput = document.getElementById('loginIdInput').value.trim();
-      const pw = document.getElementById('loginPwInput').value;
+      const rawId = document.getElementById('loginIdInput').value;
+      const idInput = (rawId || '').trim();
+      const idLower = idInput.toLowerCase();
+      const rawPw = document.getElementById('loginPwInput').value;
+      const pw = rawPw;
+      const pwTrim = (rawPw || '').trim();
       const errMsg = document.getElementById('loginErrorMessage');
       const submitBtn = e.target.querySelector('button[type="submit"]');
 
@@ -5670,95 +5688,108 @@ function initAuth() {
         submitBtn.innerHTML = '<span>로그인 중...</span>';
       }
 
+      // 모바일 자동완성 공백, 대소문자 차이 등 과거 가입 데이터와 입력값 규칙 차이를 완벽 흡수하는 비밀번호 후보군
+      const pwCandidates = [pw];
+      if (pwTrim && pwTrim !== pw) {
+        pwCandidates.push(pwTrim);
+      }
+
       try {
         let loggedInUser = null;
+        let successfulPw = pwTrim || pw;
 
         if (sbClient) {
-          let emailToLogin = idInput;
           let profileMatched = null;
 
-          // 1. 아이디(username)로 로그인 시도: Supabase profiles 테이블에서 이메일 조회
+          // 1. Supabase profiles 테이블에서 사용자 조회 (대소문자 무관 검색: username 및 email 동시 확인)
+          try {
+            const { data: profs } = await sbClient
+              .from('profiles')
+              .select('*')
+              .or(`username.ilike.${idLower},email.ilike.${idLower},username.ilike.${idInput},email.ilike.${idInput}`);
+
+            if (profs && profs.length > 0) {
+              const active = profs.find(p => !p.username?.startsWith('withdrawn_') && p.role !== 'withdrawn');
+              if (active) profileMatched = active;
+            }
+          } catch (pErr) {
+            console.warn('Profile lookup warning:', pErr);
+          }
+
+          // 로컬 캐시 사용자 매칭 확인
+          const localMatch = usersDb.find(u => 
+            (u.username || '').trim().toLowerCase() === idLower || 
+            (u.email || '').trim().toLowerCase() === idLower
+          );
+
+          // 2. 과거 가입 시점별 Supabase Auth 이메일 규칙(실제 이메일, @thesocsoc.auth, @socsoc.kr 등) 후보군 전체 수집
+          const emailSet = new Set();
+          if (idInput.includes('@')) {
+            emailSet.add(idInput);
+            emailSet.add(idLower);
+          }
+          if (profileMatched && profileMatched.email) {
+            emailSet.add(profileMatched.email.trim());
+            emailSet.add(profileMatched.email.trim().toLowerCase());
+          }
+          if (localMatch && localMatch.email) {
+            emailSet.add(localMatch.email.trim());
+            emailSet.add(localMatch.email.trim().toLowerCase());
+          }
+
+          // 아이디 기반 가상 인증 도메인 후보군
+          const candidateUsernames = new Set();
+          if (profileMatched && profileMatched.username) {
+            candidateUsernames.add(profileMatched.username);
+            candidateUsernames.add(profileMatched.username.toLowerCase());
+          }
+          if (localMatch && localMatch.username) {
+            candidateUsernames.add(localMatch.username);
+            candidateUsernames.add(localMatch.username.toLowerCase());
+          }
           if (!idInput.includes('@')) {
-            try {
-              const { data: prof } = await sbClient
-                .from('profiles')
-                .select('*')
-                .ilike('username', idInput)
-                .maybeSingle();
-
-              if (prof && !prof.username?.startsWith('withdrawn_') && prof.role !== 'withdrawn') {
-                profileMatched = prof;
-                emailToLogin = prof.email || idInput;
-              }
-            } catch (pErr) {
-              console.warn('Profile lookup warning:', pErr);
-            }
-
-            if (!profileMatched) {
-              const localMatch = usersDb.find(u => (u.username || '').toLowerCase() === idInput.toLowerCase());
-              if (localMatch && localMatch.email) {
-                emailToLogin = localMatch.email;
-              }
-            }
+            candidateUsernames.add(idInput);
+            candidateUsernames.add(idLower);
           } else {
-            // 이메일로 직접 입력한 경우 profiles 조회
-            try {
-              const { data: prof } = await sbClient
-                .from('profiles')
-                .select('*')
-                .ilike('email', idInput)
-                .maybeSingle();
-
-              if (prof && !prof.username?.startsWith('withdrawn_') && prof.role !== 'withdrawn') {
-                profileMatched = prof;
-              }
-            } catch (_) {}
+            const prefix = idInput.split('@')[0];
+            if (prefix) {
+              candidateUsernames.add(prefix);
+              candidateUsernames.add(prefix.toLowerCase());
+            }
           }
 
-          // 2. Supabase Auth 로그인 시도
+          candidateUsernames.forEach(uname => {
+            if (!uname) return;
+            emailSet.add(`${uname}@thesocsoc.auth`);
+            emailSet.add(`${uname.toLowerCase()}@thesocsoc.auth`);
+            emailSet.add(`${uname}@socsoc.kr`);
+            emailSet.add(`${uname.toLowerCase()}@socsoc.kr`);
+          });
+
+          const candidateEmails = Array.from(emailSet);
+
+          // 3. Supabase Auth 다중 식별자 & 비밀번호 변형 로그인 시도 (원스톱 자동 매칭)
           let authData = null;
-          let authErr = null;
-
-          if (emailToLogin) {
-            const res1 = await sbClient.auth.signInWithPassword({
-              email: emailToLogin,
-              password: pw
-            });
-            if (!res1.error && res1.data?.user) {
-              authData = res1.data;
-            } else {
-              authErr = res1.error;
-            }
-          }
-
-          // 2-2. 실패 시 가상 인증 계정(@thesocsoc.auth 또는 @socsoc.kr) 로그인 보조 확인
-          if (!authData && (profileMatched || !idInput.includes('@'))) {
-            const targetUname = (profileMatched?.username || idInput).toLowerCase();
-            const fallbackEmails = [
-              `${targetUname}@thesocsoc.auth`,
-              `${targetUname}@socsoc.kr`
-            ];
-            if (profileMatched?.email && profileMatched.email !== emailToLogin) {
-              fallbackEmails.push(profileMatched.email);
-            }
-
-            for (const cand of fallbackEmails) {
-              if (!cand || cand === emailToLogin) continue;
+          for (const emailCand of candidateEmails) {
+            if (!emailCand) continue;
+            for (const pwCand of pwCandidates) {
+              if (!pwCand) continue;
               try {
-                const aliasRes = await sbClient.auth.signInWithPassword({
-                  email: cand,
-                  password: pw
+                const res = await sbClient.auth.signInWithPassword({
+                  email: emailCand,
+                  password: pwCand
                 });
-                if (!aliasRes.error && aliasRes.data?.user) {
-                  authData = aliasRes.data;
-                  authErr = null;
+                if (!res.error && res.data?.user) {
+                  authData = res.data;
+                  successfulPw = pwCand;
                   break;
                 }
               } catch (_) {}
             }
+            if (authData) break;
           }
 
-          // 3. Supabase Auth 로그인 성공 시 클라우드 프로필 및 저장 처방 로드
+          // 4. Supabase Auth 로그인 성공 시 클라우드 프로필 및 저장 처방 로드
           if (authData && authData.user) {
             const user = authData.user;
 
@@ -5804,7 +5835,7 @@ function initAuth() {
               companyType: profile?.company_type || '제조사',
               role: finalRole,
               provider: 'normal',
-              password: pw,
+              password: successfulPw,
               savedGuides: dbGuides.map(g => ({
                 uid: g.recipe_uid,
                 title: g.title,
@@ -5834,8 +5865,8 @@ function initAuth() {
                     savedAt: a.saved_at || a.created_at
                   }));
                 }
-                const localMatch = usersDb.find(u => u.username === uname || u.id === user.id);
-                return (localMatch && Array.isArray(localMatch.savedAnalyzers)) ? localMatch.savedAnalyzers : [];
+                const localM = usersDb.find(u => (u.username || '').toLowerCase() === uname.toLowerCase() || u.id === user.id);
+                return (localM && Array.isArray(localM.savedAnalyzers)) ? localM.savedAnalyzers : [];
               })()
             };
 
@@ -5847,21 +5878,26 @@ function initAuth() {
           }
         }
 
-        // 4. 로컬 usersDb에 등록된 계정으로 로그인 (비밀번호 재설정 계정 또는 로컬 캐시 계정)
+        // 5. 로컬 usersDb에 등록된 계정으로 로그인 (비밀번호 재설정 계정 또는 로컬 캐시 계정)
         if (!loggedInUser) {
-          const foundLocal = usersDb.find(u => 
-            ((u.username || '').toLowerCase() === idInput.toLowerCase() || 
-             (u.email || '').toLowerCase() === idInput.toLowerCase()) && 
-            u.password === pw
-          );
+          const foundLocal = usersDb.find(u => {
+            const matchUname = (u.username || '').trim().toLowerCase() === idLower;
+            const matchEmail = (u.email || '').trim().toLowerCase() === idLower;
+            if (!matchUname && !matchEmail) return false;
+
+            const uPw = u.password || '';
+            const resetPw = localStorage.getItem('socsoc_pw_reset_' + (u.username || '').toLowerCase()) || '';
+            return pwCandidates.some(cand => cand === uPw || cand === uPw.trim() || (resetPw && (cand === resetPw || cand === resetPw.trim())));
+          });
 
           if (foundLocal) {
             loggedInUser = foundLocal;
+            const workingPw = pwTrim || pw;
+            loggedInUser.password = workingPw;
 
-            // Supabase와 클라우드 데이터 동기화 시도
+            // Supabase와 클라우드 데이터 동기화 및 Supabase Auth 비밀번호 즉시 실시간 갱신 (영구 일치 보장)
             if (sbClient) {
               try {
-                // Supabase profiles에서 id 및 프로필 정보 가져오기
                 const { data: profRow } = await sbClient
                   .from('profiles')
                   .select('*')
@@ -5871,6 +5907,16 @@ function initAuth() {
                 if (profRow && profRow.id) {
                   foundLocal.id = profRow.id;
                   if (profRow.role) foundLocal.role = checkIsAdmin(foundLocal.username) ? 'admin' : profRow.role;
+
+                  // Supabase Auth 비밀번호를 동작 확인된 비밀번호로 백그라운드 동기화 (RPC)
+                  try {
+                    await sbClient.rpc('reset_user_password', {
+                      p_username: foundLocal.username,
+                      p_name: profRow.name || foundLocal.name || '',
+                      p_phone: profRow.phone || foundLocal.phone || '',
+                      p_new_password: workingPw
+                    });
+                  } catch (_) {}
 
                   // 클라우드 저장 처방 가져와서 병합
                   try {
@@ -5925,7 +5971,7 @@ function initAuth() {
 
                   const { data: signRes } = await sbClient.auth.signUp({
                     email: targetEmail,
-                    password: pw,
+                    password: workingPw,
                     options: {
                       data: {
                         username: foundLocal.username,
@@ -5987,7 +6033,7 @@ function initAuth() {
           filterRecipes();
           showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
         } else {
-          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. (회원가입 후 이용해주세요)';
+          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 잊으셨다면 [비밀번호 찾기]를 통해 새 비밀번호로 간편하게 재설정하실 수 있습니다.';
           errMsg.classList.remove('hidden');
         }
       } catch (err) {
@@ -6014,8 +6060,10 @@ function initAuth() {
       const phoneEl = document.getElementById('signupPhoneInput');
 
       const id = idEl ? idEl.value.trim() : '';
-      const pw = pwEl ? pwEl.value : '';
-      const pwCfm = pwCfmEl ? pwCfmEl.value : '';
+      const rawPw = pwEl ? pwEl.value : '';
+      const rawPwCfm = pwCfmEl ? pwCfmEl.value : '';
+      const pw = rawPw.trim();
+      const pwCfm = rawPwCfm.trim();
       const name = nameEl ? nameEl.value.trim() : '';
       const nickname = nicknameEl ? nicknameEl.value.trim() : '';
       const email = emailEl ? emailEl.value.trim() : '';
