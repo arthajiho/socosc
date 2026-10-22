@@ -1643,9 +1643,6 @@
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
-                  <button type="button" onclick="applySmartEstimates()" class="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold hover:bg-indigo-100 transition cursor-pointer shadow-2xs" title="화장품 지수 감쇠 모델에 맞추어 합계 100%로 배합비를 예상 분배합니다">
-                    <span>⚡</span> 배합비(%) 예상 분배
-                  </button>
                   <button type="button" onclick="addNewIngredientRow()" class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 font-bold transition cursor-pointer">
                     <span>➕</span> 성분 추가
                   </button>
@@ -3413,7 +3410,7 @@ function initAuth() {
       syncCalcProcedure('');
       // 전성분 해체기 기본 샘플 초기화
       loadSample('cream');
-      runAnalysis();
+      runAnalysis(true);
     }
 
     function goHome() {
@@ -8717,7 +8714,7 @@ function initAuth() {
       return clean.includes('향료') || clean.includes('fragrance') || clean.includes('parfum') || clean.includes('착향제') || clean.includes('flavor');
     }
 
-    function runAnalysis() {
+    function runAnalysis(isSilent = false) {
       const txtArea = document.getElementById('rawTextarea');
       if (!txtArea) return;
       const raw = txtArea.value.trim();
@@ -8816,8 +8813,18 @@ function initAuth() {
       const resBox = document.getElementById('resultsContainer');
       if (resBox) resBox.classList.remove('hidden');
       updateRoleFilterOptions();
-      renderAnalyzerTable();
-      renderAnalyzerPrintReport();
+
+      // 전성분 해체 시작 시 배합비(%) 예상 분배까지 한번에 자동 실행
+      applySmartEstimates(true);
+
+      if (!isSilent) {
+        try {
+          if (resBox && typeof resBox.scrollIntoView === 'function') {
+            resBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        } catch (_) {}
+        showToast('전성분 해체 및 배합비(%) 예상 분배가 완료되었습니다.');
+      }
     }
 
     function getEffectiveCutoff() {
@@ -9227,7 +9234,7 @@ function initAuth() {
     }
 
     // 배합비(%) 예상 분배 로직
-    function applySmartEstimates() {
+    function applySmartEstimates(isSilent = false) {
       const count = analyzerState.ingredients.length;
       if (count === 0) return;
 
@@ -9486,6 +9493,9 @@ function initAuth() {
       }
 
       renderAnalyzerTable();
+      if (!isSilent) {
+        showToast('배합비(%) 예상 분배가 적용되었습니다.');
+      }
     }
 
     function exportAnalyzerToExcel() {
