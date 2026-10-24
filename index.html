@@ -1678,11 +1678,12 @@
                   <table class="w-full text-left border-collapse text-sm">
                     <thead>
                       <tr class="bg-neutral-100/70 border-b border-neutral-200/80 text-neutral-600 text-xs font-bold uppercase tracking-wider">
-                        <th class="py-2.5 px-4 w-14 text-center">순번</th>
-                        <th class="py-2.5 px-4 min-w-[220px]">성분명 (영문/국문)</th>
-                        <th class="py-2.5 px-4 w-36 text-center">함량 (%)</th>
-                        <th class="py-2.5 px-4 min-w-[150px]">역할 / 분류</th>
-                        <th class="py-2.5 px-4 w-28 text-center">관리</th>
+                        <th class="py-2.5 px-3 w-14 text-center">순번</th>
+                        <th class="py-2.5 px-3 min-w-[200px]">성분명 (영문/국문)</th>
+                        <th class="py-2.5 px-3 w-28 text-center">함량 (%)</th>
+                        <th class="py-2.5 px-3 min-w-[130px] text-center">추천 함량</th>
+                        <th class="py-2.5 px-3 min-w-[140px]">역할 / 분류</th>
+                        <th class="py-2.5 px-3 w-24 text-center">관리</th>
                       </tr>
                     </thead>
                     <tbody id="ingredientTableBody" class="divide-y divide-neutral-100">
@@ -8787,6 +8788,7 @@ function initAuth() {
             max_limit: r.max_limit !== null ? parseFloat(r.max_limit) : 1.00,
             is_indicator: r.is_indicator !== false,
             role: r.role || '기타',
+            recommended_rate: r.recommended_rate || '',
             reason: r.reason || '',
             priority: r.priority || 100
           }));
@@ -9086,7 +9088,7 @@ function initAuth() {
         if (effectiveCutoff !== null && index === effectiveCutoff) {
           const bannerTr = document.createElement('tr');
           bannerTr.innerHTML = `
-            <td colspan="5" class="p-0">
+            <td colspan="6" class="p-0">
               <div class="bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 border-y-2 border-dashed border-rose-300 px-4 py-2.5 my-0">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div class="flex items-center gap-2">
@@ -9120,6 +9122,8 @@ function initAuth() {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition-colors group';
         const styleClass = ROLE_COLORS[item.role] || ROLE_COLORS['기타'];
+        const matchedRule = findIngredientRule(item.name);
+        const recRate = (matchedRule && matchedRule.recommended_rate) ? matchedRule.recommended_rate : '';
 
         tr.innerHTML = `
           <td class="py-2 px-2 text-center">
@@ -9150,6 +9154,9 @@ function initAuth() {
               />
               <span class="absolute right-2 text-xs font-bold text-neutral-400 pointer-events-none">%</span>
             </div>
+          </td>
+          <td class="py-2 px-2 text-center">
+            ${recRate ? `<span class="inline-block text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">${recRate}</span>` : `<span class="text-xs text-neutral-300 font-medium">-</span>`}
           </td>
           <td class="py-2 px-2.5">
             <select
