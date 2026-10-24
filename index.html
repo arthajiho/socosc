@@ -1641,6 +1641,18 @@
                   <select id="roleFilterSelect" onchange="renderAnalyzerTable()" class="text-xs px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50/60 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#0f2137]">
                     <option value="all">전체 역할 보기</option>
                   </select>
+                  <!-- 슈퍼베이스 ingredient_rules 실시간 연동 상태 뱃지 및 새로고침 버튼 -->
+                  <button
+                    type="button"
+                    id="btnSyncIngredientRules"
+                    onclick="syncIngredientRulesFromSupabase(true)"
+                    class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold transition cursor-pointer shadow-2xs active:scale-95"
+                    title="슈퍼베이스 ingredient_rules 테이블의 최신 추천함량 및 원료 규칙을 즉시 새로고침합니다"
+                  >
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="sbRuleStatusText">슈퍼베이스 연동 (500종)</span>
+                    <i class="fa-solid fa-arrows-rotate text-[11px] text-emerald-600"></i>
+                  </button>
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
@@ -3128,15 +3140,20 @@
       // 0. 슈퍼베이스 ingredient_rules 실시간 성분 규칙 동기화
       try {
         await syncIngredientRulesFromSupabase();
-        if (typeof sbClient.channel === 'function') {
-          sbClient
+        if (typeof sbClient.channel === 'function' && !window._sbRulesRealtimeChannel) {
+          window._sbRulesRealtimeChannel = sbClient
             .channel('ingredient_rules_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredient_rules' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredient_rules' }, (payload) => {
+              console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 변경 감지 이벤트 수신:', payload);
               syncIngredientRulesFromSupabase();
             })
-            .subscribe();
+            .subscribe((status) => {
+              console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 구독 상태:', status);
+            });
         }
-      } catch (_) {}
+      } catch (err) {
+        console.warn('Realtime subscription error:', err);
+      }
 
       try {
         // 1. Cloud Recipes 불러오기 (모든 사용자가 등록한 신규 가이드 처방 실시간 공유)
@@ -8785,8 +8802,13 @@ function initAuth() {
     let ingredientRules = [...DEFAULT_INGREDIENT_RULES];
 
     // 슈퍼베이스 실시간 성분 규칙 동기화 함수
-    async function syncIngredientRulesFromSupabase() {
+    async function syncIngredientRulesFromSupabase(isManual = false) {
       if (!sbClient) return;
+      const statusEl = document.getElementById('sbRuleStatusText');
+      if (isManual && statusEl) {
+        statusEl.textContent = '동기화 중...';
+      }
+
       try {
         const { data, error } = await sbClient
           .from('ingredient_rules')
@@ -8808,14 +8830,79 @@ function initAuth() {
             priority: r.priority || 100
           }));
           console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 동기화 완료:', ingredientRules.length, '개 성분');
-          if (currentAppMode === 'analyzer' && analyzerState && analyzerState.ingredients && analyzerState.ingredients.length > 0) {
-            renderAnalyzerTable();
+
+          if (statusEl) {
+            statusEl.textContent = `슈퍼베이스 연동 (${ingredientRules.length}종)`;
           }
+
+          // 현재 시트에 있는 성분들의 메타데이터(역할, 1% 지표, 추천함량)를 최신 슈퍼베이스 규칙으로 즉시 갱신
+          if (analyzerState && Array.isArray(analyzerState.ingredients) && analyzerState.ingredients.length > 0) {
+            let firstIndicatorIdx = null;
+            let firstIndicatorName = null;
+
+            analyzerState.ingredients.forEach((item, idx) => {
+              const matched = findIngredientRule(item.name);
+              if (matched) {
+                if (matched.role && matched.role !== '기타' && !item.userEditedRole) {
+                  item.role = matched.role;
+                }
+                if (matched.is_indicator !== undefined) {
+                  item.isIndicator = matched.is_indicator;
+                  item.indicatorReason = matched.reason || (matched.is_indicator ? '1% 이하 지표 성분' : '');
+                }
+              }
+              if (item.isIndicator && firstIndicatorIdx === null) {
+                firstIndicatorIdx = idx;
+                firstIndicatorName = item.name;
+              }
+            });
+
+            // 절취선 자동 감지 업데이트
+            if (analyzerState.manualCutoff === null && firstIndicatorIdx !== null) {
+              analyzerState.cutoffIndex = firstIndicatorIdx;
+              analyzerState.cutoffName = firstIndicatorName;
+            }
+
+            // 이미 해체 시작된 상태면 추천함량 기반으로 함량 재계산, 아니라면 테이블/통계 즉각 갱신
+            if (analyzerState.isDecomposed) {
+              applySmartEstimates(true);
+            } else {
+              renderAnalyzerTable();
+              updateAnalyzerStats();
+            }
+          }
+
+          if (isManual && typeof showToast === 'function') {
+            showToast(`슈퍼베이스 ingredient_rules (${ingredientRules.length}종) 실시간 동기화 완료`);
+          }
+        } else {
+          if (statusEl) statusEl.textContent = `슈퍼베이스 (${ingredientRules.length}종)`;
         }
       } catch (err) {
         console.warn('ingredient_rules 동기화 경고:', err);
+        if (statusEl) statusEl.textContent = `슈퍼베이스 (${ingredientRules.length}종)`;
       }
     }
+
+    // 브라우저 탭 포커스 복귀 시 슈퍼베이스 최신 규칙 자동 재동기화
+    window.addEventListener('focus', () => {
+      if (typeof syncIngredientRulesFromSupabase === 'function') {
+        syncIngredientRulesFromSupabase();
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && typeof syncIngredientRulesFromSupabase === 'function') {
+        syncIngredientRulesFromSupabase();
+      }
+    });
+
+    // 전성분 해체기 모드일 때 30초 주기 실시간 백그라운드 폴링 보조 (웹소켓 연결 유실 대비)
+    setInterval(() => {
+      if (currentAppMode === 'analyzer' && typeof syncIngredientRulesFromSupabase === 'function') {
+        syncIngredientRulesFromSupabase();
+      }
+    }, 30000);
 
     // 추천함량 텍스트 파싱 헬퍼 (min, max, mid)
     function parseRecommendedRate(recStr) {
@@ -9296,7 +9383,7 @@ function initAuth() {
             </div>
           </td>
           <td class="py-2 px-2 text-center">
-            ${analyzerState.isDecomposed && recRate ? `<span class="inline-block text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs font-mono">${recRate}</span>` : `<span class="text-xs text-neutral-300 font-medium" title="[전성분 해체 시작] 클릭 시 추천함량이 표시됩니다">-</span>`}
+            ${recRate ? `<span class="inline-block text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs font-mono" title="슈퍼베이스 실시간 추천함량">${recRate}</span>` : `<span class="text-xs text-neutral-300 font-medium">-</span>`}
           </td>
           <td class="py-2 px-2.5">
             <select
@@ -9803,169 +9890,62 @@ function initAuth() {
       }
     }
 
-    function updateAnalyzerIngredientName(id, val) {
-      const item = analyzerState.ingredients.find(i => i.id === id);
-      if (item) {
-        item.name = val;
-        const { isIndicator, reason } = checkIndicator(val);
-        item.isIndicator = isIndicator;
-        item.indicatorReason = reason;
-        renderAnalyzerTable();
-      }
-    }
-
-    function updatePercentage(id, val) {
-      const item = analyzerState.ingredients.find(i => i.id === id);
-      if (item) {
-        item.percentage = val === '' ? '' : parseFloat(val);
-        updateAnalyzerStats();
-        renderAnalyzerPrintReport();
-      }
-    }
-
-    function updateRole(id, newRole) {
-      const item = analyzerState.ingredients.find(i => i.id === id);
-      if (item) {
-        item.role = newRole;
-        renderAnalyzerTable();
-      }
-    }
-
-    function deleteRow(id) {
-      analyzerState.ingredients = analyzerState.ingredients.filter(i => i.id !== id);
-      analyzerState.ingredients.forEach((item, idx) => item.order = idx + 1);
-      updateRoleFilterOptions();
-      renderAnalyzerTable();
-    }
-
-    function moveRow(index, delta) {
-      const target = index + delta;
-      if (target < 0 || target >= analyzerState.ingredients.length) return;
-      const temp = analyzerState.ingredients[index];
-      analyzerState.ingredients[index] = analyzerState.ingredients[target];
-      analyzerState.ingredients[target] = temp;
-      analyzerState.ingredients.forEach((item, idx) => item.order = idx + 1);
-      renderAnalyzerTable();
-    }
-
-    function shiftCutoff(delta) {
-      const current = getEffectiveCutoff();
-      if (current === null) return;
-      const next = Math.max(0, Math.min(analyzerState.ingredients.length, current + delta));
-      analyzerState.manualCutoff = next;
-      renderAnalyzerTable();
-    }
-
-    function addNewIngredientRow() {
-      const newOrder = analyzerState.ingredients.length + 1;
-      analyzerState.ingredients.push({
-        id: 'ing_' + Date.now(),
-        order: newOrder,
-        name: '새 성분',
-        percentage: '',
-        role: '기타',
-        isIndicator: false
-      });
-      updateRoleFilterOptions();
-      renderAnalyzerTable();
-    }
-
-    function updateAnalyzerStats() {
-      const count = analyzerState.ingredients.length;
-      const cutoff = getEffectiveCutoff();
-      const aboveCount = cutoff !== null ? cutoff : count;
-      const belowCount = cutoff !== null ? Math.max(0, count - cutoff) : 0;
-      const sum = calculateTotalPercentage();
-
-      const elTot = document.getElementById('statTotalCount');
-      if (elTot) elTot.innerHTML = count + '<span class="text-sm font-normal text-slate-400 ml-1">종</span>';
-      const elAbove = document.getElementById('statAboveCount');
-      if (elAbove) elAbove.innerHTML = aboveCount + '<span class="text-sm font-normal text-slate-400 ml-1">종 (함량순)</span>';
-      const elBelow = document.getElementById('statBelowCount');
-      if (elBelow) elBelow.innerHTML = belowCount + '<span class="text-sm font-normal text-slate-400 ml-1">종 (순서 무관)</span>';
-      const elSumVal = document.getElementById('statSumVal');
-      if (elSumVal) elSumVal.innerHTML = sum.toFixed(2) + '<span class="text-sm font-normal ml-1">%</span>';
-      const elFootSum = document.getElementById('footerSum');
-      if (elFootSum) elFootSum.textContent = sum.toFixed(2) + ' %';
-      const elFootCount = document.getElementById('footerCount');
-      if (elFootCount) elFootCount.textContent = count;
-      const elFootCut = document.getElementById('footerCutoffInfo');
-      if (elFootCut) elFootCut.textContent = cutoff !== null ? '1% 기준선: 제 ' + (cutoff + 1) + '번째 성분 앞' : '1% 기준선: 감지되지 않음';
-
-      const badge = document.getElementById('statSumBadge');
-      const card = document.getElementById('statSumCard');
-
-      if (badge && card) {
-        if (Math.abs(sum - 100) < 0.001) {
-          badge.className = 'text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold shadow-2xs';
-          badge.textContent = '100% 완벽 일치';
-          card.className = 'p-4 rounded-2xl border-2 border-emerald-200 bg-white shadow-[0_4px_20px_-2px_rgba(16,185,129,0.08)] transition';
-        } else if (sum > 100) {
-          badge.className = 'text-xs px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold shadow-2xs';
-          badge.textContent = '+' + (sum - 100).toFixed(2) + '% 초과';
-          card.className = 'p-4 rounded-2xl border-2 border-rose-200 bg-white shadow-[0_4px_20px_-2px_rgba(244,63,94,0.08)] transition';
-        } else {
-          badge.className = 'text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold shadow-2xs';
-          badge.textContent = (100 - sum).toFixed(2) + '% 부족';
-          card.className = 'p-4 rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition';
-        }
-      }
-
+    function renderAnalyzerRoleDistribution() {
       // 역할 통계 카드 렌더링 (%지 높은 순서대로 내림차순 배치, 함량 수정 시 자동 재배치)
       const grid = document.getElementById('roleStatsGrid');
-      if (grid) {
-        grid.innerHTML = '';
-        const hasAnyPercentage = analyzerState.ingredients.some(i => {
+      if (!grid) return;
+      grid.innerHTML = '';
+      const count = analyzerState.ingredients.length;
+      const hasAnyPercentage = analyzerState.ingredients.some(i => {
+        const val = parseFloat(i.percentage);
+        return !isNaN(val) && val > 0;
+      });
+
+      const roleList = [];
+      ALL_ROLES.forEach(r => {
+        const matching = analyzerState.ingredients.filter(i => i.role === r);
+        if (matching.length === 0) return;
+        const rCount = matching.length;
+        let rSum = 0;
+        matching.forEach(i => {
           const val = parseFloat(i.percentage);
-          return !isNaN(val) && val > 0;
+          if (!isNaN(val) && val > 0) rSum += val;
         });
+        rSum = parseFloat(rSum.toFixed(2));
 
-        const roleList = [];
-        ALL_ROLES.forEach(r => {
-          const matching = analyzerState.ingredients.filter(i => i.role === r);
-          if (matching.length === 0) return;
-          const rCount = matching.length;
-          let rSum = 0;
-          matching.forEach(i => {
-            const val = parseFloat(i.percentage);
-            if (!isNaN(val) && val > 0) rSum += val;
-          });
-          rSum = parseFloat(rSum.toFixed(2));
+        const sortVal = hasAnyPercentage ? rSum : (rCount / (count || 1)) * 100;
+        const displayPctStr = hasAnyPercentage
+          ? (Number.isInteger(rSum) ? rSum.toString() : rSum.toFixed(2).replace(/\.?0+$/, ''))
+          : Math.round((rCount / (count || 1)) * 100).toString();
 
-          const sortVal = hasAnyPercentage ? rSum : (rCount / (count || 1)) * 100;
-          const displayPctStr = hasAnyPercentage
-            ? (Number.isInteger(rSum) ? rSum.toString() : rSum.toFixed(2).replace(/\.?0+$/, ''))
-            : Math.round((rCount / (count || 1)) * 100).toString();
-
-          roleList.push({
-            role: r,
-            count: rCount,
-            sum: rSum,
-            sortVal: sortVal,
-            displayPctStr: displayPctStr
-          });
+        roleList.push({
+          role: r,
+          count: rCount,
+          sum: rSum,
+          sortVal: sortVal,
+          displayPctStr: displayPctStr
         });
+      });
 
-        // %지가 높은 순서대로 내림차순 정렬 (동률 시 성분 수 많은 순)
-        roleList.sort((a, b) => {
-          if (b.sortVal !== a.sortVal) return b.sortVal - a.sortVal;
-          return b.count - a.count;
-        });
+      // %지가 높은 순서대로 내림차순 정렬 (동률 시 성분 수 많은 순)
+      roleList.sort((a, b) => {
+        if (b.sortVal !== a.sortVal) return b.sortVal - a.sortVal;
+        return b.count - a.count;
+      });
 
-        roleList.forEach(item => {
-          const color = ROLE_COLORS[item.role] || ROLE_COLORS['기타'];
-          const cardEl = document.createElement('div');
-          cardEl.className = 'p-3 rounded-2xl border flex flex-col justify-between shadow-2xs ' + color;
-          cardEl.innerHTML = `
-            <span class="text-xs font-black tracking-tight">${item.role}</span>
-            <div class="flex items-baseline justify-between mt-2">
-              <span class="text-xl font-black text-neutral-800">${item.displayPctStr}<span class="text-xs font-bold text-neutral-500 ml-0.5">%</span></span>
-              <span class="text-[11px] font-bold text-neutral-500">${item.count}종</span>
-            </div>
-          `;
-          grid.appendChild(cardEl);
-        });
-      }
+      roleList.forEach(item => {
+        const color = ROLE_COLORS[item.role] || ROLE_COLORS['기타'];
+        const cardEl = document.createElement('div');
+        cardEl.className = 'p-3 rounded-2xl border flex flex-col justify-between shadow-2xs ' + color;
+        cardEl.innerHTML = `
+          <span class="text-xs font-black tracking-tight">${item.role}</span>
+          <div class="flex items-baseline justify-between mt-2">
+            <span class="text-xl font-black text-neutral-800">${item.displayPctStr}<span class="text-xs font-bold text-neutral-500 ml-0.5">%</span></span>
+            <span class="text-[11px] font-bold text-neutral-500">${item.count}종</span>
+          </div>
+        `;
+        grid.appendChild(cardEl);
+      });
     }
 
     function exportAnalyzerToExcel() {
