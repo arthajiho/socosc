@@ -5460,11 +5460,14 @@ function initAuth() {
               const matched = profiles.find(p => {
                 if ((p.username || '').startsWith('withdrawn_') || p.role === 'withdrawn') return false;
                 const pName = (p.name || '').trim();
+                const pNick = (p.nickname || '').trim();
                 let pPhone = (p.phone || '').replace(/[^0-9]/g, '');
                 if (pPhone.startsWith('82') && pPhone.length >= 11) {
                   pPhone = '0' + pPhone.slice(2);
                 }
-                const isNameMatch = pName.replace(/\s+/g, '').toLowerCase() === nameInput.replace(/\s+/g, '').toLowerCase();
+                const cleanNameInput = nameInput.replace(/\s+/g, '').toLowerCase();
+                const isNameMatch = (pName && pName.replace(/\s+/g, '').toLowerCase() === cleanNameInput) ||
+                                    (pNick && pNick.replace(/\s+/g, '').toLowerCase() === cleanNameInput);
                 const isPhoneMatch = (pPhone === inputCleanPhone) || 
                   (pPhone.length >= 10 && inputCleanPhone.length >= 10 && (
                     pPhone.endsWith(inputCleanPhone.slice(-8)) || 
@@ -5480,9 +5483,11 @@ function initAuth() {
                   id: matched.id,
                   username: matched.username || (matched.email ? matched.email.split('@')[0] : idInput),
                   name: matched.name,
+                  dbName: matched.name,
                   nickname: matched.nickname || matched.name,
                   email: matched.email,
                   phone: matched.phone,
+                  dbPhone: matched.phone,
                   companyType: matched.company_type || '기타'
                 };
               }
@@ -5607,14 +5612,118 @@ function initAuth() {
         const targetUsername = verifiedResetUser.username;
         let prevPw = '';
 
-        // 1. 로컬 usersDb 업데이트 및 이전 비밀번호 확보
+        // 1. 기존 로컬 계정 정보 및 이전 비밀번호 확보 (아직 저장하지 않음)
         let foundInLocal = usersDb.find(u => 
           (u.username && u.username.toLowerCase() === targetUsername.toLowerCase()) || 
           (u.email && verifiedResetUser.email && u.email.toLowerCase() === verifiedResetUser.email.toLowerCase())
         );
-
         if (foundInLocal) {
           prevPw = foundInLocal.password || '';
+        }
+
+        // 2. Supabase Cloud DB 동기화 시도 (다중 경로 적용)
+        let cloudUpdated = false;
+
+        if (sbClient) {
+          // 방법 A: Supabase RPC (reset_user_password) 직접 호출 (정확한 DB name & phone 전달)
+          try {
+            const targetName = verifiedResetUser.dbName || verifiedResetUser.name || '';
+            const targetPhone = verifiedResetUser.dbPhone || verifiedResetUser.phone || '';
+            const { data: rpcData, error: rpcErr } = await sbClient.rpc('reset_user_password', {
+              p_username: targetUsername,
+              p_name: targetName,
+              p_phone: targetPhone,
+              p_new_password: newPw
+            });
+            if (!rpcErr && rpcData && (rpcData.success === true || rpcData.status === 'ok')) {
+              cloudUpdated = true;
+              console.log('Password reset via Supabase RPC successful:', rpcData);
+            } else if (rpcErr) {
+              console.warn('RPC reset notice:', rpcErr);
+            }
+          } catch (rErr) {
+            console.warn('RPC reset notice:', rErr);
+          }
+
+          // 방법 B: 기존 활성 세션이 있을 경우 공식 updateUser 호출
+          if (!cloudUpdated) {
+            try {
+              const { data: sData } = await sbClient.auth.getSession();
+              if (sData?.session?.user && (sData.session.user.id === verifiedResetUser.id || sData.session.user.email === verifiedResetUser.email)) {
+                const { error: upErr } = await sbClient.auth.updateUser({ password: newPw });
+                if (!upErr) {
+                  cloudUpdated = true;
+                  console.log('Password updated in Supabase Auth via active session!');
+                }
+              }
+            } catch (_) {}
+          }
+
+          // 방법 C: 이전 비밀번호 또는 후보 비밀번호로 임시 로그인 후 updateUser 호출
+          if (!cloudUpdated) {
+            const candidatePws = [];
+            if (prevPw) candidatePws.push(prevPw);
+
+            try {
+              const archive = JSON.parse(localStorage.getItem('socsoc_withdrawn_archive') || '[]');
+              archive.forEach(a => {
+                if (a.username?.toLowerCase() === targetUsername.toLowerCase() || (a.email && a.email.toLowerCase() === verifiedResetUser.email?.toLowerCase())) {
+                  if (a.password) candidatePws.push(a.password);
+                }
+              });
+            } catch (_) {}
+
+            candidatePws.push('123456');
+
+            const tryEmails = [
+              verifiedResetUser.email,
+              `${targetUsername.toLowerCase()}@thesocsoc.auth`,
+              `${targetUsername.toLowerCase()}@socsoc.kr`
+            ].filter(Boolean);
+
+            for (const em of tryEmails) {
+              for (const cand of candidatePws) {
+                if (!cand || cand === newPw) continue;
+                try {
+                  const sRes = await sbClient.auth.signInWithPassword({
+                    email: em,
+                    password: cand
+                  });
+                  if (!sRes.error && sRes.data?.user) {
+                    const { error: upErr2 } = await sbClient.auth.updateUser({ password: newPw });
+                    if (!upErr2) {
+                      cloudUpdated = true;
+                      console.log('Password updated in Supabase Auth via candidate session!');
+                      break;
+                    }
+                  }
+                } catch (_) {}
+              }
+              if (cloudUpdated) break;
+            }
+          }
+
+          // 방법 D: Supabase 이메일 재설정 링크 (실제 이메일인 경우)
+          if (!cloudUpdated && verifiedResetUser.email && verifiedResetUser.email.includes('@') && !verifiedResetUser.email.endsWith('.auth') && !verifiedResetUser.email.endsWith('.local')) {
+            try {
+              await sbClient.auth.resetPasswordForEmail(verifiedResetUser.email, {
+                redirectTo: window.location.origin
+              });
+            } catch (_) {}
+          }
+        }
+
+        // 가짜 성공(Fake Success) 차단: 슈퍼베이스 클라우드 동기화 실패 시 로컬에만 몰래 저장하지 않고 명확한 안내 표시
+        if (sbClient && !cloudUpdated) {
+          if (errMsg) {
+            errMsg.textContent = '클라우드 인증 서버에 비밀번호를 동기화하지 못했습니다. (Supabase 보안 연동 필요 또는 회원 정보 불일치) 관리자에게 문의해주세요.';
+            errMsg.classList.remove('hidden');
+          }
+          return;
+        }
+
+        // 클라우드 동기화 성공(또는 오프라인 로컬 환경) 시에만 로컬 계정 갱신 및 완료 처리
+        if (foundInLocal) {
           foundInLocal.password = newPw;
           if (verifiedResetUser.id && (!foundInLocal.id || String(foundInLocal.id).startsWith('local_'))) {
             foundInLocal.id = verifiedResetUser.id;
@@ -5648,80 +5757,8 @@ function initAuth() {
           currentUser.password = newPw;
         }
 
-        // 2. Supabase Cloud DB 동기화 시도 (다중 경로 적용)
-        if (sbClient) {
-          let cloudUpdated = false;
-
-          // 방법 A: Supabase RPC (reset_user_password) 직접 호출
-          try {
-            const { data: rpcData, error: rpcErr } = await sbClient.rpc('reset_user_password', {
-              p_username: targetUsername,
-              p_name: verifiedResetUser.name || '',
-              p_phone: verifiedResetUser.phone || '',
-              p_new_password: newPw
-            });
-            if (!rpcErr && rpcData && (rpcData.success === true || rpcData.status === 'ok')) {
-              cloudUpdated = true;
-              console.log('Password reset via Supabase RPC successful:', rpcData);
-            }
-          } catch (rErr) {
-            console.warn('RPC reset notice:', rErr);
-          }
-
-          // 방법 B: 이전 비밀번호 또는 후보 비밀번호로 임시 로그인 후 updateUser 호출
-          if (!cloudUpdated) {
-            const candidatePws = [];
-            if (prevPw) candidatePws.push(prevPw);
-
-            try {
-              const archive = JSON.parse(localStorage.getItem('socsoc_withdrawn_archive') || '[]');
-              archive.forEach(a => {
-                if (a.username?.toLowerCase() === targetUsername.toLowerCase() || (a.email && a.email.toLowerCase() === verifiedResetUser.email?.toLowerCase())) {
-                  if (a.password) candidatePws.push(a.password);
-                }
-              });
-            } catch (_) {}
-
-            candidatePws.push('123456');
-
-            const tryEmails = [
-              verifiedResetUser.email,
-              `${targetUsername.toLowerCase()}@thesocsoc.auth`,
-              `${targetUsername.toLowerCase()}@socsoc.kr`
-            ].filter(Boolean);
-
-            for (const em of tryEmails) {
-              for (const cand of candidatePws) {
-                if (!cand || cand === newPw) continue;
-                try {
-                  const sRes = await sbClient.auth.signInWithPassword({
-                    email: em,
-                    password: cand
-                  });
-                  if (!sRes.error && sRes.data?.user) {
-                    await sbClient.auth.updateUser({ password: newPw });
-                    cloudUpdated = true;
-                    console.log('Password updated in Supabase Auth via candidate session!');
-                    break;
-                  }
-                } catch (_) {}
-              }
-              if (cloudUpdated) break;
-            }
-          }
-
-          // 방법 C: Supabase 이메일 재설정 링크 (실제 이메일인 경우)
-          if (!cloudUpdated && verifiedResetUser.email && verifiedResetUser.email.includes('@') && !verifiedResetUser.email.endsWith('.auth') && !verifiedResetUser.email.endsWith('.local')) {
-            try {
-              await sbClient.auth.resetPasswordForEmail(verifiedResetUser.email, {
-                redirectTo: window.location.origin
-              });
-            } catch (_) {}
-          }
-        }
-
-        showToast('비밀번호가 성공적으로 변경되었습니다! 변경된 비밀번호로 로그인해주세요.');
-
+        showToast('비밀번호가 성공적으로 변경되었습니다! 변경된 비밀번호로 로그인해주세요.');
+
         // 3. 로그인 화면으로 이동 & 아이디/새 비밀번호 자동 채우기 및 포커스
         switchAuthTab('login', true);
         const loginId = document.getElementById('loginIdInput');
@@ -7059,8 +7096,8 @@ function initAuth() {
             authUser = sessionData?.session?.user;
           } catch (_) {}
 
-          const effectivePw = targetNewPw || currentUser.password || '';
-          if (!authUser && effectivePw) {
+          // 세션이 없으면 현재 비밀번호로 세션 획득 시도 (절대 targetNewPw가 아닌 currentPw 사용!)
+          if (!authUser) {
             const tryIdentities = [
               currentUser.email,
               email,
@@ -7069,40 +7106,67 @@ function initAuth() {
               currentUser.username
             ].filter(Boolean);
 
+            const tryPws = [currentPw, currentUser.password].filter(Boolean);
+
             for (const ident of tryIdentities) {
-              try {
-                const sRes = await sbClient.auth.signInWithPassword({
-                  email: ident,
-                  password: effectivePw
-                });
-                if (sRes.data?.session) {
-                  await sbClient.auth.setSession(sRes.data.session);
-                  authUser = sRes.data.user;
-                  break;
-                }
-              } catch (_) {}
+              for (const tpw of tryPws) {
+                try {
+                  const sRes = await sbClient.auth.signInWithPassword({
+                    email: ident,
+                    password: tpw
+                  });
+                  if (sRes.data?.session) {
+                    await sbClient.auth.setSession(sRes.data.session);
+                    authUser = sRes.data.user;
+                    break;
+                  }
+                } catch (_) {}
+              }
+              if (authUser) break;
             }
           }
 
           // 비밀번호 변경 처리 (Supabase Auth updateUser 및 RPC reset_user_password 이중 적용)
           if (targetNewPw) {
-            try {
-              if (authUser) {
-                await sbClient.auth.updateUser({ password: targetNewPw });
+            let cloudPwUpdated = false;
+
+            // 1) 공식 Auth 세션으로 updateUser 호출 (가장 확실하고 표준적인 클라우드 동기화)
+            if (authUser) {
+              try {
+                const { data: upData, error: upErr } = await sbClient.auth.updateUser({ password: targetNewPw });
+                if (!upErr && upData?.user) {
+                  cloudPwUpdated = true;
+                  console.log('Password successfully updated in Supabase Auth via updateUser!');
+                } else if (upErr) {
+                  console.warn('updateUser error:', upErr);
+                }
+              } catch (pwErr) {
+                console.warn('Supabase auth password update notice:', pwErr);
               }
-            } catch (pwErr) {
-              console.warn('Supabase auth password update notice:', pwErr);
             }
 
-            try {
-              await sbClient.rpc('reset_user_password', {
-                p_username: currentUser.username,
-                p_name: name || currentUser.name || '',
-                p_phone: formattedPhone || currentUser.phone || '',
-                p_new_password: targetNewPw
-              });
-            } catch (rpcErr) {
-              console.warn('RPC password reset notice in MyPage:', rpcErr);
+            // 2) RPC reset_user_password 백업 호출
+            if (!cloudPwUpdated) {
+              try {
+                const { data: rpcRes, error: rpcErr } = await sbClient.rpc('reset_user_password', {
+                  p_username: currentUser.username,
+                  p_name: name || currentUser.name || '',
+                  p_phone: formattedPhone || currentUser.phone || '',
+                  p_new_password: targetNewPw
+                });
+                if (!rpcErr && rpcRes && (rpcRes.success === true || rpcRes.status === 'ok')) {
+                  cloudPwUpdated = true;
+                  console.log('Password updated via RPC reset_user_password!');
+                }
+              } catch (rpcErr) {}
+            }
+
+            // 3) 슈퍼베이스 클라우드 동기화 실패 시 가짜 성공 완전 차단
+            if (!cloudPwUpdated) {
+              errMsg.textContent = '슈퍼베이스 클라우드 서버에 비밀번호를 동기화하지 못했습니다. 입력하신 현재 비밀번호가 클라우드 원본과 일치하지 않거나 세션이 만료되었습니다. 다시 확인해주세요.';
+              errMsg.classList.remove('hidden');
+              if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+              return; // STOP! 클라우드 미반영 시 로컬에만 몰래 바꾸지 않음!
             }
           }
 
@@ -7121,48 +7185,67 @@ function initAuth() {
             } catch (_) {}
           }
 
-          // profiles 테이블에 직접 UPDATE / UPSERT
+          // profiles 테이블에 직접 UPDATE / UPSERT (실시간 슈퍼베이스 클라우드 반영 및 엄격 검증)
           const profileUpdateFields = {
             name: name || currentUser.name,
             nickname: nickname,
             email: email,
             phone: formattedPhone,
             company_type: companyType,
-            role: checkIsAdmin(currentUser.username) ? 'admin' : (currentUser.role || 'member')
+            role: checkIsAdmin(currentUser.username) ? 'admin' : (currentUser.role || 'member'),
+            updated_at: new Date().toISOString()
           };
+
+          let profileUpdatedInCloud = false;
 
           // A. id로 직접 update
           if (currentUser.id && !String(currentUser.id).startsWith('local_')) {
             try {
-              await sbClient
+              const { data: uData1, error: uErr1 } = await sbClient
                 .from('profiles')
                 .update(profileUpdateFields)
-                .eq('id', currentUser.id);
+                .eq('id', currentUser.id)
+                .select();
+              if (!uErr1 && uData1 && uData1.length > 0) profileUpdatedInCloud = true;
             } catch (_) {}
           }
 
           // B. username으로 직접 update
-          if (currentUser.username) {
+          if (!profileUpdatedInCloud && currentUser.username) {
             try {
-              await sbClient
+              const { data: uData2, error: uErr2 } = await sbClient
                 .from('profiles')
                 .update(profileUpdateFields)
-                .eq('username', currentUser.username);
+                .eq('username', currentUser.username)
+                .select();
+              if (!uErr2 && uData2 && uData2.length > 0) profileUpdatedInCloud = true;
             } catch (_) {}
           }
 
           // C. 기존 row가 없던 경우 upsert
-          const targetUpsertId = (authUser?.id) || (currentUser.id && !String(currentUser.id).startsWith('local_') ? currentUser.id : null);
-          if (targetUpsertId) {
-            try {
-              await sbClient
-                .from('profiles')
-                .upsert({
-                  id: targetUpsertId,
-                  username: currentUser.username,
-                  ...profileUpdateFields
-                });
-            } catch (_) {}
+          if (!profileUpdatedInCloud) {
+            const targetUpsertId = (authUser?.id) || (currentUser.id && !String(currentUser.id).startsWith('local_') ? currentUser.id : null);
+            if (targetUpsertId) {
+              try {
+                const { data: uData3, error: uErr3 } = await sbClient
+                  .from('profiles')
+                  .upsert({
+                    id: targetUpsertId,
+                    username: currentUser.username,
+                    ...profileUpdateFields
+                  })
+                  .select();
+                if (!uErr3 && uData3 && uData3.length > 0) profileUpdatedInCloud = true;
+              } catch (_) {}
+            }
+          }
+
+          // 슈퍼베이스 클라우드 DB에 실제 반영되지 않았다면 로컬 단독 저장을 차단하고 사용자에게 알림
+          if (sbClient && !profileUpdatedInCloud) {
+            errMsg.textContent = '슈퍼베이스 클라우드에 회원정보가 저장되지 않았습니다. (인증 세션 오류 또는 RLS 권한 차단) 로그아웃 후 다시 로그인하여 시도해주세요.';
+            errMsg.classList.remove('hidden');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+            return;
           }
         }
 
