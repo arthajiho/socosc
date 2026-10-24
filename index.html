@@ -5808,10 +5808,10 @@ function initAuth() {
 
       try {
         let loggedInUser = null;
+        let profileMatched = null;
         let successfulPw = pwTrim || pw;
 
         if (sbClient) {
-          let profileMatched = null;
 
           // 1. Supabase profiles 테이블에서 사용자 조회 (대소문자 무관 검색: username 및 email 동시 확인)
           try {
@@ -5990,8 +5990,8 @@ function initAuth() {
           }
         }
 
-        // 5. 로컬 usersDb에 등록된 계정으로 로그인 (오직 클라우드 프로필이 없거나 오프라인인 경우의 백업 폴백)
-        if (!loggedInUser && (!sbClient || !profileMatched)) {
+        // 5. 로컬 usersDb에 등록된 계정으로 로그인 (비밀번호 재설정 계정 또는 클라우드 미생성 계정 자동 복구)
+        if (!loggedInUser) {
           const foundLocal = usersDb.find(u => {
             const matchUname = (u.username || '').trim().toLowerCase() === idLower;
             const matchEmail = (u.email || '').trim().toLowerCase() === idLower;
@@ -6186,13 +6186,15 @@ function initAuth() {
           filterRecipes();
           showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
         } else {
-          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. 비밀번호를 잊으셨다면 [비밀번호 찾기]를 통해 새 비밀번호로 간편하게 재설정하실 수 있습니다.';
+          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
           errMsg.classList.remove('hidden');
         }
       } catch (err) {
         console.error('Login error:', err);
-        errMsg.textContent = '로그인 중 오류가 발생했습니다: ' + (err.message || '');
-        errMsg.classList.remove('hidden');
+        if (errMsg) {
+          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
+          errMsg.classList.remove('hidden');
+        }
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -7135,18 +7137,45 @@ function initAuth() {
               }
             }
 
-            // 현재 비밀번호가 슈퍼베이스 원본과 불일치 시 즉시 차단
-            if (!reAuthSuccess) {
-              errMsg.textContent = '현재 비밀번호가 일치하지 않습니다. (슈퍼베이스 인증 실패)';
+            // 현재 비밀번호 검증 (슈퍼베이스 Auth 세션 재인증 또는 현재 로컬 비밀번호 일치 확인)
+            const isLocalPwMatch = Boolean(currentUser.password && targetCurrentPw === currentUser.password.trim());
+            if (!reAuthSuccess && !isLocalPwMatch) {
+              errMsg.textContent = '현재 비밀번호가 일치하지 않습니다.';
               errMsg.classList.remove('hidden');
               if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
               return; // STOP! 클라우드 미반영 시 로컬에만 몰래 바꾸지 않음!
             }
 
-            // (B) 정식 획득한 세션으로 슈퍼베이스 Auth 비밀번호 즉시 변경
+            // (B) 슈퍼베이스 Auth 비밀번호 갱신 및 구 계정 자동 클라우드 프로비저닝
             let cloudPwUpdated = false;
             let pwUpdateErr = null;
-            if (authUser) {
+
+            // 아직 Auth 계정이 미생성된 구 계정인 경우, 새 비밀번호로 Supabase Auth 자동 등록 및 세션 확보
+            if (!authUser && isLocalPwMatch) {
+              const targetEm = email || currentUser.email || `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`;
+              try {
+                const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
+                  email: targetEm,
+                  password: targetNewPw,
+                  options: {
+                    data: {
+                      username: currentUser.username,
+                      name: name || currentUser.name || '',
+                      nickname: nickname || '',
+                      phone: formattedPhone || '',
+                      company_type: companyType || '기타'
+                    }
+                  }
+                });
+                if (!autoSignErr && autoSign?.user) {
+                  authUser = autoSign.user;
+                  cloudPwUpdated = true;
+                  if (autoSign.session) await sbClient.auth.setSession(autoSign.session);
+                }
+              } catch (_) {}
+            }
+
+            if (authUser && !cloudPwUpdated) {
               try {
                 const { data: upData, error: upErr } = await sbClient.auth.updateUser({ password: targetNewPw });
                 if (!upErr && upData?.user) {
