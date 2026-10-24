@@ -1641,18 +1641,7 @@
                   <select id="roleFilterSelect" onchange="renderAnalyzerTable()" class="text-xs px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50/60 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#0f2137]">
                     <option value="all">전체 역할 보기</option>
                   </select>
-                  <!-- 슈퍼베이스 ingredient_rules 실시간 연동 상태 뱃지 및 새로고침 버튼 -->
-                  <button
-                    type="button"
-                    id="btnSyncIngredientRules"
-                    onclick="syncIngredientRulesFromSupabase(true)"
-                    class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold transition cursor-pointer shadow-2xs active:scale-95"
-                    title="슈퍼베이스 ingredient_rules 테이블의 최신 추천함량 및 원료 규칙을 즉시 새로고침합니다"
-                  >
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="sbRuleStatusText">슈퍼베이스 연동 (500종)</span>
-                    <i class="fa-solid fa-arrows-rotate text-[11px] text-emerald-600"></i>
-                  </button>
+
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
@@ -8897,12 +8886,12 @@ function initAuth() {
       }
     });
 
-    // 전성분 해체기 모드일 때 30초 주기 실시간 백그라운드 폴링 보조 (웹소켓 연결 유실 대비)
+    // 전성분 해체기 모드일 때 5초 주기 실시간 백그라운드 폴링 (슈퍼베이스 수정 즉시 자동 반영)
     setInterval(() => {
       if (currentAppMode === 'analyzer' && typeof syncIngredientRulesFromSupabase === 'function') {
         syncIngredientRulesFromSupabase();
       }
-    }, 30000);
+    }, 5000);
 
     // 추천함량 텍스트 파싱 헬퍼 (min, max, mid)
     function parseRecommendedRate(recStr) {
@@ -9347,7 +9336,25 @@ function initAuth() {
         tr.className = 'hover:bg-slate-50 transition-colors group';
         const styleClass = ROLE_COLORS[item.role] || ROLE_COLORS['기타'];
         const matchedRule = findIngredientRule(item.name);
-        let recRate = (matchedRule && matchedRule.recommended_rate) ? matchedRule.recommended_rate : '';
+        let recRate = '';
+        if (matchedRule) {
+          const hasDef = matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent));
+          const defVal = hasDef ? parseFloat(matchedRule.default_percent) : null;
+          const rawRec = (matchedRule.recommended_rate || '').trim();
+
+          if (hasDef && rawRec) {
+            const rawClean = rawRec.replace(/[^\d\.]/g, '');
+            if (rawClean === String(defVal)) {
+              recRate = rawRec.endsWith('%') ? rawRec : rawRec + '%';
+            } else {
+              recRate = `${defVal}% (${rawRec})`;
+            }
+          } else if (hasDef) {
+            recRate = `${defVal}%`;
+          } else if (rawRec) {
+            recRate = rawRec.endsWith('%') ? rawRec : rawRec + '%';
+          }
+        }
         if (!recRate && isHexanediol(item.name)) recRate = '1.0~3.0%';
 
         const hasPercentVal = item.percentage !== undefined && item.percentage !== null && item.percentage !== '';
@@ -9542,12 +9549,20 @@ function initAuth() {
       const count = analyzerState.ingredients.length;
       if (count === 0) return;
 
-      // 1. 헥산디올 인덱스 및 설정값(사용자 입력값 또는 기본 2.0%) 파악
+      // 1. 헥산디올 인덱스 및 설정값(슈퍼베이스 ingredient_rules 실시간 기본 함량 연동) 파악
       const hexIdx = analyzerState.ingredients.findIndex(it => isHexanediol(it.name));
       let targetHexVal = 2.00;
       if (hexIdx !== -1) {
-        const existingHexVal = parseFloat(analyzerState.ingredients[hexIdx].percentage);
-        if (!isNaN(existingHexVal) && existingHexVal > 0) {
+        const hexItem = analyzerState.ingredients[hexIdx];
+        const hexRule = findIngredientRule(hexItem.name);
+        if (hexRule && hexRule.default_percent !== null && hexRule.default_percent !== undefined && !isNaN(parseFloat(hexRule.default_percent))) {
+          targetHexVal = parseFloat(Number(hexRule.default_percent).toFixed(2));
+        } else if (hexRule && hexRule.recommended_rate) {
+          const parsedHex = parseRecommendedRate(hexRule.recommended_rate);
+          if (parsedHex && parsedHex.mid) targetHexVal = parsedHex.mid;
+        }
+        const existingHexVal = parseFloat(hexItem.percentage);
+        if (hexItem.userEditedPercentage && !isNaN(existingHexVal) && existingHexVal > 0) {
           targetHexVal = parseFloat(existingHexVal.toFixed(2));
         }
       }
@@ -9609,17 +9624,16 @@ function initAuth() {
           const parsed = parseRecommendedRate(recStr);
 
           let val = 0.15;
-          if (parsed) {
+          if (matchedRule && matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent))) {
+            val = Math.min(1.00, parseFloat(matchedRule.default_percent));
+          } else if (parsed) {
             if (parsed.min === parsed.max) {
               val = Math.min(1.00, parsed.min);
             } else {
-              // 추천함량 비율 이내에서 다양한 값 적용 (모두 똑같지 않도록 인덱스 해시 비율 적용)
-              const ratio = 0.20 + ((i % 5) * 0.15); // 0.20, 0.35, 0.50, 0.65, 0.80
+              const ratio = 0.20 + ((i % 5) * 0.15);
               val = parsed.min + (parsed.max - parsed.min) * ratio;
               val = Math.max(parsed.min, Math.min(1.00, val));
             }
-          } else if (matchedRule && matchedRule.default_percent !== undefined) {
-            val = Math.min(1.00, parseFloat(matchedRule.default_percent));
           } else {
             const naturalVariations = [0.10, 0.15, 0.20, 0.05, 0.08, 0.12];
             val = naturalVariations[i % naturalVariations.length];
@@ -9696,7 +9710,10 @@ function initAuth() {
           const parsed = parseRecommendedRate(matchedRule ? matchedRule.recommended_rate : '');
 
           let val = curFloor;
-          if (parsed) {
+          if (matchedRule && matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent))) {
+            const target = parseFloat(matchedRule.default_percent);
+            val = Math.max(curFloor, Math.min(12.0, target));
+          } else if (parsed) {
             const target = Math.max(parsed.min, parsed.mid);
             val = Math.max(curFloor, Math.min(12.0, target));
           } else {
