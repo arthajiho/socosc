@@ -5757,8 +5757,8 @@ function initAuth() {
           currentUser.password = newPw;
         }
 
-        showToast('비밀번호가 성공적으로 변경되었습니다! 변경된 비밀번호로 로그인해주세요.');
-
+        showToast('비밀번호가 성공적으로 변경되었습니다! 변경된 비밀번호로 로그인해주세요.');
+
         // 3. 로그인 화면으로 이동 & 아이디/새 비밀번호 자동 채우기 및 포커스
         switchAuthTab('login', true);
         const loginId = document.getElementById('loginIdInput');
@@ -5990,8 +5990,8 @@ function initAuth() {
           }
         }
 
-        // 5. 로컬 usersDb에 등록된 계정으로 로그인 (비밀번호 재설정 계정 또는 로컬 캐시 계정)
-        if (!loggedInUser) {
+        // 5. 로컬 usersDb에 등록된 계정으로 로그인 (오직 클라우드 프로필이 없거나 오프라인인 경우의 백업 폴백)
+        if (!loggedInUser && (!sbClient || !profileMatched)) {
           const foundLocal = usersDb.find(u => {
             const matchUname = (u.username || '').trim().toLowerCase() === idLower;
             const matchEmail = (u.email || '').trim().toLowerCase() === idLower;
@@ -7049,6 +7049,7 @@ function initAuth() {
 
       // 비밀번호 변경 처리 (일반 회원인 경우)
       let targetNewPw = null;
+      let targetCurrentPw = null;
       if (currentUser.provider === 'normal' || !currentUser.provider) {
         const rawCurPw = document.getElementById('myPageCurrentPwInput').value;
         const rawNewPw = document.getElementById('myPageNewPwInput').value;
@@ -7058,9 +7059,14 @@ function initAuth() {
         const newPwCfm = (rawNewPwCfm || '').trim();
 
         if (currentPw || newPw || newPwCfm) {
-          const uPw = (currentUser.password || '').trim();
-          if (uPw && currentPw !== uPw) {
-            errMsg.textContent = '현재 비밀번호가 일치하지 않습니다.';
+          if (!currentPw) {
+            errMsg.textContent = '비밀번호를 변경하시려면 현재 비밀번호를 입력해주세요.';
+            errMsg.classList.remove('hidden');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+            return;
+          }
+          if (!newPw) {
+            errMsg.textContent = '새 비밀번호를 입력해주세요.';
             errMsg.classList.remove('hidden');
             if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
             return;
@@ -7077,7 +7083,14 @@ function initAuth() {
             if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
             return;
           }
+          if (currentPw === newPw) {
+            errMsg.textContent = '새 비밀번호는 현재 비밀번호와 다르게 설정해주세요.';
+            errMsg.classList.remove('hidden');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+            return;
+          }
           targetNewPw = newPw;
+          targetCurrentPw = currentPw;
         }
       }
 
@@ -7089,88 +7102,114 @@ function initAuth() {
       try {
         // 1. Supabase Auth 및 Cloud DB 동기화
         if (sbClient) {
-          // 세션 확인 및 복구 시도
           let authUser = null;
-          try {
-            const { data: sessionData } = await sbClient.auth.getSession();
-            authUser = sessionData?.session?.user;
-          } catch (_) {}
+          const tryIdentities = [
+            currentUser.email,
+            email,
+            `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`,
+            `${(currentUser.username || '').toLowerCase()}@socsoc.kr`,
+            currentUser.username
+          ].filter(Boolean);
 
-          // 세션이 없으면 현재 비밀번호로 세션 획득 시도 (절대 targetNewPw가 아닌 currentPw 사용!)
-          if (!authUser) {
-            const tryIdentities = [
-              currentUser.email,
-              email,
-              `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`,
-              `${(currentUser.username || '').toLowerCase()}@socsoc.kr`,
-              currentUser.username
-            ].filter(Boolean);
-
-            const tryPws = [currentPw, currentUser.password].filter(Boolean);
+          // (A) 비밀번호를 변경하려는 경우: 사용자가 입력한 현재 비밀번호(targetCurrentPw)로 슈퍼베이스 정식 재인증
+          if (targetNewPw) {
+            let reAuthSuccess = false;
+            let lastAuthErr = null;
 
             for (const ident of tryIdentities) {
-              for (const tpw of tryPws) {
+              try {
+                const sRes = await sbClient.auth.signInWithPassword({
+                  email: ident,
+                  password: targetCurrentPw
+                });
+                if (!sRes.error && sRes.data?.session) {
+                  await sbClient.auth.setSession(sRes.data.session);
+                  authUser = sRes.data.user;
+                  reAuthSuccess = true;
+                  break;
+                } else if (sRes.error) {
+                  lastAuthErr = sRes.error;
+                }
+              } catch (e) {
+                lastAuthErr = e;
+              }
+            }
+
+            // 현재 비밀번호가 슈퍼베이스 원본과 불일치 시 즉시 차단
+            if (!reAuthSuccess) {
+              errMsg.textContent = '현재 비밀번호가 일치하지 않습니다. (슈퍼베이스 인증 실패)';
+              errMsg.classList.remove('hidden');
+              if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+              return; // STOP! 클라우드 미반영 시 로컬에만 몰래 바꾸지 않음!
+            }
+
+            // (B) 정식 획득한 세션으로 슈퍼베이스 Auth 비밀번호 즉시 변경
+            let cloudPwUpdated = false;
+            let pwUpdateErr = null;
+            if (authUser) {
+              try {
+                const { data: upData, error: upErr } = await sbClient.auth.updateUser({ password: targetNewPw });
+                if (!upErr && upData?.user) {
+                  cloudPwUpdated = true;
+                  authUser = upData.user;
+                  console.log('Password successfully updated in Supabase Auth via updateUser!');
+                } else if (upErr) {
+                  pwUpdateErr = upErr;
+                  console.warn('updateUser error:', upErr);
+                }
+              } catch (pwErr) {
+                pwUpdateErr = pwErr;
+                console.warn('Supabase auth password update notice:', pwErr);
+              }
+            }
+
+            // RPC 백업 호출
+            try {
+              await sbClient.rpc('reset_user_password', {
+                p_username: currentUser.username,
+                p_name: name || currentUser.name || '',
+                p_phone: formattedPhone || currentUser.phone || '',
+                p_new_password: targetNewPw
+              });
+            } catch (_) {}
+
+            // 슈퍼베이스 클라우드 비밀번호 변경 실패 시 가짜 성공 완전 차단
+            if (!cloudPwUpdated) {
+              errMsg.textContent = '슈퍼베이스 클라우드 비밀번호 변경에 실패했습니다: ' + (pwUpdateErr?.message || '잠시 후 다시 시도해주세요.');
+              errMsg.classList.remove('hidden');
+              if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+              return; // STOP!
+            }
+
+            // 비밀번호 변경 성공 시 과거 혹시 남아있던 임시 재설정 키 정리
+            try {
+              localStorage.removeItem('socsoc_pw_reset_' + (currentUser.username || '').toLowerCase());
+            } catch (_) {}
+          } else {
+            // 비밀번호 변경이 아닌 경우: 기존 세션 확인 또는 currentUser.password로 세션 확보
+            try {
+              const { data: sessionData } = await sbClient.auth.getSession();
+              authUser = sessionData?.session?.user;
+            } catch (_) {}
+
+            if (!authUser && currentUser.password) {
+              for (const ident of tryIdentities) {
                 try {
                   const sRes = await sbClient.auth.signInWithPassword({
                     email: ident,
-                    password: tpw
+                    password: currentUser.password
                   });
-                  if (sRes.data?.session) {
+                  if (!sRes.error && sRes.data?.session) {
                     await sbClient.auth.setSession(sRes.data.session);
                     authUser = sRes.data.user;
                     break;
                   }
                 } catch (_) {}
               }
-              if (authUser) break;
             }
           }
 
-          // 비밀번호 변경 처리 (Supabase Auth updateUser 및 RPC reset_user_password 이중 적용)
-          if (targetNewPw) {
-            let cloudPwUpdated = false;
-
-            // 1) 공식 Auth 세션으로 updateUser 호출 (가장 확실하고 표준적인 클라우드 동기화)
-            if (authUser) {
-              try {
-                const { data: upData, error: upErr } = await sbClient.auth.updateUser({ password: targetNewPw });
-                if (!upErr && upData?.user) {
-                  cloudPwUpdated = true;
-                  console.log('Password successfully updated in Supabase Auth via updateUser!');
-                } else if (upErr) {
-                  console.warn('updateUser error:', upErr);
-                }
-              } catch (pwErr) {
-                console.warn('Supabase auth password update notice:', pwErr);
-              }
-            }
-
-            // 2) RPC reset_user_password 백업 호출
-            if (!cloudPwUpdated) {
-              try {
-                const { data: rpcRes, error: rpcErr } = await sbClient.rpc('reset_user_password', {
-                  p_username: currentUser.username,
-                  p_name: name || currentUser.name || '',
-                  p_phone: formattedPhone || currentUser.phone || '',
-                  p_new_password: targetNewPw
-                });
-                if (!rpcErr && rpcRes && (rpcRes.success === true || rpcRes.status === 'ok')) {
-                  cloudPwUpdated = true;
-                  console.log('Password updated via RPC reset_user_password!');
-                }
-              } catch (rpcErr) {}
-            }
-
-            // 3) 슈퍼베이스 클라우드 동기화 실패 시 가짜 성공 완전 차단
-            if (!cloudPwUpdated) {
-              errMsg.textContent = '슈퍼베이스 클라우드 서버에 비밀번호를 동기화하지 못했습니다. 입력하신 현재 비밀번호가 클라우드 원본과 일치하지 않거나 세션이 만료되었습니다. 다시 확인해주세요.';
-              errMsg.classList.remove('hidden');
-              if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
-              return; // STOP! 클라우드 미반영 시 로컬에만 몰래 바꾸지 않음!
-            }
-          }
-
-          // 메타데이터 갱신
+          // (C) 메타데이터 갱신
           if (authUser) {
             try {
               await sbClient.auth.updateUser({
@@ -7185,7 +7224,7 @@ function initAuth() {
             } catch (_) {}
           }
 
-          // profiles 테이블에 직접 UPDATE / UPSERT (실시간 슈퍼베이스 클라우드 반영 및 엄격 검증)
+          // (D) profiles 테이블에 직접 UPDATE / UPSERT (실시간 슈퍼베이스 클라우드 반영 및 엄격 검증)
           const profileUpdateFields = {
             name: name || currentUser.name,
             nickname: nickname,
@@ -7197,16 +7236,20 @@ function initAuth() {
           };
 
           let profileUpdatedInCloud = false;
+          const targetUid = authUser?.id || (currentUser.id && !String(currentUser.id).startsWith('local_') ? currentUser.id : null);
 
           // A. id로 직접 update
-          if (currentUser.id && !String(currentUser.id).startsWith('local_')) {
+          if (targetUid) {
             try {
               const { data: uData1, error: uErr1 } = await sbClient
                 .from('profiles')
                 .update(profileUpdateFields)
-                .eq('id', currentUser.id)
+                .eq('id', targetUid)
                 .select();
-              if (!uErr1 && uData1 && uData1.length > 0) profileUpdatedInCloud = true;
+              if (!uErr1 && uData1 && uData1.length > 0) {
+                profileUpdatedInCloud = true;
+                currentUser.id = targetUid;
+              }
             } catch (_) {}
           }
 
@@ -7218,26 +7261,26 @@ function initAuth() {
                 .update(profileUpdateFields)
                 .eq('username', currentUser.username)
                 .select();
-              if (!uErr2 && uData2 && uData2.length > 0) profileUpdatedInCloud = true;
+              if (!uErr2 && uData2 && uData2.length > 0) {
+                profileUpdatedInCloud = true;
+                if (uData2[0]?.id) currentUser.id = uData2[0].id;
+              }
             } catch (_) {}
           }
 
           // C. 기존 row가 없던 경우 upsert
-          if (!profileUpdatedInCloud) {
-            const targetUpsertId = (authUser?.id) || (currentUser.id && !String(currentUser.id).startsWith('local_') ? currentUser.id : null);
-            if (targetUpsertId) {
-              try {
-                const { data: uData3, error: uErr3 } = await sbClient
-                  .from('profiles')
-                  .upsert({
-                    id: targetUpsertId,
-                    username: currentUser.username,
-                    ...profileUpdateFields
-                  })
-                  .select();
-                if (!uErr3 && uData3 && uData3.length > 0) profileUpdatedInCloud = true;
-              } catch (_) {}
-            }
+          if (!profileUpdatedInCloud && targetUid) {
+            try {
+              const { data: uData3, error: uErr3 } = await sbClient
+                .from('profiles')
+                .upsert({
+                  id: targetUid,
+                  username: currentUser.username,
+                  ...profileUpdateFields
+                })
+                .select();
+              if (!uErr3 && uData3 && uData3.length > 0) profileUpdatedInCloud = true;
+            } catch (_) {}
           }
 
           // 슈퍼베이스 클라우드 DB에 실제 반영되지 않았다면 로컬 단독 저장을 차단하고 사용자에게 알림
@@ -7260,6 +7303,9 @@ function initAuth() {
         currentUser.companyType = companyType;
 
         saveUsersDb();
+        try {
+          sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+        } catch (_) {}
         renderAuthHeader();
         closeMyPageModal();
         showToast('회원 정보가 성공적으로 변경되었습니다.');
