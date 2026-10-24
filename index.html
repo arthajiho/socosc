@@ -3123,6 +3123,19 @@
     async function syncSupabaseData() {
       if (!sbClient) return;
 
+      // 0. 슈퍼베이스 ingredient_rules 실시간 성분 규칙 동기화
+      try {
+        await syncIngredientRulesFromSupabase();
+        if (typeof sbClient.channel === 'function') {
+          sbClient
+            .channel('ingredient_rules_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredient_rules' }, () => {
+              syncIngredientRulesFromSupabase();
+            })
+            .subscribe();
+        }
+      } catch (_) {}
+
       try {
         // 1. Cloud Recipes 불러오기 (모든 사용자가 등록한 신규 가이드 처방 실시간 공유)
         const { data: cloudRecipes, error: recErr } = await sbClient
@@ -8734,22 +8747,70 @@ function initAuth() {
       serum: '병풀추출물, 정제수, 부틸렌글라이콜, 글리세린, 나이아신아마이드, 1,2-헥산다이올, 프로판다이올, 판테놀, 카보머, 트로메타민, 에틸헥실글리세린, 아데노신, 알란토인, 디소듐이디티에이, 소듐하이알루로네이트, 하이드록시에틸셀룰로오스, 아세틸헥사펩타이드-8'
     };
 
-    // 2. 1% 미량 지표 성분 정의
-    const ONE_PERCENT_INDICATORS = [
-      { name: '페녹시에탄올', en: 'phenoxyethanol', reason: '국내 배합한도 1.0% 이하 보존제' },
-      { name: '에틸헥실글리세린', en: 'ethylhexylglycerin', reason: '통상 0.05~0.5% 처방 보존보조제' },
-      { name: '향료', en: 'fragrance', aliases: ['parfum'], reason: '통상 0.05~0.3% 소량 첨가 착향제' },
-      { name: '토코페롤', en: 'tocopherol', aliases: ['비타민e'], reason: '통상 0.05~0.5% 산화방지제' },
-      { name: 'bht', en: 'bht', aliases: ['디부틸하이드록시톨루엔'], reason: '배합한도 0.2% 이하 산화방지제' },
-      { name: '클로르페네신', en: 'chlorphenesin', reason: '국내 배합한도 0.3% 이하 보존제' },
-      { name: '메칠파라벤', en: 'methylparaben', reason: '배합한도 0.4% 이하 파라벤계 보존제' },
-      { name: '프로필파라벤', en: 'propylparaben', reason: '배합한도 0.2% 이하 파라벤계 보존제' },
-      { name: '디소듐이디티에이', en: 'disodium edta', aliases: ['edta'], reason: '통상 0.02~0.05% 소량 처방 킬레이트제' },
-      { name: '아데노신', en: 'adenosine', reason: '주름개선 기능성 고시 함량 0.04%' },
-      { name: '잔탄검', en: 'xanthan gum', reason: '통상 0.1~0.5% 고분자 점증제' },
-      { name: '카보머', en: 'carbomer', reason: '통상 0.1~0.5% 고분자 점증제' },
-      { name: '소듐하이알루로네이트', en: 'sodium hyaluronate', reason: '통상 원료 분말 0.01~0.1% 고분자 보습제' }
+    // 2. 1% 미량 지표 및 배합비 추정 규칙 (슈퍼베이스 ingredient_rules 테이블 실시간 연동)
+    const DEFAULT_INGREDIENT_RULES = [
+      { name: '페녹시에탄올', en: 'phenoxyethanol', aliases: [], default_percent: 0.50, max_limit: 1.00, is_indicator: true, role: '보존제', reason: '국내 배합한도 1.0% 이하 보존제', priority: 1 },
+      { name: '에틸헥실글리세린', en: 'ethylhexylglycerin', aliases: [], default_percent: 0.20, max_limit: 0.50, is_indicator: true, role: '보존제', reason: '통상 0.05~0.5% 처방 보존보조제', priority: 2 },
+      { name: '향료', en: 'fragrance', aliases: ['parfum', '착향제', 'flavor'], default_percent: 0.15, max_limit: 0.50, is_indicator: true, role: '착향제', reason: '통상 0.05~0.3% 소량 첨가 착향제', priority: 3 },
+      { name: '토코페롤', en: 'tocopherol', aliases: ['비타민e', '토코페릴아세테이트'], default_percent: 0.10, max_limit: 0.50, is_indicator: true, role: '산화방지제', reason: '통상 0.05~0.5% 산화방지제', priority: 4 },
+      { name: 'bht', en: 'bht', aliases: ['디부틸하이드록시톨루엔', '부틸레이티드하이드록시톨루엔'], default_percent: 0.10, max_limit: 0.20, is_indicator: true, role: '산화방지제', reason: '배합한도 0.2% 이하 산화방지제', priority: 5 },
+      { name: '클로르페네신', en: 'chlorphenesin', aliases: [], default_percent: 0.20, max_limit: 0.30, is_indicator: true, role: '보존제', reason: '국내 배합한도 0.3% 이하 보존제', priority: 6 },
+      { name: '메칠파라벤', en: 'methylparaben', aliases: [], default_percent: 0.20, max_limit: 0.40, is_indicator: true, role: '보존제', reason: '배합한도 0.4% 이하 파라벤계 보존제', priority: 7 },
+      { name: '프로필파라벤', en: 'propylparaben', aliases: [], default_percent: 0.10, max_limit: 0.20, is_indicator: true, role: '보존제', reason: '배합한도 0.2% 이하 파라벤계 보존제', priority: 8 },
+      { name: '디소듐이디티에이', en: 'disodium edta', aliases: ['edta', '소듐이디티에이', '이디티에이'], default_percent: 0.05, max_limit: 0.10, is_indicator: true, role: '킬레이트제', reason: '통상 0.02~0.05% 소량 처방 킬레이트제', priority: 9 },
+      { name: '아데노신', en: 'adenosine', aliases: [], default_percent: 0.04, max_limit: 0.04, is_indicator: true, role: '기능성', reason: '주름개선 기능성 고시 함량 0.04%', priority: 10 },
+      { name: '잔탄검', en: 'xanthan gum', aliases: [], default_percent: 0.20, max_limit: 0.50, is_indicator: true, role: '점증제', reason: '통상 0.1~0.5% 고분자 점증제', priority: 11 },
+      { name: '카보머', en: 'carbomer', aliases: [], default_percent: 0.20, max_limit: 0.50, is_indicator: true, role: '점증제', reason: '통상 0.1~0.5% 고분자 점증제', priority: 12 },
+      { name: '소듐하이알루로네이트', en: 'sodium hyaluronate', aliases: ['히알루론산', '히알루로닉애씨드'], default_percent: 0.05, max_limit: 0.10, is_indicator: true, role: '보습제', reason: '통상 원료 분말 0.01~0.1% 고분자 보습제', priority: 13 },
+      { name: '트로메타민', en: 'tromethamine', aliases: [], default_percent: 0.15, max_limit: 0.50, is_indicator: false, role: 'pH조절제', reason: '통상 0.05~0.3% pH 중화 조절제', priority: 14 },
+      { name: '시트릭애씨드', en: 'citric acid', aliases: ['구연산'], default_percent: 0.15, max_limit: 0.50, is_indicator: false, role: 'pH조절제', reason: '통상 0.05~0.2% pH 산도 조절제', priority: 15 }
     ];
+
+    let ingredientRules = [...DEFAULT_INGREDIENT_RULES];
+
+    // 슈퍼베이스 실시간 성분 규칙 동기화 함수
+    async function syncIngredientRulesFromSupabase() {
+      if (!sbClient) return;
+      try {
+        const { data, error } = await sbClient
+          .from('ingredient_rules')
+          .select('*')
+          .order('priority', { ascending: true });
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+          ingredientRules = data.map(r => ({
+            id: r.id,
+            name: r.name,
+            en: r.en_name || '',
+            aliases: Array.isArray(r.aliases) ? r.aliases : [],
+            default_percent: parseFloat(r.default_percent) || 0.15,
+            max_limit: r.max_limit !== null ? parseFloat(r.max_limit) : 1.00,
+            is_indicator: r.is_indicator !== false,
+            role: r.role || '기타',
+            reason: r.reason || '',
+            priority: r.priority || 100
+          }));
+          console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 동기화 완료:', ingredientRules.length, '개 성분');
+        }
+      } catch (err) {
+        console.warn('ingredient_rules 동기화 경고:', err);
+      }
+    }
+
+    function findIngredientRule(name) {
+      if (!name || !ingredientRules || ingredientRules.length === 0) return null;
+      const clean = String(name).toLowerCase().replace(/\s+/g, '');
+      for (const item of ingredientRules) {
+        const targetName = (item.name || '').toLowerCase().replace(/\s+/g, '');
+        const targetEn = (item.en || '').toLowerCase().replace(/\s+/g, '');
+        if ((targetName && clean.includes(targetName)) || 
+            (targetEn && clean.includes(targetEn)) || 
+            (Array.isArray(item.aliases) && item.aliases.some(a => a && clean.includes(String(a).toLowerCase().replace(/\s+/g, ''))))) {
+          return item;
+        }
+      }
+      return null;
+    }
 
     // 3. 성분 역할 사전 및 매칭 규칙
     const ROLE_RULES = [
@@ -8811,18 +8872,18 @@ function initAuth() {
     }
 
     function checkIndicator(name) {
-      const clean = (name || '').toLowerCase().replace(/\s+/g, '');
-      for (const item of ONE_PERCENT_INDICATORS) {
-        if (clean.includes(item.name.toLowerCase().replace(/\s+/g, '')) ||
-            clean.includes(item.en.toLowerCase().replace(/\s+/g, '')) ||
-            (item.aliases && item.aliases.some(a => clean.includes(a.toLowerCase())))) {
-          return { isIndicator: true, reason: item.reason };
-        }
+      const rule = findIngredientRule(name);
+      if (rule && rule.is_indicator) {
+        return { isIndicator: true, reason: rule.reason, rule: rule };
       }
       return { isIndicator: false };
     }
 
     function matchRole(name) {
+      const rule = findIngredientRule(name);
+      if (rule && rule.role && rule.role !== '기타') {
+        return rule.role;
+      }
       const clean = (name || '').toLowerCase().replace(/\s+/g, '');
       for (const rule of ROLE_RULES) {
         for (const kw of rule.keywords) {
@@ -9468,29 +9529,16 @@ function initAuth() {
         for (let i = boundary; i < count; i++) {
           const item = analyzerState.ingredients[i];
           const name = item.name.toLowerCase();
-          let val = 0.20;
-          if (name.includes('아데노신')) {
-            val = 0.04;
-          } else if (name.includes('디소듐이디티에이') || name.includes('edta')) {
-            val = 0.05;
-          } else if (name.includes('소듐하이알루로네이트') || name.includes('히알루론산')) {
-            val = 0.05;
-          } else if (isFragrance(name)) {
-            val = 0.15;
-          } else if (name.includes('페녹시에탄올')) {
-            val = 0.50;
-          } else if (name.includes('에틸헥실글리세린')) {
-            val = 0.20;
-          } else if (name.includes('토코페롤') || name.includes('비타민e') || name.includes('bht')) {
-            val = 0.10;
-          } else if (name.includes('카보머') || name.includes('잔탄검')) {
-            val = 0.20;
-          } else if (name.includes('트로메타민') || name.includes('시트릭애씨드')) {
-            val = 0.15;
-          } else if (isHexanediol(name)) {
+          let val = 0.15;
+          if (isHexanediol(name)) {
             val = Math.min(1.0, targetHexVal);
           } else {
-            val = 0.15;
+            const matchedRule = findIngredientRule(name);
+            if (matchedRule && matchedRule.default_percent !== undefined) {
+              val = parseFloat(matchedRule.default_percent);
+            } else if (isFragrance(name)) {
+              val = 0.15;
+            }
           }
           // 1% 이하 구간은 반드시 1.00% 이하 및 헥산디올 함량 이하
           val = Math.min(1.00, Math.min(targetHexVal, val));
