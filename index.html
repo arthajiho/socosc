@@ -8761,7 +8761,7 @@ function initAuth() {
       { name: '부틸렌글라이콜', en: 'butylene glycol', aliases: ['bg', '1,3-부틸렌글라이콜'], default_percent: 4.00, max_limit: 12.00, is_indicator: false, role: '보습제', recommended_rate: '2.0~10.0%', reason: '산뜻한 사용감의 보습제', priority: 3 },
       { name: '프로판다이올', en: 'propanediol', aliases: [], default_percent: 3.50, max_limit: 10.00, is_indicator: false, role: '보습제', recommended_rate: '2.0~10.0%', reason: '천연 유래 보습/용제', priority: 4 },
       { name: '디프로필렌글라이콜', en: 'dipropylene glycol', aliases: ['dpg'], default_percent: 3.00, max_limit: 10.00, is_indicator: false, role: '보습제', recommended_rate: '2.0~10.0%', reason: '보습 및 제형 안정화', priority: 5 },
-      { name: '1,2-헥산다이올', en: '1,2-hexanediol', aliases: ['1,2-헥산디올', '헥산다이올', '헥산디올'], default_percent: 2.00, max_limit: 3.00, is_indicator: false, role: '보존제', recommended_rate: '1.0~3.0%', reason: '통상 2.0% 처방 방부보조제 (고함량)', priority: 6 },
+      { name: '1,2-헥산다이올', en: '1,2-hexanediol', aliases: ['1,2-헥산디올', '헥산다이올', '헥산디올'], default_percent: 1.50, max_limit: 2.00, is_indicator: false, role: '용제/보존조제', recommended_rate: '1.0~2.0%', reason: '용제/보존조제 주성분 처방', priority: 101 },
       { name: '나이아신아마이드', en: 'niacinamide', aliases: ['비타민b3'], default_percent: 2.00, max_limit: 5.00, is_indicator: false, role: '기능성', recommended_rate: '2.0~5.0%', reason: '미백 기능성 고시 원료', priority: 7 },
       { name: '판테놀', en: 'panthenol', aliases: ['프로비타민b5', '덱스판테놀'], default_percent: 1.50, max_limit: 5.00, is_indicator: false, role: '보습제', recommended_rate: '1.0~5.0%', reason: '피부 진정 및 장벽 강화', priority: 8 },
       { name: '세테아릴알코올', en: 'cetearyl alcohol', aliases: [], default_percent: 3.00, max_limit: 6.00, is_indicator: false, role: '유화안정제', recommended_rate: '1.0~5.0%', reason: '유화 점증 및 제형 안정', priority: 9 },
@@ -8791,12 +8791,13 @@ function initAuth() {
 
     // 슈퍼베이스 실시간 성분 규칙 동기화 함수 (브라우저 캐시 우회 & 100% 실시간 DB 직결)
     async function syncIngredientRulesFromSupabase(isManual = false) {
-      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=*&order=priority.asc&_t=' + Date.now();
+      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=*&order=priority.asc';
       const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
 
       try {
         // 캐시 방지(Cache-Busting): _t 타임스탬프와 no-cache 헤더로 브라우저 메모리/디스크 캐시를 강제 무효화
         const res = await fetch(SUPABASE_REST_URL, {
+          cache: 'no-store',
           method: 'GET',
           headers: {
             'apikey': ANON_KEY,
@@ -9345,7 +9346,6 @@ function initAuth() {
         const styleClass = ROLE_COLORS[item.role] || ROLE_COLORS['기타'];
         const matchedRule = findIngredientRule(item.name);
         let recRate = (matchedRule && matchedRule.recommended_rate) ? matchedRule.recommended_rate.trim() : '';
-        if (!recRate && isHexanediol(item.name)) recRate = '1.0~3.0%';
 
         const hasPercentVal = item.percentage !== undefined && item.percentage !== null && item.percentage !== '';
 
@@ -9609,8 +9609,7 @@ function initAuth() {
         for (let i = boundary; i < count; i++) {
           const item = analyzerState.ingredients[i];
           const matchedRule = findIngredientRule(item.name);
-          let recStr = matchedRule && matchedRule.recommended_rate ? matchedRule.recommended_rate : '';
-          if (!recStr && isHexanediol(item.name)) recStr = '1.0~3.0%';
+          let recStr = matchedRule && matchedRule.recommended_rate ? matchedRule.recommended_rate.trim() : '';
           const parsed = parseRecommendedRate(recStr);
 
           let val = 0.15;
