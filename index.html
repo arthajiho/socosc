@@ -1562,9 +1562,6 @@
                 <button type="button" onclick="loadSample('toner')" class="text-xs px-3 py-1 rounded-lg bg-neutral-100 hover:bg-slate-50 hover:text-[#0f2137] hover:border-slate-300 border border-transparent text-neutral-700 font-bold transition cursor-pointer">
                   진정토너
                 </button>
-                <button type="button" onclick="loadSample('serum')" class="text-xs px-3 py-1 rounded-lg bg-neutral-100 hover:bg-slate-50 hover:text-[#0f2137] hover:border-slate-300 border border-transparent text-neutral-700 font-bold transition cursor-pointer">
-                  재생앰플
-                </button>
                 <button type="button" onclick="clearText()" class="text-xs px-3 py-1 rounded-lg text-rose-600 hover:bg-rose-50 font-black transition cursor-pointer">
                   초기화
                 </button>
@@ -3483,6 +3480,8 @@ function initAuth() {
       syncCalcProcedure('');
       // 전성분 해체기: 초기 로드 시 기존처럼 전성분 해체 분석 시트(성분명, 순번, 역할, 1% 지표)가 즉시 표시됨
       loadSample('cream');
+      // 페이지 로드 즉시 슈퍼베이스 실시간 최신 추천함량 동기화
+      syncIngredientRulesFromSupabase();
     }
 
     function goHome() {
@@ -8790,21 +8789,31 @@ function initAuth() {
 
     let ingredientRules = [...DEFAULT_INGREDIENT_RULES];
 
-    // 슈퍼베이스 실시간 성분 규칙 동기화 함수
+    // 슈퍼베이스 실시간 성분 규칙 동기화 함수 (브라우저 캐시 우회 & 100% 실시간 DB 직결)
     async function syncIngredientRulesFromSupabase(isManual = false) {
-      if (!sbClient) return;
-      const statusEl = document.getElementById('sbRuleStatusText');
-      if (isManual && statusEl) {
-        statusEl.textContent = '동기화 중...';
-      }
+      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=*&order=priority.asc&_t=' + Date.now();
+      const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
 
       try {
-        const { data, error } = await sbClient
-          .from('ingredient_rules')
-          .select('*')
-          .order('priority', { ascending: true });
+        // 캐시 방지(Cache-Busting): _t 타임스탬프와 no-cache 헤더로 브라우저 메모리/디스크 캐시를 강제 무효화
+        const res = await fetch(SUPABASE_REST_URL, {
+          method: 'GET',
+          headers: {
+            'apikey': ANON_KEY,
+            'Authorization': 'Bearer ' + ANON_KEY,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Range': '0-999'
+          }
+        });
 
-        if (!error && Array.isArray(data) && data.length > 0) {
+        if (!res.ok) {
+          console.warn('[SOCSOC] ingredient_rules fetch status:', res.status);
+          return;
+        }
+
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
           ingredientRules = data.map(r => ({
             id: r.id,
             name: r.name,
@@ -8814,15 +8823,11 @@ function initAuth() {
             max_limit: r.max_limit !== null ? parseFloat(r.max_limit) : 1.00,
             is_indicator: r.is_indicator !== false,
             role: r.role || '기타',
-            recommended_rate: r.recommended_rate || '',
+            recommended_rate: (r.recommended_rate || '').trim(),
             reason: r.reason || '',
             priority: r.priority || 100
           }));
           console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 동기화 완료:', ingredientRules.length, '개 성분');
-
-          if (statusEl) {
-            statusEl.textContent = `슈퍼베이스 연동 (${ingredientRules.length}종)`;
-          }
 
           // 현재 시트에 있는 성분들의 메타데이터(역할, 1% 지표, 추천함량)를 최신 슈퍼베이스 규칙으로 즉시 갱신
           if (analyzerState && Array.isArray(analyzerState.ingredients) && analyzerState.ingredients.length > 0) {
@@ -8860,20 +8865,13 @@ function initAuth() {
               updateAnalyzerStats();
             }
           }
-
-          if (isManual && typeof showToast === 'function') {
-            showToast(`슈퍼베이스 ingredient_rules (${ingredientRules.length}종) 실시간 동기화 완료`);
-          }
-        } else {
-          if (statusEl) statusEl.textContent = `슈퍼베이스 (${ingredientRules.length}종)`;
         }
       } catch (err) {
         console.warn('ingredient_rules 동기화 경고:', err);
-        if (statusEl) statusEl.textContent = `슈퍼베이스 (${ingredientRules.length}종)`;
       }
     }
 
-    // 브라우저 탭 포커스 복귀 시 슈퍼베이스 최신 규칙 자동 재동기화
+    // 브라우저 탭 포커스 복귀 시 슈퍼베이스 최신 규칙 즉시 재동기화
     window.addEventListener('focus', () => {
       if (typeof syncIngredientRulesFromSupabase === 'function') {
         syncIngredientRulesFromSupabase();
@@ -8886,12 +8884,22 @@ function initAuth() {
       }
     });
 
-    // 전성분 해체기 모드일 때 5초 주기 실시간 백그라운드 폴링 (슈퍼베이스 수정 즉시 자동 반영)
+    // 사용자가 화면을 클릭할 때마다 3초 쿨다운으로 최신 데이터 즉시 확인
+    let lastUserSyncTime = 0;
+    window.addEventListener('pointerdown', () => {
+      const now = Date.now();
+      if (now - lastUserSyncTime > 3000 && typeof syncIngredientRulesFromSupabase === 'function') {
+        lastUserSyncTime = now;
+        syncIngredientRulesFromSupabase();
+      }
+    });
+
+    // 전성분 해체기 모드일 때 3초 주기 실시간 백그라운드 폴링 (슈퍼베이스 수정 즉시 자동 반영)
     setInterval(() => {
       if (currentAppMode === 'analyzer' && typeof syncIngredientRulesFromSupabase === 'function') {
         syncIngredientRulesFromSupabase();
       }
-    }, 5000);
+    }, 3000);
 
     // 추천함량 텍스트 파싱 헬퍼 (min, max, mid)
     function parseRecommendedRate(recStr) {
@@ -9336,25 +9344,7 @@ function initAuth() {
         tr.className = 'hover:bg-slate-50 transition-colors group';
         const styleClass = ROLE_COLORS[item.role] || ROLE_COLORS['기타'];
         const matchedRule = findIngredientRule(item.name);
-        let recRate = '';
-        if (matchedRule) {
-          const hasDef = matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent));
-          const defVal = hasDef ? parseFloat(matchedRule.default_percent) : null;
-          const rawRec = (matchedRule.recommended_rate || '').trim();
-
-          if (hasDef && rawRec) {
-            const rawClean = rawRec.replace(/[^\d\.]/g, '');
-            if (rawClean === String(defVal)) {
-              recRate = rawRec.endsWith('%') ? rawRec : rawRec + '%';
-            } else {
-              recRate = `${defVal}% (${rawRec})`;
-            }
-          } else if (hasDef) {
-            recRate = `${defVal}%`;
-          } else if (rawRec) {
-            recRate = rawRec.endsWith('%') ? rawRec : rawRec + '%';
-          }
-        }
+        let recRate = (matchedRule && matchedRule.recommended_rate) ? matchedRule.recommended_rate.trim() : '';
         if (!recRate && isHexanediol(item.name)) recRate = '1.0~3.0%';
 
         const hasPercentVal = item.percentage !== undefined && item.percentage !== null && item.percentage !== '';
