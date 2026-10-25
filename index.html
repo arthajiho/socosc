@@ -1975,8 +1975,8 @@
         <!-- Normal Login Form -->
         <form onsubmit="handleNormalLogin(event)" class="space-y-3">
           <div>
-            <label class="block text-xs font-bold text-neutral-600 mb-1">아이디</label>
-            <input type="text" id="loginIdInput" required placeholder="아이디 입력"
+            <label class="block text-xs font-bold text-neutral-600 mb-1">가입 아이디</label>
+            <input type="text" id="loginIdInput" required placeholder="가입하신 아이디 입력" autocomplete="username"
               class="w-full px-3 py-2 text-xs border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-[#0f2137] focus:border-[#0f2137] transition">
           </div>
           <div>
@@ -2374,6 +2374,22 @@
             <span class="text-slate-400 block text-[11px]">가입 유형 / 회원 등급</span>
             <span id="myPageRoleBadge" class="inline-block px-2 py-0.5 rounded font-bold text-[10.5px] bg-indigo-50 text-indigo-700 border border-indigo-200">정회원</span>
           </div>
+        </div>
+
+        <!-- Cloud Saved Items Summary -->
+        <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
+              <i class="fa-solid fa-flask-vial"></i>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[11px] font-medium">슈퍼베이스 실시간 보관 처방</span>
+              <span id="myPageSavedCount" class="font-bold text-slate-800 text-xs">가이드 0개 · 연구 0개 · 해체 0개</span>
+            </div>
+          </div>
+          <button type="button" onclick="closeMyPageModal(); openSavedItemsModal('guide');" class="px-2.5 py-1.5 text-xs font-bold text-indigo-700 bg-white border border-indigo-200 rounded-lg shadow-2xs hover:bg-indigo-50 transition shrink-0 active:scale-95" title="연구노트 보관함 열기">
+            보관함 바로가기 &rarr;
+          </button>
         </div>
 
         <form id="myPageForm" onsubmit="saveMyPageProfile(event)" class="space-y-4 text-xs">
@@ -2909,13 +2925,8 @@
     } catch (e) {}
 
     let usersDb = [];
-    try {
-      usersDb = JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]');
-    } catch (e) {
-      usersDb = [];
-    }
 
-        let currentUser = null;
+    let currentUser = null;
     try {
       // 인터넷 창을 닫으면 자동으로 로그아웃되도록 브라우저 세션 저장소(sessionStorage)만 사용
       currentUser = JSON.parse(sessionStorage.getItem(STORAGE_SESSION_KEY) || 'null');
@@ -2928,9 +2939,10 @@
       currentUser = null;
     }
 
-    // 창을 닫은 후 재접속 시 영구 자동 로그인이 되지 않도록 localStorage의 세션 및 잔여 토큰 정리
+    // [슈퍼베이스 단일 일원화] 브라우저 로컬 저장소에 남아있던 socsoc_users_db(비밀번호 잔재)를 완전 삭제하여 동기화 꼬임 원천 차단
     try {
       localStorage.removeItem(STORAGE_SESSION_KEY);
+      localStorage.removeItem(STORAGE_USERS_KEY);
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
           localStorage.removeItem(key);
@@ -2940,120 +2952,29 @@
 
     function saveUsersDb() {
       if (currentUser) {
-        const curUname = (currentUser.username || '').toLowerCase();
-        const curId = currentUser.id;
-        const idx = usersDb.findIndex(u => 
-          (u.username && u.username.toLowerCase() === curUname) || 
-          (curId && u.id && u.id === curId)
-        );
-        if (idx !== -1) {
-          usersDb[idx] = Object.assign({}, usersDb[idx], currentUser);
-        } else {
-          usersDb.push(currentUser);
-        }
+        // 비밀번호 평문은 저장 객체에서 완벽 제거하여 보안 및 동기화 꼬임 원천 방지
+        const userToSave = Object.assign({}, currentUser);
+        delete userToSave.password;
         try {
-          sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+          sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(userToSave));
         } catch (_) {}
       }
-      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersDb));
+      // 로컬스토리지 usersDb 완전 폐기: 오직 슈퍼베이스 클라우드가 진실의 원천
+      try {
+        localStorage.removeItem(STORAGE_USERS_KEY);
+      } catch (_) {}
     }
 
     /**
-     * 로그인정보 기준으로 Supabase Cloud와 로컬 데이터를 항상 일치시키는 핵심 동기화 함수
+     * 로그인된 사용자의 프로필 정보를 Supabase profiles 테이블과 항상 최신으로 동기화하는 함수
      */
     async function syncUserToSupabase(user) {
       if (!sbClient || !user) return false;
       try {
         let authUserId = (user.id && !String(user.id).startsWith('local_')) ? user.id : null;
 
-        // 1. Supabase Auth 세션 확인 및 없으면 백그라운드 로그인 시도 (실제 클라우드 세션 확보)
         const { data: sessionData } = await sbClient.auth.getSession();
         let currentAuthUser = sessionData?.session?.user;
-
-        if (!currentAuthUser && user.password && (user.email || user.username)) {
-          let loginIdentifier = user.email;
-          if (!loginIdentifier && user.username) {
-            try {
-              const { data: profLookup } = await sbClient
-                .from('profiles')
-                .select('email')
-                .eq('username', user.username)
-                .maybeSingle();
-              if (profLookup && profLookup.email) loginIdentifier = profLookup.email;
-            } catch (e) {}
-          }
-          if (loginIdentifier) {
-            try {
-              const { data: authLogin } = await sbClient.auth.signInWithPassword({
-                email: loginIdentifier,
-                password: user.password
-              });
-              if (authLogin && authLogin.user) {
-                currentAuthUser = authLogin.user;
-                if (authLogin.session) await sbClient.auth.setSession(authLogin.session);
-              }
-            } catch (loginErr) {
-              console.warn('Supabase auth background session notice:', loginErr);
-            }
-          }
-          if (!currentAuthUser && user.username && user.password) {
-            try {
-              const aliasIdent = `${user.username.toLowerCase()}@thesocsoc.auth`;
-              const { data: aliasLogin } = await sbClient.auth.signInWithPassword({
-                email: aliasIdent,
-                password: user.password
-              });
-              if (aliasLogin && aliasLogin.user) {
-                currentAuthUser = aliasLogin.user;
-                if (aliasLogin.session) await sbClient.auth.setSession(aliasLogin.session);
-              }
-            } catch (_) {}
-          }
-
-          // 만약 세션 획득에 실패한 경우: 슈퍼베이스 Auth 비밀번호를 현재 유효 비밀번호로 클라우드 RPC 동기화 후 재로그인 (크로스 브라우징/커밋 후 불일치 완벽 해소)
-          if (!currentAuthUser && user.username && user.password) {
-            try {
-              let pName = user.name || '';
-              let pPhone = user.phone || '';
-              if (!pName || !pPhone) {
-                const { data: pLookup } = await sbClient
-                  .from('profiles')
-                  .select('name, phone')
-                  .ilike('username', user.username)
-                  .maybeSingle();
-                if (pLookup) {
-                  if (!pName) pName = pLookup.name || '';
-                  if (!pPhone) pPhone = pLookup.phone || '';
-                }
-              }
-              await sbClient.rpc('reset_user_password', {
-                p_username: user.username,
-                p_name: pName,
-                p_phone: pPhone,
-                p_new_password: user.password
-              });
-
-              const candidateEmails = [
-                loginIdentifier,
-                user.email,
-                `${user.username.toLowerCase()}@thesocsoc.auth`,
-                `${user.username.toLowerCase()}@socsoc.kr`
-              ].filter(Boolean);
-
-              for (const em of candidateEmails) {
-                const retryLogin = await sbClient.auth.signInWithPassword({
-                  email: em,
-                  password: user.password
-                });
-                if (retryLogin?.data?.session) {
-                  await sbClient.auth.setSession(retryLogin.data.session);
-                  currentAuthUser = retryLogin.data.user;
-                  break;
-                }
-              }
-            } catch (_) {}
-          }
-        }
 
         if (currentAuthUser) {
           authUserId = currentAuthUser.id;
@@ -3304,10 +3225,6 @@
             companyType: profile?.company_type || '제조사',
             role: finalRole,
             provider: 'normal',
-            password: (function() {
-              const localMatch = usersDb.find(u => u.username === uname || u.id === user.id);
-              return localMatch?.password || currentUser?.password || '';
-            })(),
             savedGuides: dbGuides.map(g => ({
               uid: g.recipe_uid,
               title: g.title,
@@ -3325,21 +3242,15 @@
               totalPercent: f.total_percent,
               savedAt: f.saved_at || f.created_at
             })),
-            savedAnalyzers: (function() {
-              if (dbAnalyzers.length > 0) {
-                return dbAnalyzers.map(a => ({
-                  id: a.id,
-                  title: a.title,
-                  rawText: a.raw_text,
-                  ingredients: a.ingredients,
-                  totalCount: a.total_count,
-                  totalSum: a.total_sum,
-                  savedAt: a.saved_at || a.created_at
-                }));
-              }
-              const localMatch = usersDb.find(u => u.username === uname || u.id === user.id);
-              return (localMatch && Array.isArray(localMatch.savedAnalyzers)) ? localMatch.savedAnalyzers : [];
-            })()
+            savedAnalyzers: dbAnalyzers.map(a => ({
+              id: a.id,
+              title: a.title,
+              rawText: a.raw_text,
+              ingredients: a.ingredients,
+              totalCount: a.total_count,
+              totalSum: a.total_sum,
+              savedAt: a.saved_at || a.created_at
+            }))
           };
 
           // 로그인정보 기준으로 Supabase profiles 및 권한 완벽 동기화
@@ -5860,11 +5771,9 @@ function initAuth() {
     async function handleNormalLogin(e) {
       e.preventDefault();
       const rawId = document.getElementById('loginIdInput').value;
-      const idInput = (rawId || '').trim();
-      const idLower = idInput.toLowerCase();
+      const inputUsername = (rawId || '').trim();
       const rawPw = document.getElementById('loginPwInput').value;
-      const pw = rawPw;
-      const pwTrim = (rawPw || '').trim();
+      const inputPassword = rawPw ? rawPw.trim() : '';
       const errMsg = document.getElementById('loginErrorMessage');
       const submitBtn = e.target.querySelector('button[type="submit"]');
 
@@ -5872,402 +5781,178 @@ function initAuth() {
       const origBtnText = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span>로그인 중...</span>';
+        submitBtn.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin mr-1"></i>로그인 확인 중...</span>';
       }
 
-      // 모바일 자동완성 공백, 대소문자 차이 등 과거 가입 데이터와 입력값 규칙 차이를 완벽 흡수하는 비밀번호 후보군
-      const pwCandidates = [pw];
-      if (pwTrim && pwTrim !== pw) {
-        pwCandidates.push(pwTrim);
+      if (!inputUsername) {
+        if (errMsg) {
+          errMsg.textContent = '가입 아이디를 입력해주세요.';
+          errMsg.classList.remove('hidden');
+        }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnText; }
+        return;
+      }
+      if (!inputPassword) {
+        if (errMsg) {
+          errMsg.textContent = '비밀번호를 입력해주세요.';
+          errMsg.classList.remove('hidden');
+        }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnText; }
+        return;
       }
 
       try {
-        let loggedInUser = null;
-        let profileMatched = null;
-        let successfulPw = pwTrim || pw;
+        if (!sbClient) {
+          throw new Error('슈퍼베이스 클라우드 연결에 실패했습니다. 인터넷 연결을 확인해주세요.');
+        }
 
-        if (sbClient) {
+        // 1. 오직 슈퍼베이스 profiles 테이블에서 가입 아이디(username)로 정확히 1회 조회
+        const { data: profs, error: profErr } = await sbClient
+          .from('profiles')
+          .select('*')
+          .ilike('username', inputUsername);
 
-          // 1. Supabase profiles 테이블에서 사용자 조회 (대소문자 무관 검색: username 및 email 동시 확인)
+        if (profErr) {
+          console.error('Supabase profile lookup error:', profErr);
+          throw new Error('회원 정보를 조회하는 중 오류가 발생했습니다.');
+        }
+
+        const profile = (profs && profs.length > 0)
+          ? profs.find(p => !p.username?.startsWith('withdrawn_') && p.role !== 'withdrawn')
+          : null;
+
+        if (!profile || !profile.id) {
+          if (errMsg) {
+            errMsg.textContent = '가입되지 않은 아이디입니다. 아이디를 확인해주세요.';
+            errMsg.classList.remove('hidden');
+          }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnText; }
+          return;
+        }
+
+        // 2. 슈퍼베이스 Auth 정식 로그인 (등록된 이메일 또는 가상 도메인 계정만 정밀 시도하여 속도제한 방지)
+        const emailCandidates = [];
+        if (profile.email) emailCandidates.push(profile.email.trim());
+        const virtualEmail1 = `${profile.username.toLowerCase()}@thesocsoc.auth`;
+        if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail1)) {
+          emailCandidates.push(virtualEmail1);
+        }
+        const virtualEmail2 = `${profile.username.toLowerCase()}@socsoc.kr`;
+        if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail2)) {
+          emailCandidates.push(virtualEmail2);
+        }
+
+        let authData = null;
+        let lastAuthError = null;
+
+        for (const targetEmail of emailCandidates) {
           try {
-            const { data: profs } = await sbClient
-              .from('profiles')
-              .select('*')
-              .or(`username.ilike.${idLower},email.ilike.${idLower},username.ilike.${idInput},email.ilike.${idInput}`);
+            const { data: resData, error: signInErr } = await sbClient.auth.signInWithPassword({
+              email: targetEmail,
+              password: inputPassword
+            });
 
-            if (profs && profs.length > 0) {
-              const active = profs.find(p => !p.username?.startsWith('withdrawn_') && p.role !== 'withdrawn');
-              if (active) profileMatched = active;
+            if (!signInErr && resData?.user && resData?.session) {
+              authData = resData;
+              lastAuthError = null;
+              break;
+            } else if (signInErr) {
+              lastAuthError = signInErr;
             }
-          } catch (pErr) {
-            console.warn('Profile lookup warning:', pErr);
+          } catch (netErr) {
+            lastAuthError = netErr;
           }
+        }
 
-          // 로컬 캐시 사용자 매칭 확인
-          const localMatch = usersDb.find(u => 
-            (u.username || '').trim().toLowerCase() === idLower || 
-            (u.email || '').trim().toLowerCase() === idLower
-          );
-
-          // 2. 과거 가입 시점별 Supabase Auth 이메일 규칙(실제 이메일, @thesocsoc.auth, @socsoc.kr 등) 후보군 전체 수집
-          const emailSet = new Set();
-          if (idInput.includes('@')) {
-            emailSet.add(idInput);
-            emailSet.add(idLower);
-          }
-          if (profileMatched && profileMatched.email) {
-            emailSet.add(profileMatched.email.trim());
-            emailSet.add(profileMatched.email.trim().toLowerCase());
-          }
-          if (localMatch && localMatch.email) {
-            emailSet.add(localMatch.email.trim());
-            emailSet.add(localMatch.email.trim().toLowerCase());
-          }
-
-          // 아이디 기반 가상 인증 도메인 후보군
-          const candidateUsernames = new Set();
-          if (profileMatched && profileMatched.username) {
-            candidateUsernames.add(profileMatched.username);
-            candidateUsernames.add(profileMatched.username.toLowerCase());
-          }
-          if (localMatch && localMatch.username) {
-            candidateUsernames.add(localMatch.username);
-            candidateUsernames.add(localMatch.username.toLowerCase());
-          }
-          if (!idInput.includes('@')) {
-            candidateUsernames.add(idInput);
-            candidateUsernames.add(idLower);
+        if (!authData || !authData.user) {
+          const errDetail = (lastAuthError?.message || '').toLowerCase();
+          if (errDetail.includes('rate limit') || errDetail.includes('too many requests')) {
+            errMsg.textContent = '로그인 시도가 너무 많아 일시 차단되었습니다. 5분 후 다시 시도해주세요.';
           } else {
-            const prefix = idInput.split('@')[0];
-            if (prefix) {
-              candidateUsernames.add(prefix);
-              candidateUsernames.add(prefix.toLowerCase());
-            }
+            errMsg.textContent = '비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
           }
-
-          candidateUsernames.forEach(uname => {
-            if (!uname) return;
-            emailSet.add(`${uname}@thesocsoc.auth`);
-            emailSet.add(`${uname.toLowerCase()}@thesocsoc.auth`);
-            emailSet.add(`${uname}@socsoc.kr`);
-            emailSet.add(`${uname.toLowerCase()}@socsoc.kr`);
-          });
-
-          const candidateEmails = Array.from(emailSet);
-
-          // 3. Supabase Auth 다중 식별자 & 비밀번호 변형 로그인 시도 (원스톱 자동 매칭)
-          let authData = null;
-          for (const emailCand of candidateEmails) {
-            if (!emailCand) continue;
-            for (const pwCand of pwCandidates) {
-              if (!pwCand) continue;
-              try {
-                const res = await sbClient.auth.signInWithPassword({
-                  email: emailCand,
-                  password: pwCand
-                });
-                if (!res.error && res.data?.user) {
-                  authData = res.data;
-                  successfulPw = pwCand;
-                  break;
-                }
-              } catch (_) {}
-            }
-            if (authData) break;
-          }
-
-          // 4. Supabase Auth 로그인 성공 시 클라우드 프로필 및 저장 처방 로드
-          if (authData && authData.user) {
-            const user = authData.user;
-
-            if (authData.session) {
-              try {
-                await sbClient.auth.setSession(authData.session);
-              } catch (_) {}
-            }
-
-            const [profRes, guidesRes, formulasRes] = await Promise.all([
-              sbClient.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-              sbClient.from('saved_guides').select('*').eq('user_id', user.id).order('saved_at', { ascending: false }),
-              sbClient.from('saved_formulas').select('*').eq('user_id', user.id).order('saved_at', { ascending: false })
-            ]);
-
-            const profile = profRes.data || profileMatched;
-            if (profile?.username?.startsWith('withdrawn_') || profile?.role === 'withdrawn') {
-              errMsg.textContent = '탈퇴 처리된 계정입니다. 새롭게 무료 회원가입 후 이용해주세요.';
-              errMsg.classList.remove('hidden');
-              return;
-            }
-
-            const dbGuides = guidesRes.data || [];
-            const dbFormulas = formulasRes.data || [];
-
-            let dbAnalyzers = [];
-            try {
-              const { data: aData, error: aErr } = await sbClient.from('saved_analyzers').select('*').eq('user_id', user.id).order('saved_at', { ascending: false });
-              if (!aErr && Array.isArray(aData)) dbAnalyzers = aData;
-            } catch (_) {}
-
-            const uname = profile?.username || user.user_metadata?.username || (user.email ? user.email.split('@')[0] : 'user');
-            const isUserAdmin = checkIsAdmin(uname) || checkIsAdmin(profile?.username) || checkIsAdmin(idInput);
-            const finalRole = isUserAdmin ? 'admin' : (profile?.role || 'member');
-
-            loggedInUser = {
-              id: user.id,
-              username: uname,
-              name: profile?.name || user.user_metadata?.name || '',
-              nickname: profile?.nickname || user.user_metadata?.nickname || profile?.username || '연구원',
-              email: profile?.email || user.email,
-              phone: profile?.phone || '',
-              companyType: profile?.company_type || '제조사',
-              role: finalRole,
-              provider: 'normal',
-              password: successfulPw,
-              savedGuides: dbGuides.map(g => ({
-                uid: g.recipe_uid,
-                title: g.title,
-                category: g.category,
-                formulaCode: g.formula_code,
-                supplier: g.supplier,
-                savedAt: g.saved_at || g.created_at
-              })),
-              savedFormulas: dbFormulas.map(f => ({
-                id: f.id,
-                title: f.title,
-                batchSize: f.batch_size,
-                formula: (Array.isArray(f.formula) ? f.formula : (f.formula?.ingredients || [])),
-                procedure: f.procedure || f.formula?.procedure || '',
-                totalPercent: f.total_percent,
-                savedAt: f.saved_at || f.created_at
-              })),
-              savedAnalyzers: (function() {
-                if (dbAnalyzers.length > 0) {
-                  return dbAnalyzers.map(a => ({
-                    id: a.id,
-                    title: a.title,
-                    rawText: a.raw_text,
-                    ingredients: a.ingredients,
-                    totalCount: a.total_count,
-                    totalSum: a.total_sum,
-                    savedAt: a.saved_at || a.created_at
-                  }));
-                }
-                const localM = usersDb.find(u => (u.username || '').toLowerCase() === uname.toLowerCase() || u.id === user.id);
-                return (localM && Array.isArray(localM.savedAnalyzers)) ? localM.savedAnalyzers : [];
-              })()
-            };
-
-            if (isUserAdmin && profile?.role !== 'admin') {
-              try {
-                sbClient.from('profiles').update({ role: 'admin' }).eq('id', user.id).then();
-              } catch (e) {}
-            }
-          }
-        }
-
-        // 5. 로컬 usersDb에 등록된 계정으로 로그인 (비밀번호 재설정 계정 또는 클라우드 미생성 계정 자동 복구)
-        if (!loggedInUser) {
-          const foundLocal = usersDb.find(u => {
-            const matchUname = (u.username || '').trim().toLowerCase() === idLower;
-            const matchEmail = (u.email || '').trim().toLowerCase() === idLower;
-            if (!matchUname && !matchEmail) return false;
-
-            const uPw = u.password || '';
-            const resetPw = localStorage.getItem('socsoc_pw_reset_' + (u.username || '').toLowerCase()) || '';
-            return pwCandidates.some(cand => cand === uPw || cand === uPw.trim() || (resetPw && (cand === resetPw || cand === resetPw.trim())));
-          });
-
-          if (foundLocal) {
-            loggedInUser = foundLocal;
-            const workingPw = pwTrim || pw;
-            loggedInUser.password = workingPw;
-
-            // Supabase와 클라우드 데이터 동기화 및 Supabase Auth 비밀번호 즉시 실시간 갱신 (영구 일치 보장)
-            if (sbClient) {
-              try {
-                const { data: profRow } = await sbClient
-                  .from('profiles')
-                  .select('*')
-                  .ilike('username', foundLocal.username)
-                  .maybeSingle();
-
-                if (profRow && profRow.id) {
-                  foundLocal.id = profRow.id;
-                  if (profRow.role) foundLocal.role = checkIsAdmin(foundLocal.username) ? 'admin' : profRow.role;
-
-                  // 1) Supabase Auth 비밀번호를 크롬/로컬에서 확인된 유효 비밀번호로 클라우드에 영구 동기화
-                  try {
-                    await sbClient.rpc('reset_user_password', {
-                      p_username: foundLocal.username,
-                      p_name: profRow.name || foundLocal.name || '',
-                      p_phone: profRow.phone || foundLocal.phone || '',
-                      p_new_password: workingPw
-                    });
-                  } catch (_) {}
-
-                  // 2) Supabase Auth 세션 즉시 획득 및 미생성 계정 자동 복구 (엣지/타 브라우저 로그인 100% 보장)
-                  try {
-                    const candidateEmails = [
-                      profRow.email,
-                      foundLocal.email,
-                      `${foundLocal.username.toLowerCase()}@thesocsoc.auth`,
-                      `${foundLocal.username.toLowerCase()}@socsoc.kr`
-                    ].filter(Boolean);
-
-                    let signedIn = false;
-                    for (const em of candidateEmails) {
-                      const lRes = await sbClient.auth.signInWithPassword({
-                        email: em,
-                        password: workingPw
-                      });
-                      if (lRes.data?.session) {
-                        await sbClient.auth.setSession(lRes.data.session);
-                        signedIn = true;
-                        break;
-                      }
-                    }
-
-                    if (!signedIn) {
-                      const targetEm = profRow.email || foundLocal.email || `${foundLocal.username.toLowerCase()}@thesocsoc.auth`;
-                      const sRes = await sbClient.auth.signUp({
-                        email: targetEm,
-                        password: workingPw,
-                        options: {
-                          data: {
-                            username: foundLocal.username,
-                            name: profRow.name || foundLocal.name || '',
-                            phone: profRow.phone || foundLocal.phone || ''
-                          }
-                        }
-                      });
-                      if (sRes.data?.session) {
-                        await sbClient.auth.setSession(sRes.data.session);
-                      }
-                    }
-                  } catch (_) {}
-
-                  // 클라우드 저장 처방 가져와서 병합
-                  try {
-                    const [guidesRes, formulasRes] = await Promise.all([
-                      sbClient.from('saved_guides').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false }),
-                      sbClient.from('saved_formulas').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false })
-                    ]);
-                    if (guidesRes.data) {
-                      foundLocal.savedGuides = guidesRes.data.map(g => ({
-                        uid: g.recipe_uid,
-                        title: g.title,
-                        category: g.category,
-                        formulaCode: g.formula_code,
-                        supplier: g.supplier,
-                        savedAt: g.saved_at || g.created_at
-                      }));
-                    }
-                    if (formulasRes.data) {
-                      foundLocal.savedFormulas = formulasRes.data.map(f => ({
-                        id: f.id,
-                        title: f.title,
-                        batchSize: f.batch_size,
-                        formula: (Array.isArray(f.formula) ? f.formula : (f.formula?.ingredients || [])),
-                        procedure: f.procedure || f.formula?.procedure || '',
-                        totalPercent: f.total_percent,
-                        savedAt: f.saved_at || f.created_at
-                      }));
-                    }
-                    try {
-                      const { data: aData2 } = await sbClient.from('saved_analyzers').select('*').eq('user_id', profRow.id).order('saved_at', { ascending: false });
-                      if (aData2 && Array.isArray(aData2) && aData2.length > 0) {
-                        foundLocal.savedAnalyzers = aData2.map(a => ({
-                          id: a.id,
-                          title: a.title,
-                          rawText: a.raw_text,
-                          ingredients: a.ingredients,
-                          cutoffIndex: a.cutoff_index,
-                          cutoffName: a.cutoff_name,
-                          manualCutoff: a.manual_cutoff,
-                          totalCount: a.total_count,
-                          totalSum: a.total_sum,
-                          savedAt: a.saved_at || a.created_at
-                        }));
-                      }
-                    } catch (_) {}
-                  } catch (_) {}
-                } else {
-                  // 프로필이 없는 경우 signUp / upsert 마이그레이션 시도
-                  const targetEmail = (foundLocal.email && foundLocal.email.includes('@')) 
-                    ? foundLocal.email.trim() 
-                    : `${(foundLocal.username || 'user').toLowerCase()}@thesocsoc.auth`;
-
-                  const { data: signRes } = await sbClient.auth.signUp({
-                    email: targetEmail,
-                    password: workingPw,
-                    options: {
-                      data: {
-                        username: foundLocal.username,
-                        name: foundLocal.name,
-                        nickname: foundLocal.nickname,
-                        phone: foundLocal.phone,
-                        company_type: foundLocal.companyType
-                      }
-                    }
-                  });
-
-                  const newUid = signRes?.user?.id;
-                  if (newUid) {
-                    foundLocal.id = newUid;
-                    await sbClient.from('profiles').upsert({
-                      id: newUid,
-                      username: foundLocal.username,
-                      name: foundLocal.name || '',
-                      nickname: foundLocal.nickname || foundLocal.username,
-                      email: foundLocal.email || targetEmail,
-                      phone: foundLocal.phone || '',
-                      company_type: foundLocal.companyType || '기타',
-                      role: checkIsAdmin(foundLocal.username) ? 'admin' : (foundLocal.role || 'member')
-                    });
-                  }
-                }
-              } catch (autoMigErr) {
-                console.warn('Local user cloud migration error during login:', autoMigErr);
-              }
-            }
-          }
-        }
-
-        if (loggedInUser) {
-          if (checkIsAdmin(loggedInUser.username) || checkIsAdmin(idInput)) {
-            loggedInUser.role = 'admin';
-          }
-          currentUser = loggedInUser;
-          if (!currentUser.savedGuides) currentUser.savedGuides = [];
-          if (!currentUser.savedFormulas) currentUser.savedFormulas = [];
-          if (!currentUser.savedAnalyzers) currentUser.savedAnalyzers = [];
-
-          try {
-            sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
-            localStorage.removeItem(STORAGE_SESSION_KEY);
-          } catch (_) {}
-
-          if (sbClient) {
-            try {
-              await syncUserToSupabase(currentUser);
-            } catch (syncErr) {}
-          }
-
-          saveUsersDb();
-          closeAuthModal();
-          renderAuthHeader();
-          if (currentRecipe) updateSaveGuideRecipeBtnState(currentRecipe);
-          updateCategoryPillCounts();
-          filterRecipes();
-          showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
-        } else {
-          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
           errMsg.classList.remove('hidden');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnText; }
+          return;
         }
+
+        // 3. 슈퍼베이스 Auth 세션 확정
+        if (authData.session) {
+          await sbClient.auth.setSession(authData.session);
+        }
+
+        const user = authData.user;
+
+        // 4. 슈퍼베이스 클라우드에서 최신 저장 처방(가이드, 연구처방, 해체기) 로드
+        const [guidesRes, formulasRes, analyzersRes] = await Promise.all([
+          sbClient.from('saved_guides').select('*').eq('user_id', user.id).order('saved_at', { ascending: false }),
+          sbClient.from('saved_formulas').select('*').eq('user_id', user.id).order('saved_at', { ascending: false }),
+          sbClient.from('saved_analyzers').select('*').eq('user_id', user.id).order('saved_at', { ascending: false })
+        ]);
+
+        const dbGuides = guidesRes.data || [];
+        const dbFormulas = formulasRes.data || [];
+        const dbAnalyzers = analyzersRes.data || [];
+
+        const isUserAdmin = checkIsAdmin(profile.username) || checkIsAdmin(inputUsername);
+        const finalRole = isUserAdmin ? 'admin' : (profile.role || 'member');
+
+        currentUser = {
+          id: user.id,
+          username: profile.username,
+          name: profile.name || '',
+          nickname: profile.nickname || profile.username || '연구원',
+          email: profile.email || user.email,
+          phone: profile.phone || '',
+          companyType: profile.company_type || '제조사',
+          role: finalRole,
+          provider: 'normal',
+          savedGuides: dbGuides.map(g => ({
+            uid: g.recipe_uid,
+            title: g.title,
+            category: g.category,
+            formulaCode: g.formula_code,
+            supplier: g.supplier,
+            savedAt: g.saved_at || g.created_at
+          })),
+          savedFormulas: dbFormulas.map(f => ({
+            id: f.id,
+            title: f.title,
+            batchSize: f.batch_size,
+            formula: (Array.isArray(f.formula) ? f.formula : (f.formula?.ingredients || [])),
+            procedure: f.procedure || f.formula?.procedure || '',
+            totalPercent: f.total_percent,
+            savedAt: f.saved_at || f.created_at
+          })),
+          savedAnalyzers: dbAnalyzers.map(a => ({
+            id: a.id,
+            title: a.title,
+            rawText: a.raw_text,
+            ingredients: a.ingredients,
+            totalCount: a.total_count,
+            totalSum: a.total_sum,
+            savedAt: a.saved_at || a.created_at
+          }))
+        };
+
+        // 브라우저 세션 저장소에만 보관 (인터넷 창 닫으면 자동 로그아웃)
+        try {
+          sessionStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentUser));
+          localStorage.removeItem(STORAGE_SESSION_KEY);
+          localStorage.removeItem('socsoc_users_db');
+        } catch (_) {}
+
+        closeAuthModal();
+        renderAuthHeader();
+        if (currentRecipe) updateSaveGuideRecipeBtnState(currentRecipe);
+        updateCategoryPillCounts();
+        filterRecipes();
+        showToast(`환영합니다, ${currentUser.nickname || currentUser.name || currentUser.username}님!`);
+
       } catch (err) {
         console.error('Login error:', err);
         if (errMsg) {
-          errMsg.textContent = '아이디 또는 비밀번호가 일치하지 않습니다. 다시 확인해주세요.';
+          errMsg.textContent = err.message || '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
           errMsg.classList.remove('hidden');
         }
       } finally {
@@ -6770,6 +6455,15 @@ function initAuth() {
         roleBadgeEl.className = 'inline-block px-2 py-0.5 rounded font-bold text-[10.5px] bg-indigo-50 text-indigo-700 border border-indigo-200';
       }
 
+      // 슈퍼베이스 실시간 연동 처방 보관 현황 표시
+      const gCount = (currentUser.savedGuides || []).length;
+      const fCount = (currentUser.savedFormulas || []).length;
+      const aCount = (currentUser.savedAnalyzers || []).length;
+      const savedCountEl = document.getElementById('myPageSavedCount');
+      if (savedCountEl) {
+        savedCountEl.textContent = `가이드 ${gCount}개 · 연구 ${fCount}개 · 해체 ${aCount}개 (총 ${gCount + fCount + aCount}개)`;
+      }
+
       document.getElementById('myPageNameInput').value = currentUser.name || '';
       document.getElementById('myPageNicknameInput').value = currentUser.nickname || currentUser.name || '';
       document.getElementById('myPageEmailInput').value = currentUser.email || '';
@@ -6868,31 +6562,24 @@ function initAuth() {
       try {
         let isPasswordValid = false;
 
-        // 1. currentUser 객체의 password와 비교
-        if (currentUser.password && currentUser.password === enteredPw) {
-          isPasswordValid = true;
-        }
+        // 슈퍼베이스 Auth 클라우드로만 비밀번호 정식 검증
+        if (sbClient) {
+          const emailCandidates = [
+            currentUser.email,
+            `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`
+          ].filter(Boolean);
 
-        // 2. usersDb에서 유저 찾아서 비밀번호 비교
-        if (!isPasswordValid) {
-          const dbUser = usersDb.find(u => u.username === currentUser.username || u.id === currentUser.id);
-          if (dbUser && dbUser.password === enteredPw) {
-            isPasswordValid = true;
-          }
-        }
-
-        // 3. Supabase Auth 사용자인 경우 Supabase로 비밀번호 검증
-        if (!isPasswordValid && sbClient && currentUser.email) {
-          try {
-            const { data, error } = await sbClient.auth.signInWithPassword({
-              email: currentUser.email,
-              password: enteredPw
-            });
-            if (!error && data && data.user) {
-              isPasswordValid = true;
-            }
-          } catch (sbErr) {
-            console.warn('Supabase withdraw pw verification error:', sbErr);
+          for (const em of emailCandidates) {
+            try {
+              const { data, error } = await sbClient.auth.signInWithPassword({
+                email: em,
+                password: enteredPw
+              });
+              if (!error && data && data.user) {
+                isPasswordValid = true;
+                break;
+              }
+            } catch (_) {}
           }
         }
 
@@ -7222,45 +6909,18 @@ function initAuth() {
               }
             }
 
-            // 현재 비밀번호 검증 (슈퍼베이스 Auth 세션 재인증 또는 현재 로컬 비밀번호 일치 확인)
-            const isLocalPwMatch = Boolean(currentUser.password && targetCurrentPw === currentUser.password.trim());
-            if (!reAuthSuccess && !isLocalPwMatch) {
+            if (!reAuthSuccess) {
               errMsg.textContent = '현재 비밀번호가 일치하지 않습니다.';
               errMsg.classList.remove('hidden');
               if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
-              return; // STOP! 클라우드 미반영 시 로컬에만 몰래 바꾸지 않음!
+              return;
             }
 
-            // (B) 슈퍼베이스 Auth 비밀번호 갱신 및 구 계정 자동 클라우드 프로비저닝
+            // (B) 슈퍼베이스 Auth 새 비밀번호 갱신
             let cloudPwUpdated = false;
             let pwUpdateErr = null;
 
-            // 아직 Auth 계정이 미생성된 구 계정인 경우, 새 비밀번호로 Supabase Auth 자동 등록 및 세션 확보
-            if (!authUser && isLocalPwMatch) {
-              const targetEm = email || currentUser.email || `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`;
-              try {
-                const { data: autoSign, error: autoSignErr } = await sbClient.auth.signUp({
-                  email: targetEm,
-                  password: targetNewPw,
-                  options: {
-                    data: {
-                      username: currentUser.username,
-                      name: name || currentUser.name || '',
-                      nickname: nickname || '',
-                      phone: formattedPhone || '',
-                      company_type: companyType || '기타'
-                    }
-                  }
-                });
-                if (!autoSignErr && autoSign?.user) {
-                  authUser = autoSign.user;
-                  cloudPwUpdated = true;
-                  if (autoSign.session) await sbClient.auth.setSession(autoSign.session);
-                }
-              } catch (_) {}
-            }
-
-            if (authUser && !cloudPwUpdated) {
+            if (authUser) {
               try {
                 const { data: upData, error: upErr } = await sbClient.auth.updateUser({ password: targetNewPw });
                 if (!upErr && upData?.user) {
@@ -7273,26 +6933,30 @@ function initAuth() {
                 }
               } catch (pwErr) {
                 pwUpdateErr = pwErr;
-                console.warn('Supabase auth password update notice:', pwErr);
               }
             }
 
-            // RPC 백업 호출
+            // RPC 백업 호출 (슈퍼베이스 내부 reset_user_password 동기화)
             try {
-              await sbClient.rpc('reset_user_password', {
+              const { data: rpcRes, error: rpcErr } = await sbClient.rpc('reset_user_password', {
                 p_username: currentUser.username,
                 p_name: name || currentUser.name || '',
                 p_phone: formattedPhone || currentUser.phone || '',
                 p_new_password: targetNewPw
               });
-            } catch (_) {}
+              if (!rpcErr && rpcRes && (rpcRes.success === true || rpcRes.status === 'ok')) {
+                cloudPwUpdated = true;
+              }
+            } catch (rErr) {
+              console.warn('RPC reset notice:', rErr);
+            }
 
-            // 슈퍼베이스 클라우드 비밀번호 변경 실패 시 가짜 성공 완전 차단
+            // 슈퍼베이스 클라우드 비밀번호 변경 실패 시 알림
             if (!cloudPwUpdated) {
               errMsg.textContent = '슈퍼베이스 클라우드 비밀번호 변경에 실패했습니다: ' + (pwUpdateErr?.message || '잠시 후 다시 시도해주세요.');
               errMsg.classList.remove('hidden');
               if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
-              return; // STOP!
+              return;
             }
 
             // 비밀번호 변경 성공 시 과거 혹시 남아있던 임시 재설정 키 정리
@@ -7406,10 +7070,7 @@ function initAuth() {
           }
         }
 
-        // 2. 로컬 currentUser 정보 즉시 갱신 (오류 없이 100% 저장 완료 보장)
-        if (targetNewPw) {
-          currentUser.password = targetNewPw;
-        }
+        // 2. 로컬 currentUser 정보 즉시 갱신 (비밀번호 평문은 저장하지 않음)
         currentUser.name = name || currentUser.name;
         currentUser.nickname = nickname;
         currentUser.email = email;
