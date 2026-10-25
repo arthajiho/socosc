@@ -3512,10 +3512,37 @@ function initAuth() {
     }
 
     function init() {
-      setAppMode('analyzer');
+      // 1. URL 쿼리 파라미터(?mode=, ?category=) 감지하여 딥링크 자동 전환
+      let targetMode = 'analyzer';
+      let targetCat = null;
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const qMode = urlParams.get('mode');
+        if (qMode && ['calculator', 'explorer', 'analyzer'].includes(qMode)) {
+          targetMode = qMode;
+        }
+        const qCat = urlParams.get('category');
+        if (qCat) {
+          const catMap = {
+            'skincare': 'skin care',
+            'suncare': 'sun care',
+            'hair': 'hair',
+            'makeup': 'make up',
+            'body': 'body'
+          };
+          targetCat = catMap[qCat.toLowerCase()] || qCat;
+          if (targetCat) targetMode = 'explorer';
+        }
+      } catch (_) {}
+
+      setAppMode(targetMode);
       initAuth();
       updateCategoryPillCounts();
-      filterRecipes();
+      if (targetCat) {
+        selectCategory(targetCat);
+      } else {
+        filterRecipes();
+      }
       if (currentFilteredRecipes && currentFilteredRecipes.length > 0) {
         showRecipeOriginalArticle(currentFilteredRecipes[0]);
       } else if (allRecipes.length > 0) {
@@ -3588,6 +3615,17 @@ function initAuth() {
         } catch (_) {}
       }
     }
+
+    // 브라우저 뒤로 가기 / 앞으로 가기 시 모드 자동 동기화
+    window.addEventListener('popstate', (e) => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const m = params.get('mode') || (e.state && e.state.mode) || 'analyzer';
+        if (['calculator', 'explorer', 'analyzer'].includes(m) && m !== currentAppMode) {
+          setAppMode(m);
+        }
+      } catch (_) {}
+    });
 
     let pendingPrintAfterLogin = false;
 
