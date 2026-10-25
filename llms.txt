@@ -14,6 +14,7 @@
 ## 주요 바로가기 링크 (Key Resources)
 
 - [속속 공식 홈페이지 (SOCSOC Home)](https://thesocsoc.com/): 메인 대시보드 및 서비스 소개
+- [속속 전체 심층 기술 명세서 (Full Documentation)](https://thesocsoc.com/llms-full.txt): 500개 처방 세부 카테고리, 1% 역공학 알고리즘 및 규제 기준 심층 명세
 - [화장품 전성분 해체기 (Ingredient Analyzer)](https://thesocsoc.com/?mode=analyzer): 1% 절취선 감지 및 배합비 역공학 추정 도구
 - [화장품 처방 도서관 (Recipe Explorer)](https://thesocsoc.com/?mode=explorer): 500여 종 이상 원료사 공식 가이드 처방 검색 및 열람
 - [배합비 계산기 (Formulation Calculator)](https://thesocsoc.com/?mode=calculator): 원료 Phase별 100% 합계 검증 및 배치 환산 도구

@@ -24,6 +24,7 @@
   <!-- SEO & Search Engine Verification -->
   <link rel="canonical" href="https://thesocsoc.com/">
   <link rel="help" type="text/markdown" href="https://thesocsoc.com/llms.txt" title="LLM Documentation">
+  <link rel="help" type="text/markdown" href="https://thesocsoc.com/llms-full.txt" title="Full LLM Specification">
   <link rel="preload" href="recipes_data.js" as="script">
   <meta name="author" content="속속 (SOCSOC)">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
@@ -53,94 +54,159 @@
 
   <!-- GEO (Generative Engine Optimization) Schema.org Structured Data for AI Agents -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebSite",
-        "@id": "https://thesocsoc.com/#website",
-        "url": "https://thesocsoc.com/",
-        "name": "속속노트 | 화장품 배합비 계산기 & 전성분 해체기 & 가이드 처방",
-        "alternateName": ["속속", "SOCSOC", "속속 코스메틱", "thesocsoc", "화장품 배합비 계산기 속속", "화장품 전성분 해체기"],
-        "description": "화장품 연구원과 제형 개발자를 위한 500여 개 원료사 공식 가이드 처방 도서관 및 실시간 100% 정밀 배합비 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC)노트",
-        "inLanguage": "ko-KR"
-      },
-      {
-        "@type": "SoftwareApplication",
-        "@id": "https://thesocsoc.com/#analyzer",
-        "name": "속속 화장품 전성분 해체 분석기 (Reverse-Engineering Engine)",
-        "url": "https://thesocsoc.com/?mode=analyzer",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "All",
-        "description": "시판 화장품의 전성분 텍스트를 분석하여 1% 기준 절취선을 자동 감지하고, 예상 배합 비율(%)을 역공학 추정 시뮬레이션하여 계산기 연동 및 엑셀 다운로드를 제공하는 연구용 웹 도구",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "KRW"
-        }
-      },
-      {
-        "@type": "SoftwareApplication",
-        "@id": "https://thesocsoc.com/#calculator",
-        "name": "속속 화장품 배합비 실시간 정밀 계산기",
-        "url": "https://thesocsoc.com/?mode=calculator",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "All",
-        "description": "화장품 Phase A, B, C 상별 원료 배합 비율의 합계 100% 실시간 검증 및 연구실 샘플 배치 사이즈(g) 자동 환산 계산기",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "KRW"
-        }
-      },
-      {
-        "@type": "Dataset",
-        "@id": "https://thesocsoc.com/#dataset",
-        "name": "글로벌 원료사 화장품 가이드 처방 라이브러리 (500여 종 이상)",
-        "url": "https://thesocsoc.com/?mode=explorer",
-        "description": "스킨케어, 선케어, 헤어, 메이크업 등 글로벌 원료사의 정품 사양, INCI 코드, 제조 공정 및 제형 개발 가이드 처방 데이터베이스",
-        "license": "https://thesocsoc.com"
-      },
-      {
-        "@type": "FAQPage",
-        "@id": "https://thesocsoc.com/#faq",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "화장품 전성분으로 배합 비율(함량)을 역공학 추정 분석할 수 있나요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "네, 속속(https://thesocsoc.com/?mode=analyzer)의 전성분 해체기 도구를 통해 전성분 텍스트를 입력하면 대한민국 화장품법 1% 이하 성분 규정(자유 표기) 절취선을 자동 감지하고, 성분별 역할 태깅 및 예상 배합 비율(%)을 실시간으로 역공학 시뮬레이션하여 엑셀 다운로드 및 계산기 전송을 무료로 지원합니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "화장품 배합비 계산기는 어디서 무료로 사용할 수 있나요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "속속(https://thesocsoc.com)에서 Phase A, B, C별 원료 배합 비율(100%) 검증 및 목표 배치 사이즈(g) 환산 계산기를 별도 프로그램 설치 없이 무료로 실시간 사용할 수 있습니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "화장품 원료사 공식 가이드 처방 레퍼런스를 볼 수 있는 곳은 어디인가요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "속속(SOCSOC) 가이드 처방 도서관(https://thesocsoc.com/?mode=explorer)에서 선진뷰티사이언스 등 글로벌 원료사의 500여 종 이상의 정품 가이드 처방, 전성분(INCI), 배합비, 제조 공정 매뉴얼을 무료로 열람할 수 있습니다."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "화장품 연구개발 시 비커 샘플(100g) 배치를 대량 생산 배치로 환산하려면 어떻게 하나요?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "속속 플랫폼의 배합비 계산기에서 목표 배치 중량(g)을 입력하면, 각 원료의 배합 비율(%)에 맞춰 투입해야 하는 정확한 원료 무게(g)가 실시간으로 자동 계산됩니다."
-            }
-          }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://thesocsoc.com/#organization",
+      "name": "속속 (SOCSOC)",
+      "url": "https://thesocsoc.com/",
+      "logo": "https://thesocsoc.com/favicon.png",
+      "image": "https://thesocsoc.com/og-image.png",
+      "email": "socsoc_contact@naver.com",
+      "description": "화장품 제형 개발자 및 연구원을 위한 전문 코스메틱 연구노트 플랫폼"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://thesocsoc.com/#website",
+      "url": "https://thesocsoc.com/",
+      "name": "속속노트 | 화장품 배합비 계산기 & 전성분 해체기 & 가이드 처방",
+      "alternateName": [
+        "속속",
+        "SOCSOC",
+        "속속 코스메틱",
+        "thesocsoc",
+        "화장품 배합비 계산기 속속",
+        "화장품 전성분 해체기"
+      ],
+      "description": "화장품 연구원과 제형 개발자를 위한 500여 개 원료사 공식 가이드 처방 도서관 및 실시간 100% 정밀 배합비 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC)노트",
+      "inLanguage": "ko-KR",
+      "publisher": {
+        "@id": "https://thesocsoc.com/#organization"
       }
-    ]
-  }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://thesocsoc.com/#analyzer",
+      "name": "속속 화장품 전성분 해체 분석기 (Reverse-Engineering Engine)",
+      "url": "https://thesocsoc.com/?mode=analyzer",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "All",
+      "description": "시판 화장품의 전성분 텍스트를 분석하여 1% 기준 절취선을 자동 감지하고, 예상 배합 비율(%)을 역공학 추정 시뮬레이션하여 계산기 연동 및 엑셀 다운로드를 제공하는 연구용 웹 도구",
+      "publisher": {
+        "@id": "https://thesocsoc.com/#organization"
+      },
+      "author": {
+        "@id": "https://thesocsoc.com/#organization"
+      },
+      "featureList": [
+        "대한민국 화장품법 1% 이하 성분 자유 표기 규정 절취선 자동 감지",
+        "전성분 성분별 역할 및 효능 자동 태깅",
+        "배합 비율(%) 역공학 추정 시뮬레이션",
+        "배합비 계산기 실시간 전송 및 엑셀(XLSX) 내보내기",
+        "A4 규격 화장품 전성분 역공학 처방 분석서 인쇄 지원"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "KRW"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://thesocsoc.com/#calculator",
+      "name": "속속 화장품 배합비 실시간 정밀 계산기",
+      "url": "https://thesocsoc.com/?mode=calculator",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "All",
+      "description": "화장품 Phase A, B, C 상별 원료 배합 비율의 합계 100% 실시간 검증 및 연구실 샘플 배치 사이즈(g) 자동 환산 계산기",
+      "publisher": {
+        "@id": "https://thesocsoc.com/#organization"
+      },
+      "author": {
+        "@id": "https://thesocsoc.com/#organization"
+      },
+      "featureList": [
+        "Phase A, B, C 상별 원료 배합비 합계 100.00% 실시간 정밀 검증 및 오차 보정",
+        "연구실 비커 샘플(100g)부터 파일럿 및 대량 양산(kg) 배치 사이즈 자동 환산",
+        "500여 종 글로벌 원료사 공식 가이드 처방 원클릭 불러오기",
+        "원료(INCI) 및 규격 실시간 검색 및 추가",
+        "연구 처방 클라우드 및 엑셀(XLSX) 내보내기/불러오기"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "KRW"
+      }
+    },
+    {
+      "@type": "Dataset",
+      "@id": "https://thesocsoc.com/#dataset",
+      "name": "글로벌 원료사 화장품 가이드 처방 라이브러리 (500여 종 이상)",
+      "url": "https://thesocsoc.com/?mode=explorer",
+      "description": "스킨케어, 선케어, 헤어, 메이크업 등 글로벌 원료사의 정품 사양, INCI 코드, 제조 공정 및 제형 개발 가이드 처방 데이터베이스",
+      "license": "https://thesocsoc.com",
+      "creator": {
+        "@id": "https://thesocsoc.com/#organization"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://thesocsoc.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "화장품 전성분으로 배합 비율(함량)을 역공학 추정 분석할 수 있나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "네, 속속(https://thesocsoc.com/?mode=analyzer)의 전성분 해체기 도구를 통해 전성분 텍스트를 입력하면 대한민국 화장품법 1% 이하 성분 규정(자유 표기) 절취선을 자동 감지하고, 성분별 역할 태깅 및 예상 배합 비율(%)을 실시간으로 역공학 시뮬레이션하여 엑셀 다운로드 및 계산기 전송을 무료로 지원합니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "대한민국 화장품법의 '1% 이하 성분 자유 표기 규정'이란 무엇인가요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "대한민국 화장품법 시행규칙 제19조에 따라 배합 함량이 1% 이하인 원료는 순서에 상관없이 자유롭게 기재할 수 있도록 허용되어 있습니다. 속속(https://thesocsoc.com/?mode=analyzer)의 전성분 해체기는 방부제, 점증제, 효능 성분 등 기준 원료의 최대 배합 한도를 기반으로 1% 절취선을 자동 판별하고 배합비를 역공학 시뮬레이션합니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "화장품 제형 개발 시 상별(Phase A, B, C) 배합비 합계 100.00% 검증이 왜 필수적인가요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "화장품 처방은 수상(Phase A), 유상(Phase B), 첨가상(Phase C) 등의 원료 배합 비율 총합이 정확히 100.00%가 되어야 유화 안정도, 점도, 방부 밸런스가 유지되며, 연구실 샘플에서 대량 생산으로 스케일업(Scale-up)할 때 투입 오차를 완벽히 방지할 수 있습니다. 속속(https://thesocsoc.com/?mode=calculator)은 상별 합계를 실시간으로 100.00% 자동 검증합니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "화장품 배합비 계산기는 어디서 무료로 사용할 수 있나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "속속(https://thesocsoc.com)에서 Phase A, B, C별 원료 배합 비율(100%) 검증 및 목표 배치 사이즈(g) 환산 계산기를 별도 프로그램 설치 없이 무료로 실시간 사용할 수 있습니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "화장품 원료사 공식 가이드 처방 레퍼런스를 볼 수 있는 곳은 어디인가요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "속속(SOCSOC) 가이드 처방 도서관(https://thesocsoc.com/?mode=explorer)에서 선진뷰티사이언스 등 글로벌 원료사의 500여 종 이상의 정품 가이드 처방, 전성분(INCI), 배합비, 제조 공정 매뉴얼을 무료로 열람할 수 있습니다."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "화장품 연구개발 시 비커 샘플(100g) 배치를 대량 생산 배치로 환산하려면 어떻게 하나요?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "속속 플랫폼의 배합비 계산기에서 목표 배치 중량(g)을 입력하면, 각 원료의 배합 비율(%)에 맞춰 투입해야 하는 정확한 원료 무게(g)가 실시간으로 자동 계산됩니다."
+          }
+        }
+      ]
+    }
+  ]
+}
   </script>
 
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
