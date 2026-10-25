@@ -7180,13 +7180,23 @@ function initAuth() {
         // 1. Supabase Auth 및 Cloud DB 동기화
         if (sbClient) {
           let authUser = null;
-          const tryIdentities = [
+
+          // 현재 활성 세션의 정확한 슈퍼베이스 이메일을 최우선 확보 (불필요한 후보군 탐색 딜레이 100% 제거)
+          let activeAuthEmail = null;
+          try {
+            const { data: curSess } = await sbClient.auth.getSession();
+            activeAuthEmail = curSess?.session?.user?.email;
+          } catch (_) {}
+
+          const rawIdentities = [
+            activeAuthEmail,
             currentUser.email,
             email,
             `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`,
             `${(currentUser.username || '').toLowerCase()}@socsoc.kr`,
             currentUser.username
           ].filter(Boolean);
+          const tryIdentities = Array.from(new Set(rawIdentities));
 
           // (A) 비밀번호를 변경하려는 경우: 사용자가 입력한 현재 비밀번호(targetCurrentPw)로 슈퍼베이스 정식 재인증
           if (targetNewPw) {
