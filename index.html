@@ -9067,6 +9067,13 @@ function initAuth() {
 
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
+          // 캐시 시그니처 비교: 규칙 데이터에 변경사항이 없는 경우 워크시트와 DOM 조작을 완전히 건너뜀
+          const rulesSignature = JSON.stringify(data.map(r => [r.id, r.name, r.role, r.is_indicator, r.recommended_rate, r.default_percent]));
+          if (rulesSignature === window._lastIngredientRulesSignature && !isManual) {
+            return;
+          }
+          window._lastIngredientRulesSignature = rulesSignature;
+
           ingredientRules = data.map(r => ({
             id: r.id,
             name: r.name,
@@ -9110,10 +9117,11 @@ function initAuth() {
               analyzerState.cutoffName = firstIndicatorName;
             }
 
-            // 이미 해체 시작된 상태면 추천함량 기반으로 함량 재계산, 아니라면 테이블/통계 즉각 갱신
-            if (analyzerState.isDecomposed) {
-              applySmartEstimates(true);
-            } else {
+            // [핵심 버그 해결] 백그라운드 동기화 시 이미 사용자가 입력/조정한 함량(percentage)을 절대 초기화하지 않도록 applySmartEstimates는 실행하지 않음!
+            // 사용자가 테이블의 입력 필드를 편집 중인 동안에는 입력 포커스와 커서 유지를 위해 DOM 재렌더링 방지
+            const activeEl = document.activeElement;
+            const isEditingTable = activeEl && activeEl.closest && activeEl.closest('#ingredientTableBody');
+            if (!isEditingTable) {
               renderAnalyzerTable();
               updateAnalyzerStats();
             }
@@ -9593,6 +9601,7 @@ function initAuth() {
         let recRate = (matchedRule && matchedRule.recommended_rate) ? matchedRule.recommended_rate.trim() : '';
 
         const hasPercentVal = item.percentage !== undefined && item.percentage !== null && item.percentage !== '';
+        const displayVal = hasPercentVal ? (typeof item.percentage === 'number' ? item.percentage.toFixed(2) : item.percentage) : '';
 
         tr.innerHTML = `
           <td class="py-2 px-2 text-center">
@@ -9616,10 +9625,15 @@ function initAuth() {
                 step="0.01"
                 min="0"
                 max="100"
-                value="${hasPercentVal ? item.percentage : ''}"
+                value="${displayVal}"
                 placeholder="0.00"
                 oninput="updatePercentage('${item.id}', this.value)"
-                class="w-20 text-right pr-5 pl-2 py-1 rounded-lg border border-neutral-200 bg-white text-neutral-800 text-xs font-mono font-black focus:outline-none focus:ring-1 focus:ring-[#0f2137]/30 focus:border-[#0f2137] shadow-inner"
+                onchange="updatePercentage('${item.id}', this.value)"
+                onblur="formatAnalyzerPercentage('${item.id}', this)"
+                onfocus="this.select()"
+                onkeydown="if(event.key==='Enter') this.blur();"
+                class="w-24 text-right pr-6 pl-2 py-1 rounded-lg border-2 border-slate-200 hover:border-slate-400 focus:border-[#0f2137] focus:ring-2 focus:ring-[#0f2137]/20 bg-white text-slate-900 text-xs font-mono font-bold shadow-2xs transition-colors cursor-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                title="클릭하여 함량을 직접 수정할 수 있습니다"
               />
               <span class="absolute right-2 text-xs font-bold text-neutral-400 pointer-events-none">%</span>
             </div>
@@ -9653,9 +9667,32 @@ function initAuth() {
     function updatePercentage(id, val) {
       const item = analyzerState.ingredients.find(i => i.id === id);
       if (!item) return;
+      if (typeof val === 'string') {
+        val = val.replace(/[^0-9.]/g, '');
+      }
       const num = parseFloat(val);
       item.percentage = isNaN(num) ? '' : num;
+      item.userEditedPercentage = true;
       updateAnalyzerStats();
+      renderAnalyzerPrintReport();
+    }
+
+    function formatAnalyzerPercentage(id, el) {
+      const item = analyzerState.ingredients.find(i => i.id === id);
+      if (!item) return;
+      let raw = el ? el.value : (item.percentage !== undefined ? item.percentage : '');
+      if (typeof raw === 'string') raw = raw.replace(/[^0-9.]/g, '');
+      const num = parseFloat(raw);
+      if (!isNaN(num) && num >= 0) {
+        item.percentage = parseFloat(num.toFixed(2));
+        item.userEditedPercentage = true;
+        if (el) el.value = item.percentage.toFixed(2);
+      } else {
+        item.percentage = '';
+        if (el) el.value = '';
+      }
+      updateAnalyzerStats();
+      renderAnalyzerPrintReport();
     }
 
     function updateRole(id, role) {
@@ -9743,9 +9780,32 @@ function initAuth() {
       const elBelow = document.getElementById('statBelowCount');
       if (elBelow) elBelow.innerHTML = belowCount + '<span class="text-sm font-normal text-slate-400 ml-1">종 (순서 무관)</span>';
       const elSumVal = document.getElementById('statSumVal');
-      if (elSumVal) elSumVal.innerHTML = sum.toFixed(2) + '<span class="text-sm font-normal ml-1">%</span>';
+      if (elSumVal) {
+        elSumVal.innerHTML = sum.toFixed(2) + '<span class="text-sm font-normal ml-1">%</span>';
+        if (Math.abs(sum - 100) < 0.001) {
+          elSumVal.className = 'text-2xl font-black mt-1 text-emerald-600';
+        } else if (sum > 100) {
+          elSumVal.className = 'text-2xl font-black mt-1 text-rose-600';
+        } else if (sum > 0) {
+          elSumVal.className = 'text-2xl font-black mt-1 text-amber-600';
+        } else {
+          elSumVal.className = 'text-2xl font-black mt-1 text-neutral-800';
+        }
+      }
+      // 하단 워크시트 푸터 총 배합비 합계 실시간 색상 반영 (100% 초과: 붉은색, 100%: 초록색, 100% 미만: 주황색)
       const elFootSum = document.getElementById('footerSum');
-      if (elFootSum) elFootSum.textContent = sum.toFixed(2) + ' %';
+      if (elFootSum) {
+        elFootSum.textContent = sum.toFixed(2) + ' %';
+        if (count === 0 && sum === 0) {
+          elFootSum.className = 'text-sm font-black font-mono px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-800 shadow-2xs transition-all';
+        } else if (Math.abs(sum - 100) < 0.001) {
+          elFootSum.className = 'text-sm font-black font-mono px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-700 shadow-2xs transition-all';
+        } else if (sum > 100) {
+          elFootSum.className = 'text-sm font-black font-mono px-3 py-1 rounded-full bg-rose-50 border border-rose-300 text-rose-600 shadow-2xs transition-all';
+        } else {
+          elFootSum.className = 'text-sm font-black font-mono px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-700 shadow-2xs transition-all';
+        }
+      }
       const elFootCount = document.getElementById('footerCount');
       if (elFootCount) elFootCount.textContent = count;
       const elFootCut = document.getElementById('footerCutoffInfo');
@@ -9847,12 +9907,16 @@ function initAuth() {
 
       boundary = Math.max(1, Math.min(count, boundary));
 
-      // 3. 1% 이하 미량 구간 분배 (boundary <= i < count) - 추천함량 범위 내 정밀 배합 및 수치 다양화
+      // 3. 1% 이하 미량 구간 분배 (boundary <= i < count) - 추천함량 범위 내 정밀 배합 및 수치 다양화 (사용자 직접 수정 성분 보존)
       let lowSum = 0;
       const lowCount = count - boundary;
       if (lowCount > 0) {
         for (let i = boundary; i < count; i++) {
           const item = analyzerState.ingredients[i];
+          if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
+            lowSum += item.percentage;
+            continue;
+          }
           const matchedRule = findIngredientRule(item.name);
           let recStr = matchedRule && matchedRule.recommended_rate ? matchedRule.recommended_rate.trim() : '';
           const parsed = parseRecommendedRate(recStr);
@@ -9879,13 +9943,17 @@ function initAuth() {
           lowSum += val;
         }
 
-        // 1% 이하 성분들의 합이 과도하게 커지지 않도록 8% 이내로 안정화 스케일링
+        // 1% 이하 성분들의 합이 과도하게 커지지 않도록 8% 이내로 안정화 스케일링 (사용자 수정 성분 보호)
         if (lowSum > 12.0 && lowCount > 0) {
           const targetLowTotal = 8.0;
           const scale = targetLowTotal / lowSum;
           lowSum = 0;
           for (let i = boundary; i < count; i++) {
             const item = analyzerState.ingredients[i];
+            if (item.userEditedPercentage && typeof item.percentage === 'number') {
+              lowSum += item.percentage;
+              continue;
+            }
             const parsed = parseRecommendedRate(findIngredientRule(item.name)?.recommended_rate);
             let scaledVal = parseFloat((item.percentage * scale).toFixed(2));
             const minLimit = parsed ? Math.min(scaledVal, parsed.min) : 0.01;
@@ -9910,10 +9978,13 @@ function initAuth() {
         analyzerState.ingredients[hexIdx].percentage = targetHexVal;
 
         // 4-A. 헥산디올 이후 성분들 (hexIdx < i < boundary):
-        // targetHexVal(2.00%) > C_{hexIdx+1} > C_{hexIdx+2} > ... >= 1.00%
         let prevVal = targetHexVal;
         for (let i = hexIdx + 1; i < boundary; i++) {
           const item = analyzerState.ingredients[i];
+          if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
+            prevVal = item.percentage;
+            continue;
+          }
           const matchedRule = findIngredientRule(item.name);
           const parsed = parseRecommendedRate(matchedRule ? matchedRule.recommended_rate : '');
 
@@ -9934,12 +10005,15 @@ function initAuth() {
         }
 
         // 4-B. 헥산디올 이전 성분들 (1 <= i < hexIdx):
-        // C1 > C2 > ... > C_{hexIdx-1} > targetHexVal(2.00%)
-        // 각 성분의 추천함량 이내에서 이전 성분보다 크도록 역방향(hexIdx-1 -> 1) 차등 배치
         let curFloor = targetHexVal + 0.15;
         let stepVals = [];
         for (let i = hexIdx - 1; i >= 1; i--) {
           const item = analyzerState.ingredients[i];
+          if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
+            stepVals.unshift(item.percentage);
+            curFloor = parseFloat((item.percentage + 0.20).toFixed(2));
+            continue;
+          }
           const matchedRule = findIngredientRule(item.name);
           const parsed = parseRecommendedRate(matchedRule ? matchedRule.recommended_rate : '');
 
@@ -9959,47 +10033,55 @@ function initAuth() {
         }
 
         for (let i = 1; i < hexIdx; i++) {
-          analyzerState.ingredients[i].percentage = stepVals[i - 1];
+          if (!analyzerState.ingredients[i].userEditedPercentage) {
+            analyzerState.ingredients[i].percentage = stepVals[i - 1];
+          }
         }
 
         // 4-C. 1번째 성분(정제수 등 주요 베이스 용제)이 100% 잔량 전체 흡수
-        let sumOther = 0;
-        for (let i = 1; i < count; i++) {
-          sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
-        }
-        let c0 = parseFloat((100.00 - sumOther).toFixed(2));
-
-        // C0 > C1 보장 (베이스 용제가 항상 최대 함량 유지)
-        if (c0 <= analyzerState.ingredients[1].percentage) {
-          const needC0 = analyzerState.ingredients[1].percentage + 15.0;
-          const targetSumOther = 100.00 - needC0;
-          const scale = targetSumOther / sumOther;
-          for (let i = 1; i < boundary; i++) {
-            if (i === hexIdx) continue;
-            analyzerState.ingredients[i].percentage = Math.max(1.00, parseFloat((analyzerState.ingredients[i].percentage * scale).toFixed(2)));
-          }
-          analyzerState.ingredients[hexIdx].percentage = targetHexVal;
-          // 엄격한 내림차순(C1 > C2 > ...) 재검증 및 중복 방지
-          for (let i = 1; i < boundary; i++) {
-            if (analyzerState.ingredients[i].percentage >= analyzerState.ingredients[i - 1].percentage) {
-              analyzerState.ingredients[i].percentage = parseFloat((analyzerState.ingredients[i - 1].percentage - 0.10).toFixed(2));
-            }
-          }
-          sumOther = 0;
+        if (!analyzerState.ingredients[0].userEditedPercentage) {
+          let sumOther = 0;
           for (let i = 1; i < count; i++) {
             sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
           }
-          c0 = parseFloat((100.00 - sumOther).toFixed(2));
+          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
+
+          // C0 > C1 보장 (베이스 용제가 항상 최대 함량 유지)
+          if (c0 <= analyzerState.ingredients[1].percentage) {
+            const needC0 = analyzerState.ingredients[1].percentage + 15.0;
+            const targetSumOther = 100.00 - needC0;
+            const scale = targetSumOther / sumOther;
+            for (let i = 1; i < boundary; i++) {
+              if (i === hexIdx || analyzerState.ingredients[i].userEditedPercentage) continue;
+              analyzerState.ingredients[i].percentage = Math.max(1.00, parseFloat((analyzerState.ingredients[i].percentage * scale).toFixed(2)));
+            }
+            analyzerState.ingredients[hexIdx].percentage = targetHexVal;
+            // 엄격한 내림차순(C1 > C2 > ...) 재검증 및 중복 방지
+            for (let i = 1; i < boundary; i++) {
+              if (!analyzerState.ingredients[i].userEditedPercentage && analyzerState.ingredients[i].percentage >= analyzerState.ingredients[i - 1].percentage) {
+                analyzerState.ingredients[i].percentage = parseFloat((analyzerState.ingredients[i - 1].percentage - 0.10).toFixed(2));
+              }
+            }
+            sumOther = 0;
+            for (let i = 1; i < count; i++) {
+              sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
+            }
+            c0 = parseFloat((100.00 - sumOther).toFixed(2));
+          }
+          analyzerState.ingredients[0].percentage = c0;
         }
-        analyzerState.ingredients[0].percentage = c0;
 
       } else {
         // [케이스 2] 헥산디올이 없거나 고함량 구간 외에 있는 경우
-        // C0 > C1 > C2 > ... > C_{boundary-1} >= 1.00%
         let curFloor = 1.00;
         let stepVals = [];
         for (let i = boundary - 1; i >= 1; i--) {
           const item = analyzerState.ingredients[i];
+          if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
+            stepVals.unshift(item.percentage);
+            curFloor = parseFloat((item.percentage + 0.20).toFixed(2));
+            continue;
+          }
           const matchedRule = findIngredientRule(item.name);
           const parsed = parseRecommendedRate(matchedRule ? matchedRule.recommended_rate : '');
 
@@ -10014,24 +10096,30 @@ function initAuth() {
           curFloor = parseFloat((val + 0.20).toFixed(2));
         }
         for (let i = 1; i < boundary; i++) {
-          analyzerState.ingredients[i].percentage = stepVals[i - 1];
+          if (!analyzerState.ingredients[i].userEditedPercentage) {
+            analyzerState.ingredients[i].percentage = stepVals[i - 1];
+          }
         }
-        let sumOther = 0;
-        for (let i = 1; i < count; i++) {
-          sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
+        if (!analyzerState.ingredients[0].userEditedPercentage) {
+          let sumOther = 0;
+          for (let i = 1; i < count; i++) {
+            sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
+          }
+          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
+          analyzerState.ingredients[0].percentage = c0;
         }
-        let c0 = parseFloat((100.00 - sumOther).toFixed(2));
-        analyzerState.ingredients[0].percentage = c0;
       }
 
       // 최종 100.00% 정밀 보정
-      let totalCurrent = 0;
-      analyzerState.ingredients.forEach(it => {
-        totalCurrent += (parseFloat(it.percentage) || 0);
-      });
-      totalCurrent = parseFloat(totalCurrent.toFixed(2));
-      const diff = parseFloat((100.00 - totalCurrent).toFixed(2));
-      analyzerState.ingredients[0].percentage = parseFloat(((parseFloat(analyzerState.ingredients[0].percentage) || 0) + diff).toFixed(2));
+      if (!analyzerState.ingredients[0].userEditedPercentage) {
+        let totalCurrent = 0;
+        analyzerState.ingredients.forEach(it => {
+          totalCurrent += (parseFloat(it.percentage) || 0);
+        });
+        totalCurrent = parseFloat(totalCurrent.toFixed(2));
+        const diff = parseFloat((100.00 - totalCurrent).toFixed(2));
+        analyzerState.ingredients[0].percentage = parseFloat(((parseFloat(analyzerState.ingredients[0].percentage) || 0) + diff).toFixed(2));
+      }
 
       analyzerState.isDecomposed = true;
       renderAnalyzerTable();
