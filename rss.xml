@@ -1,18 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>속속(socsoc)노트-화장품 배합비계산 &amp; 전성분해체 &amp; 가이드처방-코스메틱 연구노트</title>
+    <title>속속(SOCSOC)노트 | 화장품 배합비계산기 &amp; 전성분해체기 &amp; 가이드처방 코스메틱 노트</title>
     <link>https://thesocsoc.com/</link>
-    <description>화장품 연구원을 위한 원료 가이드 처방 래퍼런스 및 배합비 자동 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC) 코스메틱 노트</description>
+    <description>화장품 연구원을 위한 원료 가이드 처방 레퍼런스 및 배합비 자동 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC) 코스메틱 노트</description>
     <language>ko</language>
-    <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
-    <lastBuildDate>Sun, 27 Sep 2026 14:00:00 +0900</lastBuildDate>
+    <pubDate>Sun, 25 Oct 2026 15:45:00 +0900</pubDate>
+    <lastBuildDate>Sun, 25 Oct 2026 15:45:00 +0900</lastBuildDate>
 
     <item>
-      <title>속속(SOCSOC) 코스메틱 가이드 처방 도서관 (500여 종 연구 처방)</title>
+      <title>화장품 전성분 해체기 - 1% 추정 절취선 탐지 및 배합비 역공학 시뮬레이션</title>
+      <link>https://thesocsoc.com/?mode=analyzer</link>
+      <description>시판 화장품의 전성분 텍스트를 분석하여 대한민국 화장품법 1% 규정 절취선을 자동 감지하고, 예상 배합 비율(%)을 역공학 분석하여 계산기 연동 및 엑셀 다운로드를 지원하는 전문 R&amp;D 도구</description>
+      <pubDate>Sun, 25 Oct 2026 15:45:00 +0900</pubDate>
+      <guid>https://thesocsoc.com/?mode=analyzer</guid>
+    </item>
+
+    <item>
+      <title>속속(SOCSOC) 코스메틱 가이드 처방 도서관 (500여 종 이상 연구 처방)</title>
       <link>https://thesocsoc.com/?mode=explorer</link>
-      <description>화장품 연구원과 제형 개발자를 위한 스킨케어, 선케어, 헤어, 메이크업 등 500여 개 원료사 공식 가이드 처방 및 원료 사양 데이터베이스</description>
-      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <description>화장품 연구원과 제형 개발자를 위한 스킨케어, 선케어, 헤어, 메이크업 등 글로벌 원료사 공식 가이드 처방 및 원료 사양 데이터베이스</description>
+      <pubDate>Sun, 25 Oct 2026 15:45:00 +0900</pubDate>
       <guid>https://thesocsoc.com/?mode=explorer</guid>
     </item>
 
@@ -20,7 +28,7 @@
       <title>화장품 배합비 실시간 100% 정밀 계산기 - 원료 Phase별 배합 및 배치 스케일업</title>
       <link>https://thesocsoc.com/?mode=calculator</link>
       <description>Phase A, B, C 원료 배합비 합계 100% 실시간 검증 및 연구실 샘플 배치 사이즈(g) 자동 환산 계산기 도구</description>
-      <pubDate>Sun, 27 Sep 2026 14:00:00 +0900</pubDate>
+      <pubDate>Sun, 25 Oct 2026 15:45:00 +0900</pubDate>
       <guid>https://thesocsoc.com/?mode=calculator</guid>
     </item>
   </channel>
