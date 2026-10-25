@@ -5759,15 +5759,20 @@ function initAuth() {
 
         showToast('비밀번호가 성공적으로 변경되었습니다! 변경된 비밀번호로 로그인해주세요.');
 
-        // 3. 로그인 화면으로 이동 & 아이디/새 비밀번호 자동 채우기 및 포커스
+        // 3. 로그인 화면으로 이동 & 아이디 입력 (비밀번호는 보안상 자동 채우지 않고 사용자가 직접 입력하도록 비움)
         switchAuthTab('login', true);
         const loginId = document.getElementById('loginIdInput');
         const loginPw = document.getElementById('loginPwInput');
         if (loginId) loginId.value = targetUsername;
         if (loginPw) {
-          loginPw.value = newPw;
+          loginPw.value = '';
           loginPw.focus();
         }
+
+        const findPwNew = document.getElementById('findPwNewInput');
+        const findPwNewCfm = document.getElementById('findPwNewCfmInput');
+        if (findPwNew) findPwNew.value = '';
+        if (findPwNewCfm) findPwNewCfm.value = '';
       } catch (err) {
         console.error('Password reset error:', err);
         if (errMsg) {
