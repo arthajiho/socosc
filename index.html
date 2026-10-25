@@ -8878,7 +8878,7 @@ function initAuth() {
 
       privacy: `1. 개인정보 수집 항목
 - 필수 항목: 아이디, 비밀번호, 이름, 닉네임, 이메일 주소, 핸드폰 번호, 회원 유형(제조사/원료사/브랜드사/기타)
-- 서비스 이용 과정에서 생성되는 정보: 접속 로그, 저장한 처방 데이터
+- 서비스 이용 과정에서 생성되는 정보: 접속 로그 및 이용 데이터
 
 2. 개인정보의 수집 및 이용 목적
 - 회원 가입 의사 확인 및 본인 식별
@@ -9182,11 +9182,10 @@ function initAuth() {
     function onAnalyzerTextareaInput() {
       const txtArea = document.getElementById('rawTextarea');
       const raw = txtArea ? txtArea.value.trim() : '';
-      if (!raw) {
-        clearText();
-      } else {
+      if (raw) {
         parseCurrentIngredients(false);
       }
+      // 텍스트를 모두 지워 빈칸이 되더라도 하단의 시뮬레이션 워크시트는 그대로 유지됨
     }
 
     function loadSample(key) {
@@ -9204,18 +9203,15 @@ function initAuth() {
 
     function clearText() {
       const el = document.getElementById('rawTextarea');
-      if (el) el.value = '';
-      const titleInput = document.getElementById('analyzerFormulaTitleInput');
-      if (titleInput) titleInput.value = '신규 전성분 해체 분석 처방';
+      if (el) {
+        el.value = '';
+        el.focus();
+      }
+      // 초기화 클릭 시 텍스트 입력란의 내용만 비우고, 하단의 시뮬레이션 워크시트는 그대로 유지
       const resBox = document.getElementById('resultsContainer');
-      if (resBox) resBox.classList.add('hidden');
-      analyzerState.ingredients = [];
-      analyzerState.cutoffIndex = null;
-      analyzerState.cutoffName = null;
-      analyzerState.manualCutoff = null;
-      analyzerState.isDecomposed = false;
-      renderAnalyzerTable();
-      updateAnalyzerStats();
+      if (resBox && analyzerState.ingredients && analyzerState.ingredients.length > 0) {
+        resBox.classList.remove('hidden');
+      }
     }
 
     function checkIndicator(name) {
@@ -9292,14 +9288,11 @@ function initAuth() {
       const resBox = document.getElementById('resultsContainer');
 
       if (!raw) {
-        if (resBox) resBox.classList.add('hidden');
-        analyzerState.ingredients = [];
-        analyzerState.cutoffIndex = null;
-        analyzerState.cutoffName = null;
-        analyzerState.manualCutoff = null;
-        analyzerState.isDecomposed = false;
-        renderAnalyzerTable();
-        updateAnalyzerStats();
+        if (!analyzerState.ingredients || analyzerState.ingredients.length === 0) {
+          if (resBox) resBox.classList.add('hidden');
+        } else {
+          if (resBox) resBox.classList.remove('hidden');
+        }
         return;
       }
 
@@ -10129,9 +10122,6 @@ function initAuth() {
       const titleInput = document.getElementById('analyzerFormulaTitleInput');
       const title = (titleInput && titleInput.value.trim()) || '전성분_해체분석';
       const today = new Date().toISOString().substring(0, 10);
-      const effectiveCutoff = getEffectiveCutoff();
-      const cutoffInfo = effectiveCutoff !== null ? `약 ${effectiveCutoff + 1}번째 성분 후 (1% 추정 절취선)` : '미탐지';
-      const totalCount = analyzerState.ingredients.length;
 
       let totalSum = 0;
       analyzerState.ingredients.forEach(it => {
@@ -10143,34 +10133,23 @@ function initAuth() {
       // 엑셀 시트 2차원 배열 데이터 구성
       const rows = [];
       rows.push(['[속속(SOCSOC) 화장품 전성분 해체 분석 워크시트]']);
-      rows.push(['분석 제목', title, '', '분석일자', today]);
-      rows.push(['총 성분 수', `${totalCount} 개`, '', '1% 절취선 위치', cutoffInfo]);
-      rows.push(['배합비 합계', `${totalSum.toFixed(2)} %`, '', '분석 엔진', 'Cosmetic Reverse-Engineering Engine v2.4']);
+      rows.push(['분석 제목', title, '분석일자', today]);
+      rows.push(['배합비 합계', `${totalSum.toFixed(2)} %`, '분석 엔진', 'Cosmetic Reverse-Engineering Engine v2.4']);
       rows.push([]); // 빈 줄 구분
-      rows.push(['순번', '성분명 (영문/국문)', '함량 (%)', '역할 / 분류', '구간 구분 (1% 기준)']);
+      rows.push(['순번', '성분명 (영문/국문)', '함량 (%)', '역할 / 분류']);
 
       analyzerState.ingredients.forEach((ing, index) => {
         const p = parseFloat(Number(ing.percentage || 0).toFixed(2));
-        const isAbove = effectiveCutoff === null ? true : (index < effectiveCutoff);
-        const sectionLabel = isAbove ? '고함량 (1% 초과 구간)' : '미량 (1% 이하 구간)';
         rows.push([
           ing.order || (index + 1),
           ing.name || '',
           p,
-          ing.role || '',
-          sectionLabel
+          ing.role || ''
         ]);
       });
 
       const fitStatus = Math.abs(totalSum - 100) < 0.005 ? '100.00% 일치' : `${(100 - totalSum).toFixed(2)}% 차이`;
-      rows.push(['합계', '', totalSum, '', fitStatus]);
-
-      const rawText = document.getElementById('rawTextarea')?.value || '';
-      if (rawText && rawText.trim()) {
-        rows.push([]);
-        rows.push(['■ 원본 전성분 텍스트']);
-        rows.push([rawText.trim()]);
-      }
+      rows.push(['합계', '', totalSum, fitStatus]);
 
       const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
       const safeFileName = `[SOCSOC_해체]_${safeTitle}_${today}.xlsx`;
@@ -10185,8 +10164,7 @@ function initAuth() {
             { wch: 10 }, // 순번
             { wch: 38 }, // 성분명
             { wch: 14 }, // 함량 (%)
-            { wch: 24 }, // 역할 / 분류
-            { wch: 24 }  // 구간 구분
+            { wch: 24 }  // 역할 / 분류
           ];
 
           const wb = XLSX.utils.book_new();
