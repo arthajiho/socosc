@@ -13,7 +13,7 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>속속(SOCSOC)노트 | 화장품 배합비계산기 &amp; 전성분해체기 &amp; 가이드처방 코스메틱 노트</title>
+  <title>속속노트 | 화장품 배합비 계산기 &amp; 전성분 해체기 &amp; 가이드 처방</title>
   
   <!-- Favicon Icons -->
   <link rel="icon" type="image/svg+xml" href="https://thesocsoc.com/favicon.svg">
@@ -24,9 +24,10 @@
   <!-- SEO & Search Engine Verification -->
   <link rel="canonical" href="https://thesocsoc.com/">
   <link rel="help" type="text/markdown" href="https://thesocsoc.com/llms.txt" title="LLM Documentation">
+  <link rel="preload" href="recipes_data.js" as="script">
   <meta name="author" content="속속 (SOCSOC)">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-  <meta name="description" content="화장품 연구원을 위한 원료 가이드 처방 레퍼런스 및 배합비 자동 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC) 코스메틱 노트">
+  <meta name="description" content="화장품 연구원과 제형 개발자를 위한 코스메틱 연구노트. 500개 이상의 글로벌 원료사 공식 가이드 처방, 100% 정밀 배합비 계산기, 1% 전성분 해체기">
   <meta name="keywords" content="화장품 원료, 원료 처방, 배합비 계산기, 화장품 개발, INCI, 속속, SOCSOC, 화장품 성분, 화장품 처방 사이트, 화장품 제형 개발, 배치 스케일업, 화장품 전성분 해체기">
   <meta name="naver-site-verification" content="0aed3b7238bd962868c01d583fb1f336b81ae702" />
   <link rel="alternate" type="application/rss+xml" title="속속(SOCSOC) RSS 피드" href="https://thesocsoc.com/rss.xml">
@@ -35,8 +36,8 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="속속 (SOCSOC)">
   <meta property="og:locale" content="ko_KR">
-  <meta property="og:title" content="속속(SOCSOC)노트 | 화장품 배합비계산기 &amp; 전성분해체기 &amp; 가이드처방 코스메틱 노트">
-  <meta property="og:description" content="화장품 연구원을 위한 원료 가이드 처방 레퍼런스 및 배합비 자동 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC) 코스메틱 노트">
+  <meta property="og:title" content="속속노트 | 화장품 배합비 계산기 &amp; 전성분 해체기 &amp; 가이드 처방">
+  <meta property="og:description" content="화장품 연구원과 제형 개발자를 위한 코스메틱 연구노트. 500개 이상의 글로벌 원료사 공식 가이드 처방, 100% 정밀 배합비 계산기, 1% 전성분 해체기">
   <meta property="og:url" content="https://thesocsoc.com">
   <meta property="og:image" content="https://thesocsoc.com/og-image.png">
   <meta property="og:image:width" content="1200">
@@ -46,8 +47,8 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="속속(SOCSOC)노트 | 화장품 배합비계산기 &amp; 전성분해체기 &amp; 가이드처방 코스메틱 노트">
-  <meta name="twitter:description" content="화장품 연구원을 위한 원료 가이드 처방 레퍼런스 및 배합비 자동 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC) 코스메틱 노트">
+  <meta name="twitter:title" content="속속노트 | 화장품 배합비 계산기 &amp; 전성분 해체기 &amp; 가이드 처방">
+  <meta name="twitter:description" content="화장품 연구원과 제형 개발자를 위한 코스메틱 연구노트. 500개 이상의 글로벌 원료사 공식 가이드 처방, 100% 정밀 배합비 계산기, 1% 전성분 해체기">
   <meta name="twitter:image" content="https://thesocsoc.com/og-image.png">
 
   <!-- GEO (Generative Engine Optimization) Schema.org Structured Data for AI Agents -->
@@ -59,10 +60,24 @@
         "@type": "WebSite",
         "@id": "https://thesocsoc.com/#website",
         "url": "https://thesocsoc.com/",
-        "name": "속속(SOCSOC)노트 | 화장품 배합비계산기 & 전성분해체기 & 가이드처방 코스메틱 노트",
+        "name": "속속노트 | 화장품 배합비 계산기 & 전성분 해체기 & 가이드 처방",
         "alternateName": ["속속", "SOCSOC", "속속 코스메틱", "thesocsoc", "화장품 배합비 계산기 속속", "화장품 전성분 해체기"],
         "description": "화장품 연구원과 제형 개발자를 위한 500여 개 원료사 공식 가이드 처방 도서관 및 실시간 100% 정밀 배합비 계산기, 화장품 전성분 해체기 플랫폼 속속(SOCSOC)노트",
         "inLanguage": "ko-KR"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://thesocsoc.com/#analyzer",
+        "name": "속속 화장품 전성분 해체 분석기 (Reverse-Engineering Engine)",
+        "url": "https://thesocsoc.com/?mode=analyzer",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "All",
+        "description": "시판 화장품의 전성분 텍스트를 분석하여 1% 기준 절취선을 자동 감지하고, 예상 배합 비율(%)을 역공학 추정 시뮬레이션하여 계산기 연동 및 엑셀 다운로드를 제공하는 연구용 웹 도구",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "KRW"
+        }
       },
       {
         "@type": "SoftwareApplication",
@@ -90,6 +105,14 @@
         "@type": "FAQPage",
         "@id": "https://thesocsoc.com/#faq",
         "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "화장품 전성분으로 배합 비율(함량)을 역공학 추정 분석할 수 있나요?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "네, 속속(https://thesocsoc.com/?mode=analyzer)의 전성분 해체기 도구를 통해 전성분 텍스트를 입력하면 대한민국 화장품법 1% 이하 성분 규정(자유 표기) 절취선을 자동 감지하고, 성분별 역할 태깅 및 예상 배합 비율(%)을 실시간으로 역공학 시뮬레이션하여 엑셀 다운로드 및 계산기 전송을 무료로 지원합니다."
+            }
+          },
           {
             "@type": "Question",
             "name": "화장품 배합비 계산기는 어디서 무료로 사용할 수 있나요?",
@@ -125,7 +148,6 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
-  <script src="recipes_data.js"></script>
   <style>
     * {
       font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
@@ -1048,15 +1070,15 @@
 
     <!-- Center Navigation Tabs -->
     <nav class="flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80 shadow-inner">
-      <button id="navBtnExplorer" onclick="setAppMode('explorer')" class="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition">
+      <a href="/?mode=explorer" id="navBtnExplorer" onclick="event.preventDefault(); setAppMode('explorer')" class="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition cursor-pointer">
         가이드 처방 도서관
-      </button>
-      <button id="navBtnCalculator" onclick="setAppMode('calculator')" class="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition">
+      </a>
+      <a href="/?mode=calculator" id="navBtnCalculator" onclick="event.preventDefault(); setAppMode('calculator')" class="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition cursor-pointer">
         제형 개발 계산기 (연구원 워크벤치)
-      </button>
-      <button id="navBtnAnalyzer" onclick="setAppMode('analyzer')" class="flex items-center gap-2 px-4 py-2 text-sm font-black rounded-lg bg-[#0f2137] text-white shadow-sm transition">
+      </a>
+      <a href="/?mode=analyzer" id="navBtnAnalyzer" onclick="event.preventDefault(); setAppMode('analyzer')" class="flex items-center gap-2 px-4 py-2 text-sm font-black rounded-lg bg-[#0f2137] text-white shadow-sm transition cursor-pointer">
         화장품 전성분 해체기
-      </button>
+      </a>
     </nav>
 
     <!-- Top Right Actions -->
@@ -2752,6 +2774,7 @@
     </div>
   </div>
 
+  <script src="recipes_data.js"></script>
   <script>
     const allRecipes = (window.SOCSOC_RECIPES && window.SOCSOC_RECIPES.length) ? window.SOCSOC_RECIPES : [];
 
@@ -3556,6 +3579,13 @@ function initAuth() {
         btnCalc.className = activeBtnClass;
         renderCalculatorTable();
         updateCalculationsOnly();
+      }
+
+      if (typeof window !== 'undefined' && window.history && typeof window.history.replaceState === 'function') {
+        const urlParam = mode === 'analyzer' ? window.location.pathname : (window.location.pathname + '?mode=' + mode);
+        try {
+          window.history.replaceState({ mode: mode }, '', urlParam);
+        } catch (_) {}
       }
     }
 
