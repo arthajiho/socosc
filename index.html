@@ -858,82 +858,53 @@
         break-inside: auto !important;
       }
 
-      /* Page 1: Form Information & Table */
+      /* Continuous Natural Flow: Table followed immediately by content without blank space */
       body.mode-exp .guide-print-page1 {
         display: block !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-        page-break-after: avoid !important;
-        break-after: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        page-break-after: auto !important;
+        break-after: auto !important;
+        margin-bottom: 0 !important;
       }
 
-      /* Page Break between Table and Manufacturing Procedure */
-      body.mode-exp .guide-print-page-break {
-        display: block !important;
-        page-break-after: always !important;
-        break-after: page !important;
+      /* Completely disable artificial page break & second header */
+      body.mode-exp .guide-print-page-break,
+      body.mode-exp.guide-print-2page .guide-print-page-break,
+      body.mode-exp.guide-print-1page .guide-print-page-break {
+        display: none !important;
         height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
-        clear: both !important;
       }
 
-      /* Page 2: Manufacturing Procedure, Specifications, and Disclaimer */
-      body.mode-exp .guide-print-page2 {
-        display: block !important;
-        padding-top: 2px !important;
-      }
-
-      /* In 2-page mode: force page 2 to start on a new page */
-      body.mode-exp.guide-print-2page .guide-print-page-break {
-        display: block !important;
-        page-break-after: always !important;
-        break-after: page !important;
-      }
-
-      body.mode-exp.guide-print-2page .guide-print-page2 {
-        page-break-before: always !important;
-        break-before: page !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-
-      body.mode-exp.guide-print-2page .guide-print-page2-header {
-        display: block !important;
-      }
-
-      /* In 1-page mode: content flows continuously on 1 page without extra break */
-      body.mode-exp.guide-print-1page .guide-print-page-break {
-        display: none !important;
-      }
-
-      body.mode-exp.guide-print-1page .guide-print-page2 {
-        page-break-before: auto !important;
-        break-before: auto !important;
-        padding-top: 4px !important;
-      }
-
+      body.mode-exp .guide-print-page2-header,
+      body.mode-exp.guide-print-2page .guide-print-page2-header,
       body.mode-exp.guide-print-1page .guide-print-page2-header {
         display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
-      body.mode-exp .guide-print-page2-header {
+      /* Content (Manufacturing Procedure & Specs) flows naturally right below Table */
+      body.mode-exp .guide-print-page2,
+      body.mode-exp.guide-print-2page .guide-print-page2,
+      body.mode-exp.guide-print-1page .guide-print-page2 {
         display: block !important;
-        text-align: center !important;
-        padding-bottom: 3px !important;
-        margin-bottom: 6px !important;
-        border-bottom: 1.5px solid #0f172a !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-before: auto !important;
+        break-before: auto !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        padding-top: 0 !important;
+        margin-top: 4px !important;
       }
 
-      body.mode-exp .guide-print-page2-subtitle {
-        font-size: 10px !important;
-        font-weight: 700 !important;
-        color: #334155 !important;
-        line-height: 1.25 !important;
-        margin-top: 1px !important;
+      body.mode-exp .guide-print-page2-body {
+        display: block !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
       }
 
       /* Body Text & Table Styling in Print - Easy to read comfortable sizes */
@@ -967,11 +938,14 @@
         box-shadow: none !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 3px !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
       }
 
       body.mode-exp .original-content-body table tr {
+        height: auto !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
         height: auto !important;
         page-break-inside: avoid !important;
       }
@@ -3718,16 +3692,8 @@ function initAuth() {
         triggerAnalyzerPrint();
       } else {
         document.body.classList.add('mode-exp');
-        document.body.classList.remove('mode-calc', 'mode-analyzer');
-        if (currentRecipe) {
-          if (isShortGuideRecipe(currentRecipe)) {
-            document.body.classList.add('guide-print-1page');
-            document.body.classList.remove('guide-print-2page');
-          } else {
-            document.body.classList.add('guide-print-2page');
-            document.body.classList.remove('guide-print-1page');
-          }
-        }
+        document.body.classList.remove('mode-calc', 'mode-analyzer', 'guide-print-2page');
+        document.body.classList.add('guide-print-1page');
         document.querySelectorAll('input').forEach(inp => {
           inp.setAttribute('value', inp.value);
         });
@@ -3762,16 +3728,8 @@ function initAuth() {
         renderAnalyzerPrintReport();
       } else {
         document.body.classList.add('mode-exp');
-        document.body.classList.remove('mode-calc', 'mode-analyzer');
-        if (currentRecipe) {
-          if (isShortGuideRecipe(currentRecipe)) {
-            document.body.classList.add('guide-print-1page');
-            document.body.classList.remove('guide-print-2page');
-          } else {
-            document.body.classList.add('guide-print-2page');
-            document.body.classList.remove('guide-print-1page');
-          }
-        }
+        document.body.classList.remove('mode-calc', 'mode-analyzer', 'guide-print-2page');
+        document.body.classList.add('guide-print-1page');
       }
       document.querySelectorAll('input').forEach(inp => {
         inp.setAttribute('value', inp.value);
@@ -3882,36 +3840,17 @@ function initAuth() {
           let page2Html = cleanedHtml.substring(tableEndIdx + 8);
           page2Html = page2Html.replace(/^(\s*<br\s*\/?>)+/gi, '');
 
-          if (isShort) {
-            // [1페이지 인쇄 모드]: 내용이 적을 때는 강제 페이지 넘김 없이 1페이지에 자연스럽게 연속 출력
-            cleanedHtml = `
-              <div class="guide-print-page1">
-                ${page1Html}
+          // [연속 인쇄 모드]: 공백 없이 표 바로 아래부터 제조공정/내용이 자연스럽게 이어지며, 길면 2페이지로 자연 넘김
+          cleanedHtml = `
+            <div class="guide-print-page1">
+              ${page1Html}
+            </div>
+            <div class="guide-print-page2">
+              <div class="guide-print-page2-body">
+                ${page2Html}
               </div>
-              <div class="guide-print-page2">
-                <div class="guide-print-page2-body">
-                  ${page2Html}
-                </div>
-              </div>
-            `;
-          } else {
-            // [2페이지 인쇄 모드]: 내용이 많을 때는 테이블은 1페이지, 제조공정/규격/면책고지는 2페이지로 분할
-            cleanedHtml = `
-              <div class="guide-print-page1">
-                ${page1Html}
-              </div>
-              <div class="guide-print-page-break print-only"></div>
-              <div class="guide-print-page2">
-                <div class="guide-print-page2-header print-only">
-                  <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 &amp; 제형 개발 워크벤치</div>
-                  <div class="guide-print-page2-subtitle">【제조공정 · 규격 및 특성 · 면책고지】 - ${escapeHtml(recipe.title || '')} (${escapeHtml(meta.formulaCode || '')})</div>
-                </div>
-                <div class="guide-print-page2-body">
-                  ${page2Html}
-                </div>
-              </div>
-            `;
-          }
+            </div>
+          `;
         }
         container.innerHTML = cleanedHtml;
       } else {
@@ -3954,34 +3893,17 @@ function initAuth() {
           p2Html += `<div class="mt-4"><h3 class="font-bold text-sm text-slate-900 mb-2">제조공정</h3><p class="whitespace-pre-line bg-slate-50 p-3 rounded border border-slate-100 text-xs">${recipe.procedure}</p></div>`;
         }
 
-        if (isShort) {
-          container.innerHTML = `
-            <div class="guide-print-page1">
-              ${p1Html}
+        // [연속 인쇄 모드]: 공백 없이 표 바로 아래부터 제조공정/내용이 자연스럽게 이어지며, 길면 2페이지로 자연 넘김
+        container.innerHTML = `
+          <div class="guide-print-page1">
+            ${p1Html}
+          </div>
+          <div class="guide-print-page2">
+            <div class="guide-print-page2-body">
+              ${p2Html}
             </div>
-            <div class="guide-print-page2">
-              <div class="guide-print-page2-body">
-                ${p2Html}
-              </div>
-            </div>
-          `;
-        } else {
-          container.innerHTML = `
-            <div class="guide-print-page1">
-              ${p1Html}
-            </div>
-            <div class="guide-print-page-break print-only"></div>
-            <div class="guide-print-page2">
-              <div class="guide-print-page2-header print-only">
-                <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 &amp; 제형 개발 워크벤치</div>
-                <div class="guide-print-page2-subtitle">【제조공정 · 규격 및 특성 · 면책고지】 - ${escapeHtml(recipe.title || '')} (${escapeHtml(meta.formulaCode || '')})</div>
-              </div>
-              <div class="guide-print-page2-body">
-                ${p2Html}
-              </div>
-            </div>
-          `;
-        }
+          </div>
+        `;
       }
 
       // 수정된 처방인지 여부에 따라 상단 배지 갱신
@@ -7894,7 +7816,7 @@ function initAuth() {
       } else {
         const origContainer = document.getElementById('originalContentContainer');
         contentHtmlToEdit = origContainer ? origContainer.innerHTML : '';
-        contentHtmlToEdit = contentHtmlToEdit.replace(/<div class="guide-print-page1">\s*([\s\S]*?)\s*<\/div>\s*<div class="guide-print-page-break[^"]*"><\/div>\s*<div class="guide-print-page2">\s*<div class="guide-print-page2-header[^"]*">[\s\S]*?<\/div>\s*<div class="guide-print-page2-body">\s*([\s\S]*?)\s*<\/div>\s*<\/div>/gi, '$1$2');
+        contentHtmlToEdit = contentHtmlToEdit.replace(/<div class="guide-print-page1">\s*([\s\S]*?)\s*<\/div>(?:\s*<div class="guide-print-page-break[^"]*"><\/div>)?\s*<div class="guide-print-page2">\s*(?:<div class="guide-print-page2-header[^"]*">[\s\S]*?<\/div>\s*)?<div class="guide-print-page2-body">\s*([\s\S]*?)\s*<\/div>\s*<\/div>/gi, '$1$2');
       }
 
       // Clean print buttons if any
