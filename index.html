@@ -5807,15 +5807,21 @@ function initAuth() {
           throw new Error('슈퍼베이스 클라우드 연결에 실패했습니다. 인터넷 연결을 확인해주세요.');
         }
 
-        // 1. 슈퍼베이스 profiles 테이블에서 가입 아이디(username) 또는 이메일로 1회 정밀 조회
-        const cleanInput = inputUsername.trim();
-        let profQuery = sbClient.from('profiles').select('*');
-        if (cleanInput.includes('@')) {
-          profQuery = profQuery.ilike('email', `%${cleanInput}%`);
-        } else {
-          profQuery = profQuery.or(`username.ilike.${cleanInput},email.ilike.%${cleanInput}%`);
+        // 1. 오직 슈퍼베이스 profiles 테이블에서 가입 아이디(username)로 정확히 조회 (이메일 로그인 지원 안 함, 오직 아이디만 허용)
+        const cleanUsername = inputUsername.trim();
+        if (cleanUsername.includes('@')) {
+          if (errMsg) {
+            errMsg.textContent = '이메일 로그인은 지원하지 않습니다. 가입하신 아이디를 입력해주세요.';
+            errMsg.classList.remove('hidden');
+          }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnText; }
+          return;
         }
-        const { data: profs, error: profErr } = await profQuery;
+
+        const { data: profs, error: profErr } = await sbClient
+          .from('profiles')
+          .select('*')
+          .ilike('username', cleanUsername);
 
         if (profErr) {
           console.error('Supabase profile lookup error:', profErr);
@@ -5828,7 +5834,7 @@ function initAuth() {
 
         if (!profile || !profile.id) {
           if (errMsg) {
-            errMsg.textContent = '가입되지 않은 아이디 또는 이메일입니다. 확인 후 다시 입력해주세요.';
+            errMsg.textContent = '가입되지 않은 아이디입니다. 아이디를 확인해주세요.';
             errMsg.classList.remove('hidden');
           }
           if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnText; }
@@ -5854,9 +5860,6 @@ function initAuth() {
         const virtualEmail2 = `${profile.username.toLowerCase()}@socsoc.kr`;
         if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail2)) {
           emailCandidates.push(virtualEmail2);
-        }
-        if (cleanInput.includes('@') && !emailCandidates.some(e => e.toLowerCase() === cleanInput.toLowerCase())) {
-          emailCandidates.push(cleanInput);
         }
 
         let authData = null;
@@ -6899,10 +6902,23 @@ function initAuth() {
             if (curSess?.session?.user) authUser = curSess.session.user;
           } catch (_) {}
 
-          // 현재 계정의 원본 인증 이메일(Anchor Auth Email) 식별
+          // 현재 계정의 원본 인증 이메일(Anchor Auth Email) 식별 (다중 정보 변경 시에도 영구 보존)
           const currentEmailRaw = (currentUser.email || '').trim();
           const currentEmailParts = currentEmailRaw.split('|').map(s => s.trim()).filter(Boolean);
-          const originalAuthEmail = activeAuthEmail || currentEmailParts[1] || currentEmailParts[0] || '';
+          let originalAuthEmail = activeAuthEmail || currentEmailParts[1] || currentEmailParts[0] || '';
+
+          // DB에 기존 보존되어 있던 anchor email이 있는지 추가 확인
+          try {
+            const { data: dbProf } = await sbClient
+              .from('profiles')
+              .select('email')
+              .eq('username', currentUser.username)
+              .maybeSingle();
+            if (dbProf && dbProf.email && dbProf.email.includes('|')) {
+              const anchor = dbProf.email.split('|')[1].trim();
+              if (anchor) originalAuthEmail = anchor;
+            }
+          } catch (_) {}
 
           const rawIdentities = [
             activeAuthEmail,
