@@ -5731,11 +5731,12 @@ function initAuth() {
         saveUsersDb();
 
         try {
-          localStorage.setItem('socsoc_pw_reset_' + targetUsername.toLowerCase(), newPw);
+          localStorage.removeItem('socsoc_pw_reset_' + targetUsername.toLowerCase());
+          localStorage.removeItem('socsoc_users_db');
         } catch (_) {}
 
         if (currentUser && currentUser.username?.toLowerCase() === targetUsername.toLowerCase()) {
-          currentUser.password = newPw;
+          delete currentUser.password;
         }
 
         showToast('비밀번호가 성공적으로 변경되었습니다! 변경된 비밀번호로 로그인해주세요.');
@@ -9511,11 +9512,14 @@ function initAuth() {
       if (hexIdx !== -1) {
         const hexItem = analyzerState.ingredients[hexIdx];
         const hexRule = findIngredientRule(hexItem.name);
+        const parsedHex = parseRecommendedRate(hexRule ? hexRule.recommended_rate : '');
         if (hexRule && hexRule.default_percent !== null && hexRule.default_percent !== undefined && !isNaN(parseFloat(hexRule.default_percent))) {
           targetHexVal = parseFloat(Number(hexRule.default_percent).toFixed(2));
-        } else if (hexRule && hexRule.recommended_rate) {
-          const parsedHex = parseRecommendedRate(hexRule.recommended_rate);
-          if (parsedHex && parsedHex.mid) targetHexVal = parsedHex.mid;
+        } else if (parsedHex && parsedHex.mid) {
+          targetHexVal = parsedHex.mid;
+        }
+        if (parsedHex) {
+          targetHexVal = Math.max(parsedHex.min, Math.min(parsedHex.max, targetHexVal));
         }
         const existingHexVal = parseFloat(hexItem.percentage);
         if (hexItem.userEditedPercentage && !isNaN(existingHexVal) && existingHexVal > 0) {
@@ -9568,7 +9572,7 @@ function initAuth() {
 
       boundary = Math.max(1, Math.min(count, boundary));
 
-      // 3. 1% 이하 미량 구간 분배 (boundary <= i < count) - 추천함량 범위 내 정밀 배합 및 수치 다양화 (사용자 직접 수정 성분 보존)
+      // 3. 1% 이하 미량 구간 분배 (boundary <= i < count) - 1.00% 상한선 및 추천함량 범위 엄격 제한
       let lowSum = 0;
       const lowCount = count - boundary;
       if (lowCount > 0) {
@@ -9583,28 +9587,30 @@ function initAuth() {
           const parsed = parseRecommendedRate(recStr);
 
           let val = 0.15;
-          if (matchedRule && matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent))) {
-            val = Math.min(1.00, parseFloat(matchedRule.default_percent));
-          } else if (parsed) {
+          if (parsed) {
             if (parsed.min === parsed.max) {
-              val = Math.min(1.00, parsed.min);
+              val = parsed.min;
             } else {
               const ratio = 0.20 + ((i % 5) * 0.15);
               val = parsed.min + (parsed.max - parsed.min) * ratio;
-              val = Math.max(parsed.min, Math.min(1.00, val));
             }
+            // 1% 이하 구간이므로 최대 1.00% 상한선 준수
+            const upperLimit = Math.min(1.00, parsed.max);
+            val = Math.max(parsed.min, Math.min(upperLimit, val));
+          } else if (matchedRule && matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent))) {
+            val = Math.min(1.00, parseFloat(matchedRule.default_percent));
           } else {
             const naturalVariations = [0.10, 0.15, 0.20, 0.05, 0.08, 0.12];
             val = naturalVariations[i % naturalVariations.length];
           }
 
-          val = Math.min(1.00, Math.min(targetHexVal, val));
+          val = Math.min(1.00, val);
           val = parseFloat(val.toFixed(2));
           item.percentage = val;
           lowSum += val;
         }
 
-        // 1% 이하 성분들의 합이 과도하게 커지지 않도록 8% 이내로 안정화 스케일링 (사용자 수정 성분 보호)
+        // 1% 이하 성분들의 합이 과도하게 커지지 않도록 8% 이내로 안정화
         if (lowSum > 12.0 && lowCount > 0) {
           const targetLowTotal = 8.0;
           const scale = targetLowTotal / lowSum;
@@ -9617,8 +9623,12 @@ function initAuth() {
             }
             const parsed = parseRecommendedRate(findIngredientRule(item.name)?.recommended_rate);
             let scaledVal = parseFloat((item.percentage * scale).toFixed(2));
-            const minLimit = parsed ? Math.min(scaledVal, parsed.min) : 0.01;
-            scaledVal = Math.max(minLimit, Math.min(1.00, scaledVal));
+            if (parsed) {
+              const upper = Math.min(1.00, parsed.max);
+              scaledVal = Math.max(parsed.min, Math.min(upper, scaledVal));
+            } else {
+              scaledVal = Math.max(0.01, Math.min(1.00, scaledVal));
+            }
             item.percentage = scaledVal;
             lowSum += scaledVal;
           }
@@ -9627,8 +9637,6 @@ function initAuth() {
       lowSum = parseFloat(lowSum.toFixed(2));
 
       // 4. 1% 초과 고함량 구간 분배 (0 <= i < boundary)
-      // 화장품법상 전성분은 반드시 함량 비율대로 엄격한 내림차순: C0 > C1 > C2 > ... > C_{boundary-1} >= 1.00%
-      // 추천함량 비율 이내에서 동일한 수치 없이 차등 적용 ("다 똑같게 하지말고")
       const highCount = boundary;
       const highPool = parseFloat((100.00 - lowSum).toFixed(2));
 
@@ -9656,120 +9664,232 @@ function initAuth() {
           let candidate = (parsed && parsed.mid) ? parsed.mid : (prevVal * 0.90);
           if (parsed) {
             candidate = Math.max(parsed.min, Math.min(parsed.max, candidate));
+          } else {
+            candidate = Math.max(minPossible, Math.min(maxPossible, candidate));
           }
-          candidate = Math.max(minPossible, Math.min(maxPossible, candidate));
+
           candidate = parseFloat(candidate.toFixed(2));
-          if (candidate >= prevVal) candidate = parseFloat((prevVal - 0.05).toFixed(2));
-          if (candidate < 1.00) candidate = 1.00;
+          if (candidate >= prevVal) {
+            let nextCandidate = parseFloat((prevVal - 0.05).toFixed(2));
+            if (parsed && nextCandidate < parsed.min) {
+              candidate = parsed.min;
+            } else {
+              candidate = nextCandidate;
+            }
+          }
+          // 추천함량 범위 엄격 보장
+          if (parsed) {
+            candidate = Math.max(parsed.min, Math.min(parsed.max, candidate));
+          } else if (candidate < 1.00) {
+            candidate = 1.00;
+          }
           item.percentage = candidate;
           prevVal = candidate;
         }
 
         // 4-B. 헥산디올 이전 성분들 (1 <= i < hexIdx):
-        let curFloor = targetHexVal + 0.15;
-        let stepVals = [];
-        for (let i = hexIdx - 1; i >= 1; i--) {
-          const item = analyzerState.ingredients[i];
-          if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
-            stepVals.unshift(item.percentage);
-            curFloor = parseFloat((item.percentage + 0.20).toFixed(2));
-            continue;
-          }
-          const matchedRule = findIngredientRule(item.name);
-          const parsed = parseRecommendedRate(matchedRule ? matchedRule.recommended_rate : '');
+        // [사용자 지정 규칙] 2번째부터 차등은 계산하기 쉽게 초반부에는 0.5%씩 차등을 주고,
+        // 품목이 많으면(모두 0.5%로 하면 맞지 않으므로) 나머지는 자연스럽게 헥산디올까지 감쇄 조절
+        const countBeforeHex = hexIdx - 1;
 
-          let val = curFloor;
-          if (matchedRule && matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent))) {
-            const target = parseFloat(matchedRule.default_percent);
-            val = Math.max(curFloor, Math.min(12.0, target));
-          } else if (parsed) {
-            const target = Math.max(parsed.min, parsed.mid);
-            val = Math.max(curFloor, Math.min(12.0, target));
-          } else {
-            val = curFloor + 0.50;
+        if (countBeforeHex > 0) {
+          // (1) 2번째 성분 (인덱스 1) 시작 함량: 추천함량 중간값 (0.5% 단위로 계산하기 쉽게 정돈)
+          let startVal = 5.00;
+          const secondItem = analyzerState.ingredients[1];
+          const secondRule = findIngredientRule(secondItem.name);
+          const secondParsed = parseRecommendedRate(secondRule ? secondRule.recommended_rate : '');
+
+          if (secondItem.userEditedPercentage && typeof secondItem.percentage === 'number' && !isNaN(secondItem.percentage)) {
+            startVal = secondItem.percentage;
+          } else if (secondParsed && secondParsed.mid) {
+            let roundedMid = Math.round(secondParsed.mid * 2) / 2;
+            startVal = Math.max(secondParsed.min, Math.min(secondParsed.max, roundedMid));
+          } else if (secondRule && secondRule.default_percent !== null && secondRule.default_percent !== undefined && !isNaN(parseFloat(secondRule.default_percent))) {
+            startVal = parseFloat(secondRule.default_percent);
           }
-          val = parseFloat(val.toFixed(2));
-          stepVals.unshift(val);
-          curFloor = parseFloat((val + 0.20).toFixed(2));
+
+          if (secondParsed) {
+            startVal = Math.max(secondParsed.min, Math.min(secondParsed.max, startVal));
+          }
+          startVal = parseFloat(startVal.toFixed(2));
+
+          // (2) 초반부(0.5% 차등)와 나머지(자연스러운 감쇄) 구간 분할
+          let earlySteps = Math.min(countBeforeHex - 1, Math.max(1, Math.floor(countBeforeHex / 2)));
+          if (countBeforeHex <= 3) {
+            earlySteps = countBeforeHex - 1;
+          }
+
+          // (3) 1 <= i < hexIdx 각 성분별 함량 차등 순차 배정
+          let prevVal = startVal;
+          for (let i = 1; i < hexIdx; i++) {
+            const item = analyzerState.ingredients[i];
+            const itemRule = findIngredientRule(item.name);
+            const itemParsed = parseRecommendedRate(itemRule ? itemRule.recommended_rate : '');
+
+            if (i === 1) {
+              if (!item.userEditedPercentage) {
+                if (itemParsed) {
+                  startVal = Math.max(itemParsed.min, Math.min(itemParsed.max, startVal));
+                }
+                item.percentage = startVal;
+              }
+              prevVal = item.percentage;
+            } else {
+              if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
+                prevVal = item.percentage;
+              } else {
+                let curVal = prevVal;
+                const remSteps = hexIdx - i;
+                const minFloorForThis = targetHexVal + remSteps * 0.10;
+
+                // [초반부]: 계산하기 쉽게 정확히 0.50% 차등 적용
+                if (i <= 1 + earlySteps && (prevVal - 0.50) >= minFloorForThis) {
+                  curVal = parseFloat((prevVal - 0.50).toFixed(2));
+                } else {
+                  // [나머지]: 헥산디올(2.0%)까지 자연스럽고 부드럽게 감쇄
+                  const span = Math.max(0.10, prevVal - targetHexVal);
+                  let naturalStep = Math.max(0.10, Math.round((span / (remSteps + 1)) * 10) / 10);
+                  if (naturalStep >= 0.50) naturalStep = 0.30;
+                  curVal = parseFloat((prevVal - naturalStep).toFixed(2));
+                }
+
+                // 무조건 추천함량 범위 내 엄격 제한
+                if (itemParsed) {
+                  curVal = Math.max(itemParsed.min, Math.min(itemParsed.max, curVal));
+                }
+
+                if (curVal >= prevVal) {
+                  let cand = parseFloat((prevVal - 0.10).toFixed(2));
+                  if (itemParsed && cand < itemParsed.min) {
+                    curVal = itemParsed.min;
+                  } else {
+                    curVal = cand;
+                  }
+                }
+                item.percentage = curVal;
+                prevVal = curVal;
+              }
+            }
+          }
         }
 
-        for (let i = 1; i < hexIdx; i++) {
-          if (!analyzerState.ingredients[i].userEditedPercentage) {
-            analyzerState.ingredients[i].percentage = stepVals[i - 1];
-          }
-        }
-
-        // 4-C. 1번째 성분(정제수 등 주요 베이스 용제)이 100% 잔량 전체 흡수
+        // 4-C. 1번째 성분(정제수 등 주요 베이스 용제) 잔량 흡수
         if (!analyzerState.ingredients[0].userEditedPercentage) {
+          const firstRule = findIngredientRule(analyzerState.ingredients[0].name);
+          const firstParsed = parseRecommendedRate(firstRule ? firstRule.recommended_rate : '');
           let sumOther = 0;
           for (let i = 1; i < count; i++) {
             sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
           }
-          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
 
-          // C0 > C1 보장 (베이스 용제가 항상 최대 함량 유지)
-          if (c0 <= analyzerState.ingredients[1].percentage) {
-            const needC0 = analyzerState.ingredients[1].percentage + 15.0;
-            const targetSumOther = 100.00 - needC0;
-            const scale = targetSumOther / sumOther;
-            for (let i = 1; i < boundary; i++) {
-              if (i === hexIdx || analyzerState.ingredients[i].userEditedPercentage) continue;
-              analyzerState.ingredients[i].percentage = Math.max(1.00, parseFloat((analyzerState.ingredients[i].percentage * scale).toFixed(2)));
-            }
-            analyzerState.ingredients[hexIdx].percentage = targetHexVal;
-            // 엄격한 내림차순(C1 > C2 > ...) 재검증 및 중복 방지
-            for (let i = 1; i < boundary; i++) {
-              if (!analyzerState.ingredients[i].userEditedPercentage && analyzerState.ingredients[i].percentage >= analyzerState.ingredients[i - 1].percentage) {
-                analyzerState.ingredients[i].percentage = parseFloat((analyzerState.ingredients[i - 1].percentage - 0.10).toFixed(2));
-              }
-            }
-            sumOther = 0;
-            for (let i = 1; i < count; i++) {
-              sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
-            }
-            c0 = parseFloat((100.00 - sumOther).toFixed(2));
+          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
+          if (firstParsed) {
+            c0 = Math.max(firstParsed.min, Math.min(firstParsed.max, c0));
           }
           analyzerState.ingredients[0].percentage = c0;
         }
 
       } else {
-        // [케이스 2] 헥산디올이 없거나 고함량 구간 외에 있는 경우
-        let curFloor = 1.00;
-        let stepVals = [];
-        for (let i = boundary - 1; i >= 1; i--) {
-          const item = analyzerState.ingredients[i];
-          if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
-            stepVals.unshift(item.percentage);
-            curFloor = parseFloat((item.percentage + 0.20).toFixed(2));
-            continue;
-          }
-          const matchedRule = findIngredientRule(item.name);
-          const parsed = parseRecommendedRate(matchedRule ? matchedRule.recommended_rate : '');
+        // [케이스 2] 헥산디올이 없거나 고함량 구간 외에 있는 경우 (1 <= i < boundary)
+        const countBeforeBoundary = boundary - 1;
+        if (countBeforeBoundary > 0) {
+          let startVal = 5.00;
+          const secondItem = analyzerState.ingredients[1];
+          const secondRule = findIngredientRule(secondItem.name);
+          const secondParsed = parseRecommendedRate(secondRule ? secondRule.recommended_rate : '');
 
-          let val = curFloor;
-          if (parsed) {
-            val = Math.max(curFloor, Math.min(10.0, parsed.mid));
-          } else {
-            val = curFloor + 0.50;
+          if (secondItem.userEditedPercentage && typeof secondItem.percentage === 'number' && !isNaN(secondItem.percentage)) {
+            startVal = secondItem.percentage;
+          } else if (secondParsed && secondParsed.mid) {
+            let roundedMid = Math.round(secondParsed.mid * 2) / 2;
+            startVal = Math.max(secondParsed.min, Math.min(secondParsed.max, roundedMid));
+          } else if (secondRule && secondRule.default_percent !== null && secondRule.default_percent !== undefined && !isNaN(parseFloat(secondRule.default_percent))) {
+            startVal = parseFloat(secondRule.default_percent);
           }
-          val = parseFloat(val.toFixed(2));
-          stepVals.unshift(val);
-          curFloor = parseFloat((val + 0.20).toFixed(2));
-        }
-        for (let i = 1; i < boundary; i++) {
-          if (!analyzerState.ingredients[i].userEditedPercentage) {
-            analyzerState.ingredients[i].percentage = stepVals[i - 1];
+
+          if (secondParsed) {
+            startVal = Math.max(secondParsed.min, Math.min(secondParsed.max, startVal));
+          }
+          startVal = parseFloat(startVal.toFixed(2));
+
+          let earlySteps = Math.min(countBeforeBoundary - 1, Math.max(1, Math.floor(countBeforeBoundary / 2)));
+          if (countBeforeBoundary <= 3) {
+            earlySteps = countBeforeBoundary - 1;
+          }
+
+          let prevVal = startVal;
+          for (let i = 1; i < boundary; i++) {
+            const item = analyzerState.ingredients[i];
+            const itemRule = findIngredientRule(item.name);
+            const itemParsed = parseRecommendedRate(itemRule ? itemRule.recommended_rate : '');
+
+            if (i === 1) {
+              if (!item.userEditedPercentage) {
+                if (itemParsed) startVal = Math.max(itemParsed.min, Math.min(itemParsed.max, startVal));
+                item.percentage = startVal;
+              }
+              prevVal = item.percentage;
+            } else {
+              if (item.userEditedPercentage && typeof item.percentage === 'number' && !isNaN(item.percentage)) {
+                prevVal = item.percentage;
+              } else {
+                let curVal = prevVal;
+                const remSteps = boundary - i;
+                const minFloorForThis = 1.00 + remSteps * 0.05;
+
+                // [초반부]: 계산하기 쉽게 정확히 0.50% 차등 적용
+                if (i <= 1 + earlySteps && (prevVal - 0.50) >= minFloorForThis) {
+                  curVal = parseFloat((prevVal - 0.50).toFixed(2));
+                } else {
+                  // [나머지]: 1.00%까지 자연스럽고 부드럽게 감쇄
+                  const span = Math.max(0.10, prevVal - 1.00);
+                  let naturalStep = Math.max(0.10, Math.round((span / (remSteps + 1)) * 10) / 10);
+                  if (naturalStep >= 0.50) naturalStep = 0.30;
+                  curVal = parseFloat((prevVal - naturalStep).toFixed(2));
+                }
+
+                if (itemParsed) {
+                  curVal = Math.max(itemParsed.min, Math.min(itemParsed.max, curVal));
+                }
+
+                if (curVal >= prevVal) {
+                  let cand = parseFloat((prevVal - 0.10).toFixed(2));
+                  if (itemParsed && cand < itemParsed.min) curVal = itemParsed.min;
+                  else curVal = cand;
+                }
+                item.percentage = curVal;
+                prevVal = curVal;
+              }
+            }
           }
         }
         if (!analyzerState.ingredients[0].userEditedPercentage) {
+          const firstRule = findIngredientRule(analyzerState.ingredients[0].name);
+          const firstParsed = parseRecommendedRate(firstRule ? firstRule.recommended_rate : '');
           let sumOther = 0;
           for (let i = 1; i < count; i++) {
             sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
           }
           let c0 = parseFloat((100.00 - sumOther).toFixed(2));
+          if (firstParsed) {
+            c0 = Math.max(firstParsed.min, Math.min(firstParsed.max, c0));
+          }
           analyzerState.ingredients[0].percentage = c0;
         }
       }
+
+      // 5. 최종 전수 검증: 슈퍼베이스 추천함량이 존재하는 모든 성분은 "무조건 추천함량 이내 범위([min, max])"에 100% 엄격 고정
+      analyzerState.ingredients.forEach((it, idx) => {
+        if (it.userEditedPercentage) return;
+        const rule = findIngredientRule(it.name);
+        const parsed = parseRecommendedRate(rule ? rule.recommended_rate : '');
+        if (parsed && typeof it.percentage === 'number' && !isNaN(it.percentage)) {
+          let p = it.percentage;
+          if (p < parsed.min) p = parsed.min;
+          if (p > parsed.max) p = parsed.max;
+          it.percentage = parseFloat(p.toFixed(2));
+        }
+      });
 
       // 최종 100.00% 정밀 보정
       if (!analyzerState.ingredients[0].userEditedPercentage) {
@@ -9779,7 +9899,13 @@ function initAuth() {
         });
         totalCurrent = parseFloat(totalCurrent.toFixed(2));
         const diff = parseFloat((100.00 - totalCurrent).toFixed(2));
-        analyzerState.ingredients[0].percentage = parseFloat(((parseFloat(analyzerState.ingredients[0].percentage) || 0) + diff).toFixed(2));
+        let c0 = parseFloat(((parseFloat(analyzerState.ingredients[0].percentage) || 0) + diff).toFixed(2));
+        const firstRule = findIngredientRule(analyzerState.ingredients[0].name);
+        const firstParsed = parseRecommendedRate(firstRule ? firstRule.recommended_rate : '');
+        if (firstParsed) {
+          c0 = Math.max(firstParsed.min, Math.min(firstParsed.max, c0));
+        }
+        analyzerState.ingredients[0].percentage = parseFloat(c0.toFixed(2));
       }
 
       analyzerState.isDecomposed = true;
