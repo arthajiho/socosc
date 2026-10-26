@@ -3220,7 +3220,7 @@
             username: uname,
             name: profile?.name || user.user_metadata?.name || '',
             nickname: profile?.nickname || user.user_metadata?.nickname || profile?.username || '연구원',
-            email: user.email,
+            email: (profile?.email || user.email || '').split('|')[0].trim(),
             phone: profile?.phone || '',
             companyType: profile?.company_type || '제조사',
             role: finalRole,
@@ -5807,11 +5807,15 @@ function initAuth() {
           throw new Error('슈퍼베이스 클라우드 연결에 실패했습니다. 인터넷 연결을 확인해주세요.');
         }
 
-        // 1. 오직 슈퍼베이스 profiles 테이블에서 가입 아이디(username)로 정확히 1회 조회
-        const { data: profs, error: profErr } = await sbClient
-          .from('profiles')
-          .select('*')
-          .ilike('username', inputUsername);
+        // 1. 슈퍼베이스 profiles 테이블에서 가입 아이디(username) 또는 이메일로 1회 정밀 조회
+        const cleanInput = inputUsername.trim();
+        let profQuery = sbClient.from('profiles').select('*');
+        if (cleanInput.includes('@')) {
+          profQuery = profQuery.ilike('email', `%${cleanInput}%`);
+        } else {
+          profQuery = profQuery.or(`username.ilike.${cleanInput},email.ilike.%${cleanInput}%`);
+        }
+        const { data: profs, error: profErr } = await profQuery;
 
         if (profErr) {
           console.error('Supabase profile lookup error:', profErr);
@@ -5824,16 +5828,25 @@ function initAuth() {
 
         if (!profile || !profile.id) {
           if (errMsg) {
-            errMsg.textContent = '가입되지 않은 아이디입니다. 아이디를 확인해주세요.';
+            errMsg.textContent = '가입되지 않은 아이디 또는 이메일입니다. 확인 후 다시 입력해주세요.';
             errMsg.classList.remove('hidden');
           }
           if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnText; }
           return;
         }
 
-        // 2. 슈퍼베이스 Auth 정식 로그인 (등록된 이메일 또는 가상 도메인 계정만 정밀 시도하여 속도제한 방지)
+        // 2. 슈퍼베이스 Auth 정식 로그인 (연락용 이메일, 원본 가입 Auth 이메일, 가상 도메인 계정 모두 정밀 후보군 등록)
         const emailCandidates = [];
-        if (profile.email) emailCandidates.push(profile.email.trim());
+        const rawProfileEmail = (profile.email || '').trim();
+        if (rawProfileEmail) {
+          // 마이페이지에서 이메일을 변경한 경우 `${newEmail}|${authEmail}` 형태로 양방향 보존되어 있으므로 분리 추출
+          const emailParts = rawProfileEmail.split('|').map(s => s.trim()).filter(Boolean);
+          emailParts.forEach(em => {
+            if (!emailCandidates.some(c => c.toLowerCase() === em.toLowerCase())) {
+              emailCandidates.push(em);
+            }
+          });
+        }
         const virtualEmail1 = `${profile.username.toLowerCase()}@thesocsoc.auth`;
         if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail1)) {
           emailCandidates.push(virtualEmail1);
@@ -5841,6 +5854,9 @@ function initAuth() {
         const virtualEmail2 = `${profile.username.toLowerCase()}@socsoc.kr`;
         if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail2)) {
           emailCandidates.push(virtualEmail2);
+        }
+        if (cleanInput.includes('@') && !emailCandidates.some(e => e.toLowerCase() === cleanInput.toLowerCase())) {
+          emailCandidates.push(cleanInput);
         }
 
         let authData = null;
@@ -5903,7 +5919,7 @@ function initAuth() {
           username: profile.username,
           name: profile.name || '',
           nickname: profile.nickname || profile.username || '연구원',
-          email: profile.email || user.email,
+          email: (profile.email || user.email || '').split('|')[0].trim(),
           phone: profile.phone || '',
           companyType: profile.company_type || '제조사',
           role: finalRole,
@@ -6142,7 +6158,10 @@ function initAuth() {
           }
 
           // B. 이메일 중복 검사 (오직 현재 활성 슈퍼베이스 계정 기준)
-          const dupEmail = activeProfiles.find(p => (p.email || '').toLowerCase() === normalizedEmail);
+          const dupEmail = activeProfiles.find(p => {
+            const pEmails = (p.email || '').toLowerCase().split('|').map(s => s.trim());
+            return pEmails.includes(normalizedEmail);
+          });
           if (dupEmail) {
             showSignupError('이미 등록된 이메일 주소입니다. 다른 이메일을 입력해주세요.', emailEl);
             return;
@@ -6467,7 +6486,7 @@ function initAuth() {
 
       document.getElementById('myPageNameInput').value = currentUser.name || '';
       document.getElementById('myPageNicknameInput').value = currentUser.nickname || currentUser.name || '';
-      document.getElementById('myPageEmailInput').value = currentUser.email || '';
+      document.getElementById('myPageEmailInput').value = (currentUser.email || '').split('|')[0].trim();
       document.getElementById('myPagePhoneInput').value = currentUser.phone || '';
 
       const typeRadios = document.querySelectorAll('input[name="myPageCompanyType"]');
@@ -6770,7 +6789,10 @@ function initAuth() {
               return !isSelf && !isWithdrawn;
             });
 
-            const dupEmail = others.find(p => (p.email || '').toLowerCase() === normEmail);
+            const dupEmail = others.find(p => {
+              const pEmails = (p.email || '').toLowerCase().split('|').map(s => s.trim());
+              return pEmails.includes(normEmail);
+            });
             if (dupEmail) {
               errMsg.textContent = '이미 다른 회원이 사용 중인 이메일 주소입니다.';
               errMsg.classList.remove('hidden');
@@ -6874,11 +6896,17 @@ function initAuth() {
           try {
             const { data: curSess } = await sbClient.auth.getSession();
             activeAuthEmail = curSess?.session?.user?.email;
+            if (curSess?.session?.user) authUser = curSess.session.user;
           } catch (_) {}
+
+          // 현재 계정의 원본 인증 이메일(Anchor Auth Email) 식별
+          const currentEmailRaw = (currentUser.email || '').trim();
+          const currentEmailParts = currentEmailRaw.split('|').map(s => s.trim()).filter(Boolean);
+          const originalAuthEmail = activeAuthEmail || currentEmailParts[1] || currentEmailParts[0] || '';
 
           const rawIdentities = [
             activeAuthEmail,
-            currentUser.email,
+            ...currentEmailParts,
             email,
             `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`,
             `${(currentUser.username || '').toLowerCase()}@socsoc.kr`,
@@ -6988,7 +7016,21 @@ function initAuth() {
             }
           }
 
-          // (C) 메타데이터 갱신
+          // (C) 이메일 변경 처리: 새 이메일과 원본 인증 이메일을 양방향 보존하여 변경 후에도 어디서든 로그인 보장
+          let finalProfileEmail = email.trim();
+          const cleanNewEmail = email.trim().toLowerCase();
+          const cleanAuthEmail = (originalAuthEmail || '').trim().toLowerCase();
+
+          if (cleanAuthEmail && cleanNewEmail !== cleanAuthEmail && !cleanNewEmail.endsWith('.auth') && !cleanNewEmail.endsWith('.local')) {
+            finalProfileEmail = `${email.trim()}|${originalAuthEmail.trim()}`;
+            try {
+              await sbClient.auth.updateUser({ email: email.trim() });
+            } catch (_) {}
+          } else if (cleanAuthEmail && cleanNewEmail === cleanAuthEmail) {
+            finalProfileEmail = email.trim();
+          }
+
+          // (D) 메타데이터 갱신
           if (authUser) {
             try {
               await sbClient.auth.updateUser({
@@ -6997,17 +7039,18 @@ function initAuth() {
                   name: name || currentUser.name,
                   nickname: nickname,
                   phone: formattedPhone,
-                  company_type: companyType
+                  company_type: companyType,
+                  contact_email: email.trim()
                 }
               });
             } catch (_) {}
           }
 
-          // (D) profiles 테이블에 직접 UPDATE / UPSERT (실시간 슈퍼베이스 클라우드 반영 및 엄격 검증)
+          // (E) profiles 테이블에 직접 UPDATE / UPSERT (실시간 슈퍼베이스 클라우드 반영 및 엄격 검증)
           const profileUpdateFields = {
             name: name || currentUser.name,
             nickname: nickname,
-            email: email,
+            email: finalProfileEmail,
             phone: formattedPhone,
             company_type: companyType,
             role: checkIsAdmin(currentUser.username) ? 'admin' : (currentUser.role || 'member'),
@@ -7074,7 +7117,7 @@ function initAuth() {
         // 2. 로컬 currentUser 정보 즉시 갱신 (비밀번호 평문은 저장하지 않음)
         currentUser.name = name || currentUser.name;
         currentUser.nickname = nickname;
-        currentUser.email = email;
+        currentUser.email = email.trim();
         currentUser.phone = formattedPhone;
         currentUser.companyType = companyType;
 
