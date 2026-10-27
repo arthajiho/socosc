@@ -1398,7 +1398,7 @@
             <table class="w-full text-left text-xs border-collapse">
               <thead>
                 <tr class="bg-neutral-100/70 text-neutral-600 font-bold border-b border-neutral-200/80">
-                  <th class="py-2 px-2 w-32 min-w-[115px] text-center whitespace-nowrap" title="Phase 아이콘을 마우스로 드래그하여 원하는 위치로 순서를 변경할 수 있습니다">Phase</th>
+                  <th class="py-2 px-2 w-32 min-w-[115px] text-center whitespace-nowrap" title="더블클릭하여 Phase 변경 (A, B, C...) · 드래그하여 순서 이동">Phase</th>
                   <th class="py-2 px-3 w-[22%] min-w-[130px]">원료</th>
                   <th class="py-2 px-3 min-w-[240px]">INCI</th>
                   <th class="py-2 px-2 w-24 text-right">배합비 (%)</th>
@@ -3621,6 +3621,7 @@ function initAuth() {
     });
 
     window.addEventListener('beforeprint', () => {
+      editingPhaseIndex = null;
       if (currentAppMode === 'calculator') {
         document.body.classList.add('mode-calc');
         document.body.classList.remove('mode-exp', 'mode-analyzer');
@@ -4102,6 +4103,73 @@ function initAuth() {
     }
 
     let draggedRowIndex = null;
+    let editingPhaseIndex = null;
+
+    function getPhaseLetter(phaseStr) {
+      if (!phaseStr) return '';
+      const s = String(phaseStr).trim();
+      const m1 = s.match(/Phase\s*([a-zA-Z0-9]+)/i);
+      if (m1) return m1[1].toUpperCase();
+      const m2 = s.match(/^([a-zA-Z0-9]+)\s*상$/i) || s.match(/^상\s*([a-zA-Z0-9]+)$/i);
+      if (m2) return m2[1].toUpperCase();
+      const m3 = s.match(/^([a-zA-Z0-9]+)$/);
+      if (m3) return m3[1].toUpperCase();
+      return '';
+    }
+
+    function normalizePhaseName(inputVal, fallbackVal = 'Phase A') {
+      if (!inputVal || !String(inputVal).trim()) return fallbackVal;
+      let str = String(inputVal).trim();
+      if (/^[a-zA-Z]$/.test(str)) return 'Phase ' + str.toUpperCase();
+      const m1 = str.match(/^phase\s*([a-zA-Z0-9]+)$/i);
+      if (m1) return 'Phase ' + m1[1].toUpperCase();
+      const m2 = str.match(/^([a-zA-Z])\s*상$/i) || str.match(/^상\s*([a-zA-Z])$/i);
+      if (m2) return 'Phase ' + m2[1].toUpperCase();
+      return str;
+    }
+
+    function openPhaseEditor(index) {
+      if (index < 0 || index >= activeFormula.length) return;
+      editingPhaseIndex = index;
+      renderCalculatorTable();
+    }
+
+    function cancelPhaseEdit() {
+      editingPhaseIndex = null;
+      renderCalculatorTable();
+    }
+
+    function setRowPhase(index, newPhase) {
+      if (index >= 0 && index < activeFormula.length) {
+        activeFormula[index].phase = normalizePhaseName(newPhase, activeFormula[index].phase);
+      }
+      editingPhaseIndex = null;
+      renderCalculatorTable();
+      updateCalculationsOnly();
+    }
+
+    function saveCustomPhase(index, rawVal) {
+      if (index >= 0 && index < activeFormula.length) {
+        activeFormula[index].phase = normalizePhaseName(rawVal, activeFormula[index].phase);
+      }
+      editingPhaseIndex = null;
+      renderCalculatorTable();
+      updateCalculationsOnly();
+    }
+
+    // Phase 에디터 외부 클릭 시 자동 저장 및 닫기
+    document.addEventListener('mousedown', (e) => {
+      if (editingPhaseIndex === null) return;
+      const editorBox = document.getElementById('phaseEditorBox_' + editingPhaseIndex);
+      if (editorBox && !editorBox.contains(e.target)) {
+        const input = document.getElementById('inlinePhaseInput_' + editingPhaseIndex);
+        if (input) {
+          saveCustomPhase(editingPhaseIndex, input.value);
+        } else {
+          cancelPhaseEdit();
+        }
+      }
+    });
 
     function renderCalculatorTable() {
       const tbody = document.getElementById('formulaBody');
@@ -4124,10 +4192,7 @@ function initAuth() {
       }
 
       // 처음 등장하는 Phase A의 인덱스 검색 (첫 번째 Phase A에만 base 표시)
-      const firstPhaseAIndex = activeFormula.findIndex(it => {
-        const p = (it.phase || '').trim();
-        return p === 'Phase A' || p.startsWith('Phase A') || p.includes('A');
-      });
+      const firstPhaseAIndex = activeFormula.findIndex(it => getPhaseLetter(it.phase) === 'A');
 
       activeFormula.forEach((item, index) => {
         const grams = ((item.percent * batch) / 100).toFixed(2);
@@ -4135,12 +4200,15 @@ function initAuth() {
         tr.className = item.isWater ? 'bg-slate-50/50 hover:bg-slate-50 transition' : 'hover:bg-neutral-50/80 transition';
         tr.dataset.index = index;
 
+        const isEditingPhase = (editingPhaseIndex === index);
+        const pLetter = getPhaseLetter(item.phase);
         const phaseBadgeColor = 
-          item.phase.includes('A') ? 'bg-amber-50 text-amber-900 border-amber-200' :
-          item.phase.includes('B') ? 'bg-sky-50 text-sky-900 border-sky-200' :
-          item.phase.includes('C') ? 'bg-purple-50 text-purple-900 border-purple-200' :
-          item.phase.includes('D') ? 'bg-emerald-50 text-emerald-900 border-emerald-200' :
-          item.phase.includes('E') ? 'bg-rose-50 text-rose-900 border-rose-200' :
+          pLetter === 'A' ? 'bg-amber-50 text-amber-900 border-amber-200' :
+          pLetter === 'B' ? 'bg-sky-50 text-sky-900 border-sky-200' :
+          pLetter === 'C' ? 'bg-purple-50 text-purple-900 border-purple-200' :
+          pLetter === 'D' ? 'bg-emerald-50 text-emerald-900 border-emerald-200' :
+          pLetter === 'E' ? 'bg-rose-50 text-rose-900 border-rose-200' :
+          pLetter === 'F' ? 'bg-indigo-50 text-indigo-900 border-indigo-200' :
           'bg-neutral-100 text-neutral-800 border-neutral-200';
 
         const safeName = escapeHtml(item.name || '');
@@ -4157,16 +4225,59 @@ function initAuth() {
           ? `<span class="whitespace-nowrap font-bold text-xs text-slate-900">${phaseStr} <span class="text-[9px] font-normal text-slate-500 lowercase">(base)</span></span>`
           : `<span class="whitespace-nowrap font-bold text-xs text-slate-900">${phaseStr}</span>`;
 
-        tr.innerHTML = `
-          <td class="py-2 px-2 text-center select-none whitespace-nowrap">
+        let phaseCellHtml = '';
+        if (isEditingPhase) {
+          phaseCellHtml = `
+            <div id="phaseEditorBox_${index}" class="inline-flex flex-col items-center gap-1 p-1 bg-white rounded-xl border-2 border-indigo-500 shadow-md z-20 select-none print-hide">
+              <div class="flex items-center gap-1">
+                <button type="button" onmousedown="event.preventDefault(); setRowPhase(${index}, 'Phase A')" 
+                        class="w-5 h-5 flex items-center justify-center text-[10px] font-black rounded transition ${pLetter === 'A' ? 'bg-amber-500 text-white shadow-xs scale-105' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300'}" title="Phase A로 변경">A</button>
+                <button type="button" onmousedown="event.preventDefault(); setRowPhase(${index}, 'Phase B')" 
+                        class="w-5 h-5 flex items-center justify-center text-[10px] font-black rounded transition ${pLetter === 'B' ? 'bg-sky-500 text-white shadow-xs scale-105' : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-300'}" title="Phase B로 변경">B</button>
+                <button type="button" onmousedown="event.preventDefault(); setRowPhase(${index}, 'Phase C')" 
+                        class="w-5 h-5 flex items-center justify-center text-[10px] font-black rounded transition ${pLetter === 'C' ? 'bg-purple-500 text-white shadow-xs scale-105' : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-300'}" title="Phase C로 변경">C</button>
+                <button type="button" onmousedown="event.preventDefault(); setRowPhase(${index}, 'Phase D')" 
+                        class="w-5 h-5 flex items-center justify-center text-[10px] font-black rounded transition ${pLetter === 'D' ? 'bg-emerald-500 text-white shadow-xs scale-105' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'}" title="Phase D로 변경">D</button>
+                <button type="button" onmousedown="event.preventDefault(); setRowPhase(${index}, 'Phase E')" 
+                        class="w-5 h-5 flex items-center justify-center text-[10px] font-black rounded transition ${pLetter === 'E' ? 'bg-rose-500 text-white shadow-xs scale-105' : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-300'}" title="Phase E로 변경">E</button>
+              </div>
+              <div class="flex items-center gap-1 w-full justify-center">
+                <input type="text" id="inlinePhaseInput_${index}" value="${phaseStr}"
+                       class="w-16 px-1 py-0.5 text-center text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded focus:bg-white focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500"
+                       placeholder="Phase"
+                       onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveCustomPhase(${index}, this.value); } else if(event.key==='Escape'){ cancelPhaseEdit(); }">
+                <button type="button" onmousedown="event.preventDefault(); saveCustomPhase(${index}, document.getElementById('inlinePhaseInput_${index}').value)"
+                        class="px-1.5 py-0.5 text-[10px] font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded transition shadow-2xs" title="적용">✓</button>
+                <button type="button" onmousedown="event.preventDefault(); cancelPhaseEdit()"
+                        class="px-1 py-0.5 text-[10px] font-black bg-slate-100 hover:bg-slate-200 text-slate-500 rounded transition" title="취소">✕</button>
+              </div>
+            </div>
+          `;
+        } else {
+          phaseCellHtml = `
             <div class="flex items-center justify-center print-hide whitespace-nowrap">
               <div class="phase-drag-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-2xs border cursor-grab active:cursor-grabbing hover:scale-105 hover:shadow-xs transition-all select-none whitespace-nowrap ${phaseBadgeColor}"
                    draggable="true"
-                   title="Phase 아이콘을 마우스로 잡고 드래그하여 원하는 위치로 이동하세요">
-                <i class="fa-solid fa-grip-vertical text-[10px] opacity-50 print-hide pointer-events-none"></i>
+                   ondblclick="openPhaseEditor(${index})"
+                   title="더블클릭: Phase 변경 (A, B, C...) · 드래그: 순서 이동">
+                <i class="fa-solid fa-grip-vertical text-[10px] opacity-40 print-hide pointer-events-none" title="드래그하여 순서 이동"></i>
                 ${phaseBadgeHtml}
+                <button type="button" 
+                        onclick="event.stopPropagation(); openPhaseEditor(${index});" 
+                        class="print-hide text-[9.5px] text-neutral-400 hover:text-indigo-600 transition px-0.5 ml-0.5 cursor-pointer opacity-30 hover:opacity-100" 
+                        title="Phase 변경">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
               </div>
             </div>
+          `;
+        }
+
+        tr.innerHTML = `
+          <td class="py-2 px-2 text-center select-none whitespace-nowrap ${!isEditingPhase ? 'cursor-pointer' : ''}"
+              ${!isEditingPhase ? `ondblclick="openPhaseEditor(${index})"` : ''}
+              title="${!isEditingPhase ? '더블클릭하여 Phase 변경 (A, B, C...) · 드래그하여 순서 이동' : ''}">
+            ${phaseCellHtml}
             <div class="print-only text-center whitespace-nowrap">
               ${printPhaseHtml}
             </div>
@@ -4233,6 +4344,7 @@ function initAuth() {
         const dragHandle = tr.querySelector('.phase-drag-badge');
         if (dragHandle) {
           dragHandle.addEventListener('dragstart', (e) => {
+            editingPhaseIndex = null;
             draggedRowIndex = index;
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', String(index));
@@ -4312,6 +4424,16 @@ function initAuth() {
           updateCalculationsOnly();
         }
       });
+
+      if (editingPhaseIndex !== null) {
+        setTimeout(() => {
+          const input = document.getElementById('inlinePhaseInput_' + editingPhaseIndex);
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 30);
+      }
     }
 
     function formatInputTwoDecimals(index, el) {
@@ -4351,12 +4473,14 @@ function initAuth() {
     }
 
     function removeIngredient(index) {
+      editingPhaseIndex = null;
       activeFormula.splice(index, 1);
       renderCalculatorTable();
       updateCalculationsOnly();
     }
 
     function addIngredient(phaseName) {
+      editingPhaseIndex = null;
       activeFormula.push({
         phase: phaseName,
         name: '',
@@ -4515,10 +4639,7 @@ function initAuth() {
       rows.push([]); // 빈 줄 구분
       rows.push(['Phase', '원료명', 'INCI명', '배합비 (%)', '계량값 (g)', '공급사']);
 
-      const firstPhaseAIdx = activeFormula.findIndex(it => {
-        const p = (it.phase || '').trim();
-        return p === 'Phase A' || p.startsWith('Phase A') || p.includes('A');
-      });
+      const firstPhaseAIdx = activeFormula.findIndex(it => getPhaseLetter(it.phase) === 'A');
 
       activeFormula.forEach((item, index) => {
         const p = parseFloat(Number(item.percent || 0).toFixed(2));
