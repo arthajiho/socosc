@@ -1217,21 +1217,13 @@
               <h1 id="articleTitle" class="text-xl md:text-2xl font-black text-slate-900 leading-snug flex-1">
                 오일리 바디 스플래시 2상 (Oily Body Splash, 2-Phases with CORN PO4 PH "B")
               </h1>
-              <div class="print-hide shrink-0 flex items-center gap-2 flex-wrap">
-                <button id="saveGuideRecipeBtn" onclick="toggleSaveCurrentGuideRecipe()"
-                  class="px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
-                  <span id="saveGuideRecipeIcon">
-                    <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
-                  </span>
-                  <span id="saveGuideRecipeText">가이드 처방 저장</span>
-                </button>
-                <button id="btnTransferGuideToCalculator" onclick="transferGuideRecipeToCalculator()"
-                  class="px-3.5 py-2 text-xs font-bold rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-[#0f2137] transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                  title="현재 가이드 처방의 배합비와 성분표를 제형 개발 계산기로 적용하여 이동합니다">
-                  <i class="fa-solid fa-calculator text-blue-600 text-sm"></i>
-                  <span>제형 개발 계산기 이동</span>
-                </button>
-              </div>
+              <button id="saveGuideRecipeBtn" onclick="toggleSaveCurrentGuideRecipe()"
+                class="print-hide shrink-0 px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition flex items-center gap-1.5 shadow-sm active:scale-95">
+                <span id="saveGuideRecipeIcon">
+                  <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                </span>
+                <span id="saveGuideRecipeText">가이드 처방 저장</span>
+              </button>
             </div>
 
           </div>
@@ -1243,11 +1235,11 @@
                 <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">가이드 처방 상세</span>
                 <span id="articleEditBadge" class="hidden text-[10px] text-amber-700 bg-amber-50 border border-amber-200 font-bold px-1.5 py-0.5 rounded">수정됨</span>
               </div>
-              <button onclick="transferGuideRecipeToCalculator()" 
+              <button id="btnTransferGuideToCalculator" onclick="transferGuideRecipeToCalculator()" 
                 class="print-hide text-xs font-bold text-[#0f2137] bg-sky-50 hover:bg-sky-100 border border-sky-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer"
-                title="상세 표 데이터를 제형 개발 계산기로 전송합니다">
+                title="현재 가이드 처방의 배합비와 성분표를 제형 개발 계산기로 적용하여 이동합니다">
                 <i class="fa-solid fa-calculator text-blue-600 text-sm"></i>
-                <span>계산기로 처방 전송</span>
+                <span>제형 개발 계산기 이동</span>
               </button>
             </div>
 
