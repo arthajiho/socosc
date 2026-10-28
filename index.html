@@ -7050,6 +7050,7 @@ function initAuth() {
       const name = document.getElementById('myPageNameInput').value.trim();
       const nickname = document.getElementById('myPageNicknameInput').value.trim();
       const email = document.getElementById('myPageEmailInput').value.trim();
+      const cleanNewEmail = email;
       const phone = document.getElementById('myPagePhoneInput').value.trim();
       const typeEl = document.querySelector('input[name="myPageCompanyType"]:checked');
       const companyType = typeEl ? typeEl.value : (currentUser.companyType || '기타');
@@ -7350,7 +7351,6 @@ function initAuth() {
           }
 
           // (C) 이메일 변경 처리: DB profiles.email에는 파이프 없이 오직 사용자가 변경한 깨끗한 단 1개의 새 이메일만 저장
-          const cleanNewEmail = email.trim();
           const finalProfileEmail = cleanNewEmail;
           try {
             await sbClient.auth.updateUser({ email: cleanNewEmail });
