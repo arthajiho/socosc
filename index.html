@@ -6090,34 +6090,44 @@ function initAuth() {
           return;
         }
 
-        // 2. 슈퍼베이스 Auth 정식 로그인 (연락용 이메일, 원본 가입 Auth 이메일, 가상 도메인 계정 모두 정밀 후보군 등록)
+        // 2. 슈퍼베이스 Auth 정식 로그인 (불변 아이디 계정 @thesocsoc.auth 최우선, 프로필 단일 이메일 및 레거시 후보군)
         const emailCandidates = [];
-        const rawProfileEmail = (profile.email || '').trim();
+        const unameLower = profile.username.toLowerCase();
+
+        // (1) 회원의 불변 아이디 기반 Auth 계정 최우선 (이메일을 변경해도 아이디로 언제 어디서든 100% 로그인)
+        const virtualEmail1 = `${unameLower}@thesocsoc.auth`;
+        emailCandidates.push(virtualEmail1);
+
+        // (2) DB에 등록된 최신 프로필 단일 이메일
+        const rawProfileEmail = (profile.email || "").trim();
         if (rawProfileEmail) {
-          // 마이페이지에서 이메일을 변경한 경우 `${newEmail}|${authEmail}` 형태로 양방향 보존되어 있으므로 분리 추출
-          const emailParts = rawProfileEmail.split('|').map(s => s.trim()).filter(Boolean);
-          emailParts.forEach(em => {
-            if (!emailCandidates.some(c => c.toLowerCase() === em.toLowerCase())) {
-              emailCandidates.push(em);
-            }
-          });
-        }
-        // 관리자(socsoc) 계정의 원본 불변 Auth 이메일 상시 포함 보장
-        if (profile.username.toLowerCase() === 'socsoc' || checkIsAdmin(profile.username)) {
-          if (!emailCandidates.some(e => e.toLowerCase() === 'socsoc_contact@naver.com')) {
-            emailCandidates.push('socsoc_contact@naver.com');
+          const cleanEmail = rawProfileEmail.split("|")[0].trim();
+          if (cleanEmail && !emailCandidates.some(c => c.toLowerCase() === cleanEmail.toLowerCase())) {
+            emailCandidates.push(cleanEmail);
+          }
+          const emailParts = rawProfileEmail.split("|").map(s => s.trim()).filter(Boolean);
+          if (emailParts.length > 1 && !emailCandidates.some(c => c.toLowerCase() === emailParts[1].toLowerCase())) {
+            emailCandidates.push(emailParts[1]);
           }
         }
 
-        const virtualEmail1 = `${profile.username.toLowerCase()}@thesocsoc.auth`;
-        if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail1)) {
-          emailCandidates.push(virtualEmail1);
+        // (3) 관리자 및 테스트/레거시 원본 불변 Auth 이메일 fallback
+        if (unameLower === "socsoc" || checkIsAdmin(profile.username)) {
+          if (!emailCandidates.some(e => e.toLowerCase() === "socsoc_contact@naver.com")) {
+            emailCandidates.push("socsoc_contact@naver.com");
+          }
         }
-        const virtualEmail2 = `${profile.username.toLowerCase()}@socsoc.kr`;
+        if (unameLower === "socsoc1") {
+          if (!emailCandidates.some(e => e.toLowerCase() === "jiho909@naver.com")) {
+            emailCandidates.push("jiho909@naver.com");
+          }
+        }
+
+        // (4) 보조 가상 도메인
+        const virtualEmail2 = `${unameLower}@socsoc.kr`;
         if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail2)) {
           emailCandidates.push(virtualEmail2);
         }
-
         let authData = null;
         let lastAuthError = null;
 
@@ -6158,6 +6168,25 @@ function initAuth() {
         }
 
         const user = authData.user;
+
+        // 로그인 성공 후: 만약 thesocsoc.auth 가상 계정으로 로그인한 것이 아니라면, 향후 이메일 변경 시에도 언제 어디서든 100% 로그인 가능하도록
+        // 백그라운드에서 thesocsoc.auth 계정의 비밀번호를 자동 동기화/생성
+        if (authData?.user && (authData.user.email || "").toLowerCase() !== virtualEmail1) {
+          try {
+            sbClient.auth.signUp({
+              email: virtualEmail1,
+              password: inputPassword,
+              options: { data: { username: profile.username } }
+            }).then(({ error: sErr }) => {
+              if (sErr && (sErr.message || "").toLowerCase().includes("already")) {
+                sbClient.auth.signInWithPassword({
+                  email: virtualEmail1,
+                  password: inputPassword
+                }).then();
+              }
+            });
+          } catch (_) {}
+        }
 
         // 4. 슈퍼베이스 클라우드에서 최신 저장 처방(가이드, 연구처방, 해체기) 로드
         const [guidesRes, formulasRes, analyzersRes] = await Promise.all([
@@ -6640,6 +6669,24 @@ function initAuth() {
           };
 
           const { error: profErr } = await sbClient.from('profiles').upsert(profileRow);
+
+          // 고유 아이디 기반 Auth 계정(${id}@thesocsoc.auth) 백그라운드 생성 (향후 마이페이지에서 이메일을 변경하더라도 아이디로 100% 로그인 보장)
+          try {
+            sbClient.auth.signUp({
+              email: `${id.toLowerCase()}@thesocsoc.auth`,
+              password: pw,
+              options: {
+                data: {
+                  username: id,
+                  name: name,
+                  nickname: nickname,
+                  phone: formattedPhone,
+                  company_type: companyType,
+                  contact_email: normalizedEmail
+                }
+              }
+            }).then();
+          } catch (_) {}
 
           if (profErr) {
             console.error('Supabase profile upsert error:', profErr);
@@ -7158,42 +7205,27 @@ function initAuth() {
             if (curSess?.session?.user) authUser = curSess.session.user;
           } catch (_) {}
 
-          // 현재 계정의 원본 인증 이메일(Anchor Auth Email) 식별 (다중 정보 변경 시에도 영구 보존)
-          const isSocsocUser = (currentUser.username || '').toLowerCase() === 'socsoc';
-          const defaultAdminAuthEmail = isSocsocUser ? 'socsoc_contact@naver.com' : '';
+          const currentUnameLower = (currentUser.username || "").toLowerCase();
+          const virtualAuthEmail = `${currentUnameLower}@thesocsoc.auth`;
+          const isSocsocUser = currentUnameLower === "socsoc";
+          const defaultAdminAuthEmail = isSocsocUser ? "socsoc_contact@naver.com" : "";
 
-          let dbAnchorEmail = '';
-          try {
-            const { data: dbProf } = await sbClient
-              .from('profiles')
-              .select('email')
-              .eq('username', currentUser.username)
-              .maybeSingle();
-            if (dbProf && dbProf.email) {
-              const pParts = dbProf.email.split('|').map(s => s.trim()).filter(Boolean);
-              if (pParts.length > 1) {
-                dbAnchorEmail = pParts[1];
-              } else if (!isSocsocUser) {
-                dbAnchorEmail = pParts[0];
-              }
-            }
-          } catch (_) {}
-
-          const currentEmailRaw = (currentUser.email || '').trim();
-          const currentEmailParts = currentEmailRaw.split('|').map(s => s.trim()).filter(Boolean);
-
-          let originalAuthEmail = defaultAdminAuthEmail || dbAnchorEmail || activeAuthEmail || currentEmailParts[1] || currentEmailParts[0] || '';
+          const currentEmailRaw = (currentUser.email || "").trim();
+          const cleanContactEmail = currentEmailRaw.split("|")[0].trim();
 
           const rawIdentities = [
+            virtualAuthEmail,
             activeAuthEmail,
-            ...currentEmailParts,
-            email,
-            `${(currentUser.username || '').toLowerCase()}@thesocsoc.auth`,
-            `${(currentUser.username || '').toLowerCase()}@socsoc.kr`,
+            cleanContactEmail,
+            email.trim(),
+            defaultAdminAuthEmail,
+            `${currentUnameLower}@socsoc.kr`,
             currentUser.username
           ].filter(Boolean);
+          if (currentUnameLower === "socsoc1") {
+            rawIdentities.push("jiho909@naver.com");
+          }
           const tryIdentities = Array.from(new Set(rawIdentities));
-
           // (A) 비밀번호를 변경하려는 경우: 사용자가 입력한 현재 비밀번호(targetCurrentPw)로 슈퍼베이스 정식 재인증
           if (targetNewPw) {
             let reAuthSuccess = false;
@@ -7244,6 +7276,27 @@ function initAuth() {
                 pwUpdateErr = pwErr;
               }
             }
+
+            // 고유 아이디 기반 Auth 계정(${currentUser.username}@thesocsoc.auth) 비밀번호도 함께 갱신하여 어디서든 로그인 영구 보장
+            try {
+              const { data: vSignData, error: vSignErr } = await sbClient.auth.signUp({
+                email: virtualAuthEmail,
+                password: targetNewPw,
+                options: { data: { username: currentUser.username } }
+              });
+              if (!vSignErr && vSignData?.user) {
+                cloudPwUpdated = true;
+              } else if (vSignErr && (vSignErr.message || "").toLowerCase().includes("already")) {
+                const vLog = await sbClient.auth.signInWithPassword({
+                  email: virtualAuthEmail,
+                  password: targetCurrentPw
+                });
+                if (!vLog.error && vLog.data?.session) {
+                  await sbClient.auth.updateUser({ password: targetNewPw });
+                  cloudPwUpdated = true;
+                }
+              }
+            } catch (_) {}
 
             // RPC 백업 호출 (슈퍼베이스 내부 reset_user_password 동기화)
             try {
@@ -7296,19 +7349,12 @@ function initAuth() {
             }
           }
 
-          // (C) 이메일 변경 처리: 새 이메일과 원본 인증 이메일을 양방향 보존하여 변경 후에도 어디서든 로그인 보장
-          let finalProfileEmail = email.trim();
-          const cleanNewEmail = email.trim().toLowerCase();
-          const cleanAuthEmail = (originalAuthEmail || '').trim().toLowerCase();
-
-          if (cleanAuthEmail && cleanNewEmail !== cleanAuthEmail && !cleanNewEmail.endsWith('.auth') && !cleanNewEmail.endsWith('.local')) {
-            finalProfileEmail = `${email.trim()}|${originalAuthEmail.trim()}`;
-            try {
-              await sbClient.auth.updateUser({ email: email.trim() });
-            } catch (_) {}
-          } else if (cleanAuthEmail && cleanNewEmail === cleanAuthEmail) {
-            finalProfileEmail = email.trim();
-          }
+          // (C) 이메일 변경 처리: DB profiles.email에는 파이프 없이 오직 사용자가 변경한 깨끗한 단 1개의 새 이메일만 저장
+          const cleanNewEmail = email.trim();
+          const finalProfileEmail = cleanNewEmail;
+          try {
+            await sbClient.auth.updateUser({ email: cleanNewEmail });
+          } catch (_) {}
 
           // (D) 메타데이터 갱신
           if (authUser) {
@@ -7397,7 +7443,7 @@ function initAuth() {
         // 2. 로컬 currentUser 정보 즉시 갱신 (비밀번호 평문은 저장하지 않음)
         currentUser.name = name || currentUser.name;
         currentUser.nickname = nickname;
-        currentUser.email = email.trim();
+        currentUser.email = cleanNewEmail;
         currentUser.phone = formattedPhone;
         currentUser.companyType = companyType;
 
