@@ -10784,6 +10784,7 @@ function initAuth() {
         contact_email: contactEmail,
         shipping_address: shippingAddress,
         notes: notes,
+        status: '접수완료',
         user_id: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : null,
         username: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.username : null,
         created_at: new Date().toISOString()
