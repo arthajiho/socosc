@@ -3183,17 +3183,28 @@
         if (session && session.user) {
           const user = session.user;
 
-          const [profRes, guidesRes, formulasRes] = await Promise.all([
-            sbClient.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-            sbClient.from('saved_guides').select('*').eq('user_id', user.id).order('saved_at', { ascending: false }),
-            sbClient.from('saved_formulas').select('*').eq('user_id', user.id).order('saved_at', { ascending: false })
+          // 프로필 조회 및 다중 후보 UID 매핑 (레거시/통합 UID 처방 모두 로드)
+          let profData = null;
+          const { data: p1 } = await sbClient.from('profiles').select('*').eq('id', user.id).maybeSingle();
+          if (p1) profData = p1;
+          else if (user.user_metadata?.username) {
+            const { data: p2 } = await sbClient.from('profiles').select('*').eq('username', user.user_metadata.username).maybeSingle();
+            if (p2) profData = p2;
+          }
+
+          const fetchSyncIds = Array.from(new Set([user.id, profData?.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
+          const [guidesRes, formulasRes] = await Promise.all([
+            sbClient.from('saved_guides').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false }),
+            sbClient.from('saved_formulas').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false })
           ]);
 
           let dbAnalyzers = [];
           try {
-            const { data: aData, error: aErr } = await sbClient.from('saved_analyzers').select('*').eq('user_id', user.id).order('saved_at', { ascending: false });
+            const { data: aData, error: aErr } = await sbClient.from('saved_analyzers').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false });
             if (!aErr && Array.isArray(aData)) dbAnalyzers = aData;
           } catch (_) {}
+
+          const profRes = { data: profData };
 
           const profile = profRes.data;
           const dbGuides = guidesRes.data || [];
@@ -5958,15 +5969,19 @@ function initAuth() {
           return;
         }
 
-        // 2. 슈퍼베이스 Auth 정식 로그인 (불변 아이디 계정 @thesocsoc.auth 최우선, 프로필 단일 이메일 및 레거시 후보군)
+        // 2. 슈퍼베이스 Auth 정식 로그인 (원천 Auth 이메일 1순위 매칭으로 처방 데이터 UID 100% 직결)
         const emailCandidates = [];
         const unameLower = profile.username.toLowerCase();
 
-        // (1) 회원의 불변 아이디 기반 Auth 계정 최우선 (이메일을 변경해도 아이디로 언제 어디서든 100% 로그인)
-        const virtualEmail1 = `${unameLower}@thesocsoc.auth`;
-        emailCandidates.push(virtualEmail1);
+        // (1) 처방 데이터를 소유한 원천 불변 Auth 계정 1순위 (처방 영구 보존)
+        if (unameLower === "socsoc1") {
+          emailCandidates.push("jiho909@naver.com");
+        }
+        if (unameLower === "socsoc" || checkIsAdmin(profile.username)) {
+          emailCandidates.push("socsoc_contact@naver.com");
+        }
 
-        // (2) DB에 등록된 최신 프로필 단일 이메일
+        // (2) DB profiles 테이블에 등록된 최신 프로필 단일 이메일
         const rawProfileEmail = (profile.email || "").trim();
         if (rawProfileEmail) {
           const cleanEmail = rawProfileEmail.split("|")[0].trim();
@@ -5979,19 +5994,11 @@ function initAuth() {
           }
         }
 
-        // (3) 관리자 및 테스트/레거시 원본 불변 Auth 이메일 fallback
-        if (unameLower === "socsoc" || checkIsAdmin(profile.username)) {
-          if (!emailCandidates.some(e => e.toLowerCase() === "socsoc_contact@naver.com")) {
-            emailCandidates.push("socsoc_contact@naver.com");
-          }
+        // (3) 보조 가상 계정 fallback
+        const virtualEmail1 = `${unameLower}@thesocsoc.auth`;
+        if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail1)) {
+          emailCandidates.push(virtualEmail1);
         }
-        if (unameLower === "socsoc1") {
-          if (!emailCandidates.some(e => e.toLowerCase() === "jiho909@naver.com")) {
-            emailCandidates.push("jiho909@naver.com");
-          }
-        }
-
-        // (4) 보조 가상 도메인
         const virtualEmail2 = `${unameLower}@socsoc.kr`;
         if (!emailCandidates.some(e => e.toLowerCase() === virtualEmail2)) {
           emailCandidates.push(virtualEmail2);
@@ -6037,30 +6044,15 @@ function initAuth() {
 
         const user = authData.user;
 
-        // 로그인 성공 후: 만약 thesocsoc.auth 가상 계정으로 로그인한 것이 아니라면, 향후 이메일 변경 시에도 언제 어디서든 100% 로그인 가능하도록
-        // 백그라운드에서 thesocsoc.auth 계정의 비밀번호를 자동 동기화/생성
-        if (authData?.user && (authData.user.email || "").toLowerCase() !== virtualEmail1) {
-          try {
-            sbClient.auth.signUp({
-              email: virtualEmail1,
-              password: inputPassword,
-              options: { data: { username: profile.username } }
-            }).then(({ error: sErr }) => {
-              if (sErr && (sErr.message || "").toLowerCase().includes("already")) {
-                sbClient.auth.signInWithPassword({
-                  email: virtualEmail1,
-                  password: inputPassword
-                }).then();
-              }
-            });
-          } catch (_) {}
-        }
+        // 단일 계정 원칙: 회원은 오직 단 하나의 불변 슈퍼베이스 UID만 유지 (중복 가입 차단)
+        console.log('[SOCSOC Auth] Logged in as:', authData.user?.email, 'UID:', user.id, 'Profile ID:', profile.id);
 
         // 4. 슈퍼베이스 클라우드에서 최신 저장 처방(가이드, 연구처방, 해체기) 로드
+        const fetchUserIds = Array.from(new Set([user.id, profile.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
         const [guidesRes, formulasRes, analyzersRes] = await Promise.all([
-          sbClient.from('saved_guides').select('*').eq('user_id', user.id).order('saved_at', { ascending: false }),
-          sbClient.from('saved_formulas').select('*').eq('user_id', user.id).order('saved_at', { ascending: false }),
-          sbClient.from('saved_analyzers').select('*').eq('user_id', user.id).order('saved_at', { ascending: false })
+          sbClient.from('saved_guides').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }),
+          sbClient.from('saved_formulas').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }),
+          sbClient.from('saved_analyzers').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false })
         ]);
 
         const dbGuides = guidesRes.data || [];
@@ -6538,23 +6530,7 @@ function initAuth() {
 
           const { error: profErr } = await sbClient.from('profiles').upsert(profileRow);
 
-          // 고유 아이디 기반 Auth 계정(${id}@thesocsoc.auth) 백그라운드 생성 (향후 마이페이지에서 이메일을 변경하더라도 아이디로 100% 로그인 보장)
-          try {
-            sbClient.auth.signUp({
-              email: `${id.toLowerCase()}@thesocsoc.auth`,
-              password: pw,
-              options: {
-                data: {
-                  username: id,
-                  name: name,
-                  nickname: nickname,
-                  phone: formattedPhone,
-                  company_type: companyType,
-                  contact_email: normalizedEmail
-                }
-              }
-            }).then();
-          } catch (_) {}
+          // 단일 Auth 계정 원칙: 회원은 오직 단 하나의 불변 슈퍼베이스 UID만 유지
 
           if (profErr) {
             console.error('Supabase profile upsert error:', profErr);
@@ -8084,10 +8060,11 @@ function initAuth() {
         const targetUserId = await ensureSupabaseAuthUser();
         if (!targetUserId) return;
 
+        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
         const { data, error } = await sbClient
           .from('saved_guides')
           .select('*')
-          .eq('user_id', targetUserId)
+          .in('user_id', fetchIds)
           .order('saved_at', { ascending: false });
 
         if (!error && Array.isArray(data)) {
@@ -8129,7 +8106,7 @@ function initAuth() {
         renderAuthHeader();
         showToast('가이드 처방 저장이 해제되었습니다.');
 
-        cloudDeleteGuideRecipe(currentRecipe.uid);
+        await cloudDeleteGuideRecipe(currentRecipe.uid);
       } else {
         // 새로 저장하는 경우
         currentUser.savedGuides.unshift({
@@ -8259,10 +8236,11 @@ function initAuth() {
         const targetUserId = await ensureSupabaseAuthUser();
         if (!targetUserId) return;
 
+        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
         const { data, error } = await sbClient
           .from('saved_formulas')
           .select('*')
-          .eq('user_id', targetUserId)
+          .in('user_id', fetchIds)
           .order('saved_at', { ascending: false });
 
         if (!error && Array.isArray(data)) {
@@ -8375,10 +8353,11 @@ function initAuth() {
         const targetUserId = await ensureSupabaseAuthUser();
         if (!targetUserId) return;
 
+        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
         const { data, error } = await sbClient
           .from('saved_analyzers')
           .select('*')
-          .eq('user_id', targetUserId)
+          .in('user_id', fetchIds)
           .order('saved_at', { ascending: false });
 
         if (!error && Array.isArray(data)) {
@@ -8688,7 +8667,7 @@ function initAuth() {
       updateSaveGuideRecipeBtnState(currentRecipe);
       showToast('보관함에서 가이드 처방이 삭제되었습니다.');
 
-      cloudDeleteGuideRecipe(uid);
+      await cloudDeleteGuideRecipe(uid);
     }
 
     async function loadCustomFormulaFromVault(id) {
@@ -8740,7 +8719,7 @@ function initAuth() {
       renderAuthHeader();
       showToast('연구 처방이 삭제되었습니다.');
 
-      cloudDeleteCustomFormula(id);
+      await cloudDeleteCustomFormula(id);
     }
 
     function renderSavedAnalyzers() {
@@ -8854,7 +8833,7 @@ function initAuth() {
       if (document.getElementById('vaultCountAnalyzer')) document.getElementById('vaultCountAnalyzer').textContent = countAnalyzer;
       showToast('전성분 해체 분석 처방이 삭제되었습니다.');
 
-      cloudDeleteAnalyzerFormula(id);
+      await cloudDeleteAnalyzerFormula(id);
     }
 
     // ==========================================
