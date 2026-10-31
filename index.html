@@ -9099,7 +9099,7 @@ function initAuth() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           // 캐시 시그니처 비교: 규칙 데이터에 변경사항이 없는 경우 워크시트와 DOM 조작을 완전히 건너뜀
-          const rulesSignature = JSON.stringify(data.map(r => [r.id, r.name, r.role, r.is_indicator, r.recommended_rate, r.default_percent, r.is_sample_active]));
+          const rulesSignature = JSON.stringify(data.map(r => [r.id, r.name, r.role, r.is_indicator, r.recommended_rate, r.default_percent, r.is_sample_active, r.sample_active]));
           if (rulesSignature === window._lastIngredientRulesSignature && !isManual) {
             return;
           }
@@ -9117,7 +9117,9 @@ function initAuth() {
             recommended_rate: (r.recommended_rate || '').trim(),
             reason: r.reason || '',
             priority: r.priority || 100,
-            is_sample_active: r.is_sample_active === true || r.is_sample_active === 'true' || r.is_sample_active === 1
+            is_sample_active: (r.is_sample_active === true || r.is_sample_active === 'true' || r.is_sample_active === 1) ||
+                              (r.sample_active === true || r.sample_active === 'true' || r.sample_active === 1) ||
+                              (r['sample active'] === true || r['sample active'] === 'true' || r['sample active'] === 1)
           }));
           console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 동기화 완료:', ingredientRules.length, '개 성분');
 
@@ -9689,13 +9691,13 @@ function initAuth() {
             </div>
           </td>
           <td class="py-2 px-2 text-center print-hide">
-            ${((item.name && item.name.replace(/\s+/g, '').includes('나이아신아마이드')) || (matchedRule && (matchedRule.name === '나이아신아마이드' || (matchedRule.aliases && matchedRule.aliases.includes('나이아신아마이드'))))) ? `
+            ${(matchedRule && (matchedRule.is_sample_active === true || matchedRule.is_sample_active === 'true' || matchedRule.is_sample_active === 1)) ? `
               <button
                 type="button"
                 data-ingredient="${encodeURIComponent(item.name)}"
                 onclick="openSampleRequestModal(decodeURIComponent(this.getAttribute('data-ingredient')))"
                 class="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-2xs transition-all cursor-pointer whitespace-nowrap"
-                title="나이아신아마이드 샘플/자료 요청"
+                title="${item.name} 샘플/자료 요청"
               >
                 <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 <span>샘플요청</span>
