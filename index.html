@@ -10805,7 +10805,22 @@ function initAuth() {
           }
         }
 
-        // 2. 브라우저 로컬 저장소 백업 보관
+        // 2. 관리자 네이버 이메일 알림 발송 (Nodemailer API 호출)
+        try {
+          fetch('/api/send-sample-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).then(res => {
+            if (!res.ok) console.warn('[SOCSOC] 이메일 알림 응답 상태:', res.status);
+          }).catch(emailErr => {
+            console.warn('[SOCSOC] 이메일 알림 발송 네트워크 에러:', emailErr);
+          });
+        } catch (emailErr) {
+          console.warn('[SOCSOC] 이메일 알림 발송 요청 에러:', emailErr);
+        }
+
+        // 3. 브라우저 로컬 저장소 백업 보관
         try {
           const localKey = 'socsoc_sample_requests_history';
           const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
