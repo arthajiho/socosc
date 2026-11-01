@@ -7267,17 +7267,15 @@ function initAuth() {
           const cleanContactEmail = currentEmailRaw.split("|")[0].trim();
 
           const rawIdentities = [
-            virtualAuthEmail,
             activeAuthEmail,
+            (currentUnameLower === "socsoc1" ? "jiho909@naver.com" : null),
+            virtualAuthEmail,
             cleanContactEmail,
             email.trim(),
             defaultAdminAuthEmail,
             `${currentUnameLower}@socsoc.kr`,
             currentUser.username
           ].filter(Boolean);
-          if (currentUnameLower === "socsoc1") {
-            rawIdentities.push("jiho909@naver.com");
-          }
           const tryIdentities = Array.from(new Set(rawIdentities));
           // (A) 비밀번호를 변경하려는 경우: 사용자가 입력한 현재 비밀번호(targetCurrentPw)로 슈퍼베이스 정식 재인증
           if (targetNewPw) {
@@ -7404,9 +7402,14 @@ function initAuth() {
 
           // (C) 이메일 변경 처리: DB profiles.email에는 파이프 없이 오직 사용자가 변경한 깨끗한 단 1개의 새 이메일만 저장
           const finalProfileEmail = cleanNewEmail;
-          try {
-            await sbClient.auth.updateUser({ email: cleanNewEmail });
-          } catch (_) {}
+          const emailWasModified = cleanNewEmail &&
+            cleanNewEmail.toLowerCase() !== (cleanContactEmail || '').toLowerCase() &&
+            cleanNewEmail.toLowerCase() !== (activeAuthEmail || '').toLowerCase();
+          if (emailWasModified) {
+            try {
+              await sbClient.auth.updateUser({ email: cleanNewEmail });
+            } catch (_) {}
+          }
 
           // (D) 메타데이터 갱신
           if (authUser) {
