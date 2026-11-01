@@ -3315,7 +3315,8 @@
             if (p2) profData = p2;
           }
 
-          const fetchSyncIds = Array.from(new Set([user.id, profData?.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
+          const isSocsoc1User = (user.email === 'jiho909@naver.com') || ((profData?.username || '').toLowerCase() === 'socsoc1');
+          const fetchSyncIds = Array.from(new Set([user.id, profData?.id, isSocsoc1User ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
           const [guidesRes, formulasRes] = await Promise.all([
             sbClient.from('saved_guides').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false }),
             sbClient.from('saved_formulas').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false })
@@ -6191,7 +6192,8 @@ function initAuth() {
         console.log('[SOCSOC Auth] Logged in as:', authData.user?.email, 'UID:', user.id, 'Profile ID:', profile.id);
 
         // 4. 슈퍼베이스 클라우드에서 최신 저장 처방(가이드, 연구처방, 해체기) 로드
-        const fetchUserIds = Array.from(new Set([user.id, profile.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
+        const isSocsoc1User = (unameLower === 'socsoc1') || (user.id === 'dda0abc7-87e1-4234-89a2-bef62288e4fb');
+        const fetchUserIds = Array.from(new Set([user.id, profile.id, isSocsoc1User ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
         const [guidesRes, formulasRes, analyzersRes] = await Promise.all([
           sbClient.from('saved_guides').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }),
           sbClient.from('saved_formulas').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }),
@@ -6215,32 +6217,62 @@ function initAuth() {
           companyType: profile.company_type || '제조사',
           role: finalRole,
           provider: 'normal',
-          savedGuides: dbGuides.map(g => ({
-            uid: g.recipe_uid,
-            title: g.title,
-            category: g.category,
-            formulaCode: g.formula_code,
-            supplier: g.supplier,
-            savedAt: g.saved_at || g.created_at
-          })),
-          savedFormulas: dbFormulas.map(f => ({
-            id: f.id,
-            title: f.title,
-            batchSize: f.batch_size,
-            formula: (Array.isArray(f.formula) ? f.formula : (f.formula?.ingredients || [])),
-            procedure: f.procedure || f.formula?.procedure || '',
-            totalPercent: f.total_percent,
-            savedAt: f.saved_at || f.created_at
-          })),
-          savedAnalyzers: dbAnalyzers.map(a => ({
-            id: a.id,
-            title: a.title,
-            rawText: a.raw_text,
-            ingredients: a.ingredients,
-            totalCount: a.total_count,
-            totalSum: a.total_sum,
-            savedAt: a.saved_at || a.created_at
-          }))
+          savedGuides: (() => {
+            const seen = new Set();
+            const list = [];
+            dbGuides.forEach(g => {
+              if (g.recipe_uid && !seen.has(g.recipe_uid)) {
+                seen.add(g.recipe_uid);
+                list.push({
+                  uid: g.recipe_uid,
+                  title: g.title,
+                  category: g.category,
+                  formulaCode: g.formula_code,
+                  supplier: g.supplier,
+                  savedAt: g.saved_at || g.created_at
+                });
+              }
+            });
+            return list;
+          })(),
+          savedFormulas: (() => {
+            const seen = new Set();
+            const list = [];
+            dbFormulas.forEach(f => {
+              if (f.id && !seen.has(f.id)) {
+                seen.add(f.id);
+                list.push({
+                  id: f.id,
+                  title: f.title,
+                  batchSize: f.batch_size,
+                  formula: (Array.isArray(f.formula) ? f.formula : (f.formula?.ingredients || [])),
+                  procedure: f.procedure || f.formula?.procedure || '',
+                  totalPercent: f.total_percent,
+                  savedAt: f.saved_at || f.created_at
+                });
+              }
+            });
+            return list;
+          })(),
+          savedAnalyzers: (() => {
+            const seen = new Set();
+            const list = [];
+            dbAnalyzers.forEach(a => {
+              if (a.id && !seen.has(a.id)) {
+                seen.add(a.id);
+                list.push({
+                  id: a.id,
+                  title: a.title,
+                  rawText: a.raw_text,
+                  ingredients: a.ingredients,
+                  totalCount: a.total_count,
+                  totalSum: a.total_sum,
+                  savedAt: a.saved_at || a.created_at
+                });
+              }
+            });
+            return list;
+          })()
         };
 
         // 브라우저 세션 저장소에만 보관 (인터넷 창 닫으면 자동 로그아웃)
@@ -8236,7 +8268,8 @@ function initAuth() {
         const targetUserId = await ensureSupabaseAuthUser();
         if (!targetUserId) return;
 
-        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
+        const isSocsoc1 = (currentUser?.username || '').toLowerCase() === 'socsoc1';
+        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, isSocsoc1 ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
         const { data, error } = await sbClient
           .from('saved_guides')
           .select('*')
@@ -8412,7 +8445,8 @@ function initAuth() {
         const targetUserId = await ensureSupabaseAuthUser();
         if (!targetUserId) return;
 
-        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
+        const isSocsoc1 = (currentUser?.username || '').toLowerCase() === 'socsoc1';
+        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, isSocsoc1 ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
         const { data, error } = await sbClient
           .from('saved_formulas')
           .select('*')
@@ -8529,7 +8563,8 @@ function initAuth() {
         const targetUserId = await ensureSupabaseAuthUser();
         if (!targetUserId) return;
 
-        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, 'dda0abc7-87e1-4234-89a2-bef62288e4fb'])).filter(Boolean);
+        const isSocsoc1 = (currentUser?.username || '').toLowerCase() === 'socsoc1';
+        const fetchIds = Array.from(new Set([targetUserId, currentUser.id, isSocsoc1 ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
         const { data, error } = await sbClient
           .from('saved_analyzers')
           .select('*')
