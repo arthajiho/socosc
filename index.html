@@ -2987,7 +2987,7 @@
 
     // Zero-base formula state (기본 셋팅: 상 3개 Phase A, B, C)
     let activeFormula = [
-      { phase: 'Phase A', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+      { phase: 'Phase A', name: '', inci: '', percent: 0.00, supplier: '', isWater: true, isBase: true },
       { phase: 'Phase B', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
       { phase: 'Phase C', name: '', inci: '', percent: 0.00, supplier: '', isWater: false }
     ];
@@ -3702,7 +3702,7 @@ function initAuth() {
 
     function startFreshZeroCalculator() {
       activeFormula = [
-        { phase: 'Phase A', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
+        { phase: 'Phase A', name: '', inci: '', percent: 0.00, supplier: '', isWater: true, isBase: true },
         { phase: 'Phase B', name: '', inci: '', percent: 0.00, supplier: '', isWater: false },
         { phase: 'Phase C', name: '', inci: '', percent: 0.00, supplier: '', isWater: false }
       ];
@@ -4363,13 +4363,37 @@ function initAuth() {
         return;
       }
 
-      // 처음 등장하는 Phase A의 인덱스 검색 (첫 번째 Phase A에만 base 표시)
-      const firstPhaseAIndex = activeFormula.findIndex(it => getPhaseLetter(it.phase) === 'A');
+      // 베이스(base) 항목 식별 및 고정:
+      // 행 순서가 이동/드래그되더라도 base 표시가 해당 원료와 함께 이동하도록 item.isBase 속성을 추적
+      let baseIndex = activeFormula.findIndex(it => it.isBase === true);
+      if (baseIndex === -1) {
+        baseIndex = activeFormula.findIndex(it => it.isWater === true);
+      }
+      if (baseIndex === -1) {
+        baseIndex = activeFormula.findIndex(it => {
+          const n = ((it.name || '') + ' ' + (it.inci || '')).toLowerCase();
+          return n.includes('water') || n.includes('정제수') || n.includes('aqua') || n.includes('base');
+        });
+      }
+      if (baseIndex === -1) {
+        baseIndex = activeFormula.findIndex(it => getPhaseLetter(it.phase) === 'A');
+      }
+      if (baseIndex === -1 && activeFormula.length > 0) {
+        baseIndex = 0;
+      }
+
+      if (baseIndex !== -1) {
+        activeFormula.forEach((it, i) => {
+          it.isBase = (i === baseIndex);
+          if (it.isBase) it.isWater = true;
+        });
+      }
 
       activeFormula.forEach((item, index) => {
         const grams = ((item.percent * batch) / 100).toFixed(2);
         const tr = document.createElement('tr');
-        tr.className = item.isWater ? 'bg-slate-50/50 hover:bg-slate-50 transition' : 'hover:bg-neutral-50/80 transition';
+        const isBaseItem = Boolean(item.isBase);
+        tr.className = isBaseItem ? 'bg-slate-50/50 hover:bg-slate-50 transition' : 'hover:bg-neutral-50/80 transition';
         tr.dataset.index = index;
 
         const isEditingPhase = (editingPhaseIndex === index);
@@ -4386,14 +4410,13 @@ function initAuth() {
         const safeName = escapeHtml(item.name || '');
         const safeInci = escapeHtml(item.inci || '');
         const safeSupplier = escapeHtml(item.supplier || '');
-        const isFirstPhaseA = (index === firstPhaseAIndex);
         const phaseStr = escapeHtml(item.phase || 'Phase A');
 
-        const phaseBadgeHtml = isFirstPhaseA
+        const phaseBadgeHtml = isBaseItem
           ? `<span class="pointer-events-none whitespace-nowrap inline-flex items-center gap-1"><span>${phaseStr}</span><span class="text-[9.5px] font-bold text-indigo-900 bg-indigo-100 px-1 py-0.2 rounded-full leading-tight">base</span></span>`
           : `<span class="pointer-events-none whitespace-nowrap">${phaseStr}</span>`;
 
-        const printPhaseHtml = isFirstPhaseA
+        const printPhaseHtml = isBaseItem
           ? `<span class="whitespace-nowrap font-bold text-xs text-slate-900">${phaseStr} <span class="text-[9px] font-normal text-slate-500 lowercase">(base)</span></span>`
           : `<span class="whitespace-nowrap font-bold text-xs text-slate-900">${phaseStr}</span>`;
 
@@ -4460,11 +4483,11 @@ function initAuth() {
               <input type="text" value="${safeName}" oninput="updateName(${index}, this.value)"
                 class="w-full px-2.5 py-1 text-xs font-semibold text-neutral-800 bg-white border border-neutral-200 hover:border-neutral-300 focus:border-[#0f2137] focus:ring-1 focus:ring-[#0f2137]/30 rounded-lg outline-none transition"
                 placeholder="원료명 입력">
-              ${item.isWater ? '<span class="shrink-0 text-[10px] text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full font-bold">Base</span>' : ''}
+              ${isBaseItem ? '<span class="shrink-0 text-[10px] text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full font-bold">Base</span>' : ''}
             </div>
             <div class="print-only font-bold text-xs text-slate-900 break-words leading-snug">
               <span id="print-name-${index}">${safeName || '-'}</span>
-              ${item.isWater ? '<span class="ml-1 text-[10px] text-blue-700 font-bold border border-blue-200 bg-blue-50 px-1 py-0.2 rounded inline-block">Base</span>' : ''}
+              ${isBaseItem ? '<span class="ml-1 text-[10px] text-blue-700 font-bold border border-blue-200 bg-blue-50 px-1 py-0.2 rounded inline-block">Base</span>' : ''}
             </div>
           </td>
 
@@ -4811,15 +4834,12 @@ function initAuth() {
       rows.push([]); // 빈 줄 구분
       rows.push(['Phase', '원료명', 'INCI명', '배합비 (%)', '계량값 (g)', '공급사']);
 
-      const firstPhaseAIdx = activeFormula.findIndex(it => getPhaseLetter(it.phase) === 'A');
-
       activeFormula.forEach((item, index) => {
         const p = parseFloat(Number(item.percent || 0).toFixed(2));
         const g = parseFloat(((p * batch) / 100).toFixed(2));
         totalPercent += p;
         totalGrams += g;
-        const isFirstA = (index === firstPhaseAIdx);
-        const phaseLabel = isFirstA ? `${item.phase || 'Phase A'} (base)` : (item.phase || 'Phase A');
+        const phaseLabel = item.isBase ? `${item.phase || 'Phase A'} (base)` : (item.phase || 'Phase A');
         rows.push([
           phaseLabel,
           item.name || '',
@@ -9102,7 +9122,7 @@ function initAuth() {
             'Authorization': 'Bearer ' + ANON_KEY,
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
-            'Range': '0-999'
+            'Range': '0-1999'
           }
         });
 
@@ -10582,18 +10602,25 @@ function initAuth() {
       if (typeof syncCalcProcedure === 'function') syncCalcProcedure('');
 
       // 3. activeFormula에 전성분 해체 성분 및 함량 적용
-      // (순서 그대로 유지, Phase A, 성분명은 INCI명에 적용, 함량은 배합비에 적용)
-      activeFormula = analyzerState.ingredients.map(ing => {
+      // 베이스(base) 성분 식별 (water/정제수/aqua/base 우선, 없으면 0번째 성분을 base로 지정)
+      const waterBaseIdx = analyzerState.ingredients.findIndex(ing => {
+        const n = (ing.name || '').toLowerCase();
+        return n.includes('water') || n.includes('정제수') || n.includes('aqua') || n.includes('base');
+      });
+      const targetBaseIdx = waterBaseIdx !== -1 ? waterBaseIdx : 0;
+
+      activeFormula = analyzerState.ingredients.map((ing, idx) => {
         const p = parseFloat(Number(ing.percentage || 0).toFixed(2));
         const nameStr = (ing.name || '').trim();
-        const isW = nameStr.toLowerCase().includes('water') || nameStr.includes('정제수') || nameStr.toLowerCase().includes('aqua');
+        const isThisBase = (idx === targetBaseIdx);
         return {
           phase: 'Phase A',
           name: '',
           inci: nameStr,
           percent: isNaN(p) ? 0.00 : p,
           supplier: '',
-          isWater: isW
+          isWater: isThisBase,
+          isBase: isThisBase
         };
       });
 
