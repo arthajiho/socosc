@@ -3241,9 +3241,12 @@
     async function syncSupabaseData() {
       if (!sbClient) return;
 
-      // 0. 슈퍼베이스 ingredient_rules 실시간 성분 규칙 동기화
+      // 0. 슈퍼베이스 ingredient_rules & ingredients_test 실시간 성분 규제/규칙 동기화
       try {
-        await syncIngredientRulesFromSupabase();
+        await Promise.all([
+          syncIngredientRulesFromSupabase(),
+          syncIngredientsTestFromSupabase()
+        ]);
         if (typeof sbClient.channel === 'function' && !window._sbRulesRealtimeChannel) {
           window._sbRulesRealtimeChannel = sbClient
             .channel('ingredient_rules_realtime')
@@ -3253,6 +3256,17 @@
             })
             .subscribe((status) => {
               console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 구독 상태:', status);
+            });
+        }
+        if (typeof sbClient.channel === 'function' && !window._sbTestRealtimeChannel) {
+          window._sbTestRealtimeChannel = sbClient
+            .channel('ingredients_test_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients_test' }, (payload) => {
+              console.log('[SOCSOC] 슈퍼베이스 ingredients_test 실시간 변경 감지 이벤트 수신:', payload);
+              syncIngredientsTestFromSupabase();
+            })
+            .subscribe((status) => {
+              console.log('[SOCSOC] 슈퍼베이스 ingredients_test 실시간 구독 상태:', status);
             });
         }
       } catch (err) {
@@ -3557,8 +3571,9 @@ function initAuth() {
       syncCalcProcedure('');
       // 전성분 해체기: 초기 로드 시 기존처럼 전성분 해체 분석 시트(성분명, 순번, 역할, 1% 지표)가 즉시 표시됨
       loadSample('cream');
-      // 페이지 로드 즉시 슈퍼베이스 실시간 최신 추천함량 동기화
+      // 페이지 로드 즉시 슈퍼베이스 실시간 최신 추천함량 & 규제 DB 동기화
       syncIngredientRulesFromSupabase();
+      syncIngredientsTestFromSupabase();
     }
 
     function goHome() {
@@ -9145,6 +9160,1280 @@ function initAuth() {
 
     let ingredientRules = DEFAULT_INGREDIENT_RULES.map(r => ({ is_sample_active: false, ...r }));
 
+    // 2-2. 식약처 고시 규제 및 배합한도 성분 DB (슈퍼베이스 ingredients_test 200종 실시간 연동)
+    const DEFAULT_INGREDIENTS_TEST = [
+  {
+    "id": 1,
+    "korean_name": "페녹시에탄올",
+    "inci_name": "Phenoxyethanol",
+    "max_limit": 1
+  },
+  {
+    "id": 2,
+    "korean_name": "나이아신아마이드",
+    "inci_name": "Niacinamide",
+    "max_limit": 5
+  },
+  {
+    "id": 3,
+    "korean_name": "티타늄디옥사이드",
+    "inci_name": "Titanium Dioxide",
+    "max_limit": 25
+  },
+  {
+    "id": 4,
+    "korean_name": "글리세린",
+    "inci_name": "Glycerin",
+    "max_limit": 100
+  },
+  {
+    "id": 5,
+    "korean_name": "정제수",
+    "inci_name": "Water",
+    "max_limit": 100
+  },
+  {
+    "id": 6,
+    "korean_name": "살리실릭애씨드",
+    "inci_name": "Salicylic Acid",
+    "max_limit": 0.5
+  },
+  {
+    "id": 7,
+    "korean_name": "메칠파라벤",
+    "inci_name": "Methylparaben",
+    "max_limit": 0.4
+  },
+  {
+    "id": 8,
+    "korean_name": "에칠파라벤",
+    "inci_name": "Ethylparaben",
+    "max_limit": 0.4
+  },
+  {
+    "id": 9,
+    "korean_name": "프로필파라벤",
+    "inci_name": "Propylparaben",
+    "max_limit": 0.14
+  },
+  {
+    "id": 10,
+    "korean_name": "부틸파라벤",
+    "inci_name": "Butylparaben",
+    "max_limit": 0.14
+  },
+  {
+    "id": 11,
+    "korean_name": "벤질알코올",
+    "inci_name": "Benzyl Alcohol",
+    "max_limit": 1
+  },
+  {
+    "id": 12,
+    "korean_name": "소르빅애씨드",
+    "inci_name": "Sorbic Acid",
+    "max_limit": 0.6
+  },
+  {
+    "id": 13,
+    "korean_name": "포타슘소르베이트",
+    "inci_name": "Potassium Sorbate",
+    "max_limit": 0.6
+  },
+  {
+    "id": 14,
+    "korean_name": "벤조익애씨드",
+    "inci_name": "Benzoic Acid",
+    "max_limit": 0.5
+  },
+  {
+    "id": 15,
+    "korean_name": "소듐벤조에이트",
+    "inci_name": "Sodium Benzoate",
+    "max_limit": 0.5
+  },
+  {
+    "id": 16,
+    "korean_name": "데하이드로아세틱애씨드",
+    "inci_name": "Dehydroacetic Acid",
+    "max_limit": 0.6
+  },
+  {
+    "id": 17,
+    "korean_name": "소듐데하이드로아세테이트",
+    "inci_name": "Sodium Dehydroacetate",
+    "max_limit": 0.6
+  },
+  {
+    "id": 18,
+    "korean_name": "트라이클로산",
+    "inci_name": "Triclosan",
+    "max_limit": 0.3
+  },
+  {
+    "id": 19,
+    "korean_name": "��크피리치온",
+    "inci_name": "Zinc Pyrithione",
+    "max_limit": 1
+  },
+  {
+    "id": 20,
+    "korean_name": "클림바졸",
+    "inci_name": "Climbazole",
+    "max_limit": 0.5
+  },
+  {
+    "id": 21,
+    "korean_name": "이미다졸리디닐우레아",
+    "inci_name": "Imidazolidinyl Urea",
+    "max_limit": 0.6
+  },
+  {
+    "id": 22,
+    "korean_name": "다이아졸리디닐우레아",
+    "inci_name": "Diazolidinyl Urea",
+    "max_limit": 0.5
+  },
+  {
+    "id": 23,
+    "korean_name": "디엠디엠하이단토인",
+    "inci_name": "DMDM Hydantoin",
+    "max_limit": 0.6
+  },
+  {
+    "id": 24,
+    "korean_name": "클로페네신",
+    "inci_name": "Chlorphenesin",
+    "max_limit": 0.3
+  },
+  {
+    "id": 25,
+    "korean_name": "피록톤올아민",
+    "inci_name": "Piroctone Olamine",
+    "max_limit": 0.5
+  },
+  {
+    "id": 26,
+    "korean_name": "이소프로필메칠페놀",
+    "inci_name": "o-Cymen-5-ol",
+    "max_limit": 0.1
+  },
+  {
+    "id": 27,
+    "korean_name": "클로로헥시딘",
+    "inci_name": "Chlorhexidine",
+    "max_limit": 0.3
+  },
+  {
+    "id": 28,
+    "korean_name": "클로로헥시딘디글루코네이트",
+    "inci_name": "Chlorhexidine Digluconate",
+    "max_limit": 0.3
+  },
+  {
+    "id": 29,
+    "korean_name": "은",
+    "inci_name": "Silver",
+    "max_limit": 0.002
+  },
+  {
+    "id": 30,
+    "korean_name": "레조시놀",
+    "inci_name": "Resorcinol",
+    "max_limit": 0.5
+  },
+  {
+    "id": 31,
+    "korean_name": "벤잘코늄클로라이드",
+    "inci_name": "Benzalkonium Chloride",
+    "max_limit": 0.1
+  },
+  {
+    "id": 32,
+    "korean_name": "오쏘-페닐페놀",
+    "inci_name": "o-Phenylphenol",
+    "max_limit": 0.2
+  },
+  {
+    "id": 33,
+    "korean_name": "클로로부탄���",
+    "inci_name": "Chlorobutanol",
+    "max_limit": 0.5
+  },
+  {
+    "id": 34,
+    "korean_name": "헥사미딘디이세치오네이트",
+    "inci_name": "Hexamidine Diisethionate",
+    "max_limit": 0.1
+  },
+  {
+    "id": 35,
+    "korean_name": "클로로아세타마이드",
+    "inci_name": "Chloroacetamide",
+    "max_limit": 0.3
+  },
+  {
+    "id": 36,
+    "korean_name": "벤질헤미포르말",
+    "inci_name": "Benzylhemiformal",
+    "max_limit": 0.15
+  },
+  {
+    "id": 37,
+    "korean_name": "세틸피리디늄클로라이드",
+    "inci_name": "Cetylpyridinium Chloride",
+    "max_limit": 0.08
+  },
+  {
+    "id": 38,
+    "korean_name": "디클로로벤질알코올",
+    "inci_name": "Dichlorobenzyl Alcohol",
+    "max_limit": 0.15
+  },
+  {
+    "id": 39,
+    "korean_name": "클로록실레놀",
+    "inci_name": "Chloroxylenol",
+    "max_limit": 0.5
+  },
+  {
+    "id": 40,
+    "korean_name": "트리클로카반",
+    "inci_name": "Triclocarban",
+    "max_limit": 0.2
+  },
+  {
+    "id": 41,
+    "korean_name": "폴리아미노프로필비구아나이드",
+    "inci_name": "Polyaminopropyl Biguanide",
+    "max_limit": 0.3
+  },
+  {
+    "id": 42,
+    "korean_name": "비페닐-2-올",
+    "inci_name": "Biphenyl-2-ol",
+    "max_limit": 0.2
+  },
+  {
+    "id": 43,
+    "korean_name": "메칠이소치아졸리논",
+    "inci_name": "Methylisothiazolinone",
+    "max_limit": 0.0015
+  },
+  {
+    "id": 44,
+    "korean_name": "소듐설파이트",
+    "inci_name": "Sodium Sulfite",
+    "max_limit": 0.2
+  },
+  {
+    "id": 45,
+    "korean_name": "포타슘설파이트",
+    "inci_name": "Potassium Sulfite",
+    "max_limit": 0.2
+  },
+  {
+    "id": 46,
+    "korean_name": "에칠헥실메톡시신나메이트",
+    "inci_name": "Ethylhexyl Methoxycinnamate",
+    "max_limit": 7.5
+  },
+  {
+    "id": 47,
+    "korean_name": "호모살레이트",
+    "inci_name": "Homosalate",
+    "max_limit": 10
+  },
+  {
+    "id": 48,
+    "korean_name": "옥토크릴렌",
+    "inci_name": "Octocrylene",
+    "max_limit": 10
+  },
+  {
+    "id": 49,
+    "korean_name": "에칠헥실살리실레이트",
+    "inci_name": "Ethylhexyl Salicylate",
+    "max_limit": 5
+  },
+  {
+    "id": 50,
+    "korean_name": "부틸메톡시디벤조일메탄",
+    "inci_name": "Butyl Methoxydibenzoylmethane",
+    "max_limit": 5
+  },
+  {
+    "id": 51,
+    "korean_name": "비스-에칠헥실옥시페놀메톡시페닐트리아진",
+    "inci_name": "Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine",
+    "max_limit": 10
+  },
+  {
+    "id": 52,
+    "korean_name": "벤조페논-3",
+    "inci_name": "Benzophenone-3",
+    "max_limit": 5
+  },
+  {
+    "id": 53,
+    "korean_name": "벤조페논-4",
+    "inci_name": "Benzophenone-4",
+    "max_limit": 5
+  },
+  {
+    "id": 54,
+    "korean_name": "벤조페논-8",
+    "inci_name": "Benzophenone-8",
+    "max_limit": 3
+  },
+  {
+    "id": 55,
+    "korean_name": "페닐벤즈이미다졸설포닉애씨드",
+    "inci_name": "Phenylbenzimidazole Sulfonic Acid",
+    "max_limit": 8
+  },
+  {
+    "id": 56,
+    "korean_name": "디에칠아미노하이드록시벤조일헥실벤조에이트",
+    "inci_name": "Diethylamino Hydroxybenzoyl Hexyl Benzoate",
+    "max_limit": 10
+  },
+  {
+    "id": 57,
+    "korean_name": "징크옥사이드",
+    "inci_name": "Zinc Oxide",
+    "max_limit": 25
+  },
+  {
+    "id": 58,
+    "korean_name": "드로메트리졸트리실록산",
+    "inci_name": "Drometrizole Trisiloxane",
+    "max_limit": 15
+  },
+  {
+    "id": 59,
+    "korean_name": "폴리실리콘-15",
+    "inci_name": "Polysilicone-15",
+    "max_limit": 10
+  },
+  {
+    "id": 60,
+    "korean_name": "에칠헥실트리아존",
+    "inci_name": "Ethylhexyl Triazone",
+    "max_limit": 5
+  },
+  {
+    "id": 61,
+    "korean_name": "디에칠헥실부타미도트리아존",
+    "inci_name": "Diethylhexyl Butamido Triazone",
+    "max_limit": 10
+  },
+  {
+    "id": 62,
+    "korean_name": "메칠렌비스-벤조트리아졸릴테트라메칠부틸페놀",
+    "inci_name": "Methylene Bis-Benzotriazolyl Tetramethylbutylphenol",
+    "max_limit": 10
+  },
+  {
+    "id": 63,
+    "korean_name": "테레프탈릴리덴디캠퍼설포닉애씨드",
+    "inci_name": "Terephthalylidene Dicamphor Sulfonic Acid",
+    "max_limit": 10
+  },
+  {
+    "id": 64,
+    "korean_name": "시녹세이트",
+    "inci_name": "Cinoxate",
+    "max_limit": 5
+  },
+  {
+    "id": 65,
+    "korean_name": "디옥시벤존",
+    "inci_name": "Dioxybenzone",
+    "max_limit": 3
+  },
+  {
+    "id": 66,
+    "korean_name": "이소아밀p-메톡시신나메이트",
+    "inci_name": "Isoamyl p-Methoxycinnamate",
+    "max_limit": 10
+  },
+  {
+    "id": 67,
+    "korean_name": "아데노신",
+    "inci_name": "Adenosine",
+    "max_limit": 0.04
+  },
+  {
+    "id": 68,
+    "korean_name": "알부틴",
+    "inci_name": "Arbutin",
+    "max_limit": 2
+  },
+  {
+    "id": 69,
+    "korean_name": "알파-비사보롤",
+    "inci_name": "alpha-bisabolol",
+    "max_limit": 0.5
+  },
+  {
+    "id": 70,
+    "korean_name": "아스코빌글루코사이드",
+    "inci_name": "Ascorbyl Glucoside",
+    "max_limit": 2
+  },
+  {
+    "id": 71,
+    "korean_name": "에칠아스코���에텔",
+    "inci_name": "Ethyl Ascorbyl Ether",
+    "max_limit": 1
+  },
+  {
+    "id": 72,
+    "korean_name": "아스코빌테트라이소팔미테이트",
+    "inci_name": "Ascorbyl Tetraisopalmitate",
+    "max_limit": 2
+  },
+  {
+    "id": 73,
+    "korean_name": "마그네슘아스코빌포스페이트",
+    "inci_name": "Magnesium Ascorbyl Phosphate",
+    "max_limit": 3
+  },
+  {
+    "id": 74,
+    "korean_name": "닥나무추출물",
+    "inci_name": "Broussonetia Extract",
+    "max_limit": 2
+  },
+  {
+    "id": 75,
+    "korean_name": "유용성감초추출물",
+    "inci_name": "Oil Soluble Licorice Extract",
+    "max_limit": 0.05
+  },
+  {
+    "id": 76,
+    "korean_name": "티오글라이콜릭애씨드",
+    "inci_name": "Thioglycolic Acid",
+    "max_limit": 5
+  },
+  {
+    "id": 77,
+    "korean_name": "과산화수소",
+    "inci_name": "Hydrogen Peroxide",
+    "max_limit": 3
+  },
+  {
+    "id": 78,
+    "korean_name": "엘-멘톨",
+    "inci_name": "L-Menthol",
+    "max_limit": 0.3
+  },
+  {
+    "id": 79,
+    "korean_name": "덱스판테놀",
+    "inci_name": "Dexpanthenol",
+    "max_limit": 0.2
+  },
+  {
+    "id": 80,
+    "korean_name": "레티놀",
+    "inci_name": "Retinol",
+    "max_limit": 0.075
+  },
+  {
+    "id": 81,
+    "korean_name": "레티닐팔미테이트",
+    "inci_name": "Retinyl Palmitate",
+    "max_limit": 0.3
+  },
+  {
+    "id": 82,
+    "korean_name": "폴리에톡실레이티드레틴아마이드",
+    "inci_name": "Polyethoxylated Retinamide",
+    "max_limit": 0.2
+  },
+  {
+    "id": 83,
+    "korean_name": "우레아",
+    "inci_name": "Urea",
+    "max_limit": 10
+  },
+  {
+    "id": 84,
+    "korean_name": "알파-하이드록시애씨드",
+    "inci_name": "Alpha-Hydroxy Acid",
+    "max_limit": 10
+  },
+  {
+    "id": 85,
+    "korean_name": "글라이콜릭애씨드",
+    "inci_name": "Glycolic Acid",
+    "max_limit": 10
+  },
+  {
+    "id": 86,
+    "korean_name": "락틱애씨드",
+    "inci_name": "Lactic Acid",
+    "max_limit": 10
+  },
+  {
+    "id": 87,
+    "korean_name": "징크설페이트",
+    "inci_name": "Zinc Sulfate",
+    "max_limit": 1
+  },
+  {
+    "id": 88,
+    "korean_name": "징크클로라이드",
+    "inci_name": "Zinc Chloride",
+    "max_limit": 1
+  },
+  {
+    "id": 89,
+    "korean_name": "캄퍼",
+    "inci_name": "Camphor",
+    "max_limit": 0.1
+  },
+  {
+    "id": 90,
+    "korean_name": "톨루엔",
+    "inci_name": "Toluene",
+    "max_limit": 25
+  },
+  {
+    "id": 91,
+    "korean_name": "자일렌",
+    "inci_name": "Xylene",
+    "max_limit": 10
+  },
+  {
+    "id": 92,
+    "korean_name": "스테아릴글리시레티네이트",
+    "inci_name": "Stearyl Glycyrrhetinate",
+    "max_limit": 0.05
+  },
+  {
+    "id": 93,
+    "korean_name": "징크페놀설포네이트",
+    "inci_name": "Zinc Phenolsulfonate",
+    "max_limit": 6
+  },
+  {
+    "id": 94,
+    "korean_name": "보릭애씨드",
+    "inci_name": "Boric Acid",
+    "max_limit": 5
+  },
+  {
+    "id": 95,
+    "korean_name": "소듐보레이트",
+    "inci_name": "Sodium Borate",
+    "max_limit": 5
+  },
+  {
+    "id": 96,
+    "korean_name": "글루타랄",
+    "inci_name": "Glutaral",
+    "max_limit": 0.1
+  },
+  {
+    "id": 97,
+    "korean_name": "프로피오닉애씨드",
+    "inci_name": "Propionic Acid",
+    "max_limit": 2
+  },
+  {
+    "id": 98,
+    "korean_name": "소듐프로피오네이트",
+    "inci_name": "Sodium Propionate",
+    "max_limit": 2
+  },
+  {
+    "id": 99,
+    "korean_name": "살리실아마이드",
+    "inci_name": "Salicylamide",
+    "max_limit": 0.5
+  },
+  {
+    "id": 100,
+    "korean_name": "클로로크레솔",
+    "inci_name": "Chlorocresol",
+    "max_limit": 0.2
+  },
+  {
+    "id": 101,
+    "korean_name": "아이오도프로피닐부틸카바메이트",
+    "inci_name": "Iodopropynyl Butylcarbamate",
+    "max_limit": 0.02
+  },
+  {
+    "id": 102,
+    "korean_name": "세트리모늄클로라이드",
+    "inci_name": "Cetrimonium Chloride",
+    "max_limit": 0.1
+  },
+  {
+    "id": 103,
+    "korean_name": "베헨트라이모늄클로라이드",
+    "inci_name": "Behentrimonium Chloride",
+    "max_limit": 0.1
+  },
+  {
+    "id": 104,
+    "korean_name": "스테아트라이모늄클로라이드",
+    "inci_name": "Steartrimonium Chloride",
+    "max_limit": 0.1
+  },
+  {
+    "id": 105,
+    "korean_name": "브로노폴",
+    "inci_name": "2-Bromo-2-Nitropropane-1,3-Diol",
+    "max_limit": 0.1
+  },
+  {
+    "id": 106,
+    "korean_name": "브로니독스",
+    "inci_name": "5-Bromo-5-Nitro-1,3-Dioxane",
+    "max_limit": 0.1
+  },
+  {
+    "id": 107,
+    "korean_name": "소듐하이드록시메칠글리시네이트",
+    "inci_name": "Sodium Hydroxymethylglycinate",
+    "max_limit": 0.5
+  },
+  {
+    "id": 108,
+    "korean_name": "클로로메칠이소치아졸리논",
+    "inci_name": "Methylchloroisothiazolinone",
+    "max_limit": 0.0015
+  },
+  {
+    "id": 109,
+    "korean_name": "티몰",
+    "inci_name": "Thymol",
+    "max_limit": 0.5
+  },
+  {
+    "id": 110,
+    "korean_name": "디메칠옥사졸리딘",
+    "inci_name": "Dimethyloxazolidine",
+    "max_limit": 0.1
+  },
+  {
+    "id": 111,
+    "korean_name": "7-에칠비사이클로옥사졸리딘",
+    "inci_name": "7-Ethylbicyclooxazolidine",
+    "max_limit": 0.3
+  },
+  {
+    "id": 112,
+    "korean_name": "벤잘코늄사카리네이트",
+    "inci_name": "Benzalkonium Saccharinate",
+    "max_limit": 0.1
+  },
+  {
+    "id": 113,
+    "korean_name": "벤잘코늄브로마이드",
+    "inci_name": "Benzalkonium Bromide",
+    "max_limit": 0.1
+  },
+  {
+    "id": 114,
+    "korean_name": "세트리모늄브로마이드",
+    "inci_name": "Cetrimonium Bromide",
+    "max_limit": 0.1
+  },
+  {
+    "id": 115,
+    "korean_name": "피리티온디설파이드",
+    "inci_name": "Pyrithione Disulfide",
+    "max_limit": 0.5
+  },
+  {
+    "id": 116,
+    "korean_name": "징크살리실레이트",
+    "inci_name": "Zinc Salicylate",
+    "max_limit": 0.5
+  },
+  {
+    "id": 117,
+    "korean_name": "칼슘벤조에이트",
+    "inci_name": "Calcium Benzoate",
+    "max_limit": 0.5
+  },
+  {
+    "id": 118,
+    "korean_name": "마그네슘벤조에이트",
+    "inci_name": "Magnesium Benzoate",
+    "max_limit": 0.5
+  },
+  {
+    "id": 119,
+    "korean_name": "포타슘벤조에이트",
+    "inci_name": "Potassium Benzoate",
+    "max_limit": 0.5
+  },
+  {
+    "id": 120,
+    "korean_name": "칼슘소르베이트",
+    "inci_name": "Calcium Sorbate",
+    "max_limit": 0.6
+  },
+  {
+    "id": 121,
+    "korean_name": "소듐소르베이트",
+    "inci_name": "Sodium Sorbate",
+    "max_limit": 0.6
+  },
+  {
+    "id": 122,
+    "korean_name": "글루타릭알데하이드",
+    "inci_name": "Glutaraldehyde",
+    "max_limit": 0.1
+  },
+  {
+    "id": 123,
+    "korean_name": "헥사클로로펜",
+    "inci_name": "Hexachlorophene",
+    "max_limit": 0.1
+  },
+  {
+    "id": 124,
+    "korean_name": "피리치온소듐",
+    "inci_name": "Sodium Pyrithione",
+    "max_limit": 0.5
+  },
+  {
+    "id": 125,
+    "korean_name": "벤질라우레이트",
+    "inci_name": "Benzyl Laurate",
+    "max_limit": 1
+  },
+  {
+    "id": 126,
+    "korean_name": "멘틸안트라닐레이트",
+    "inci_name": "Menthyl Anthranilate",
+    "max_limit": 5
+  },
+  {
+    "id": 127,
+    "korean_name": "옥틸디메칠파바",
+    "inci_name": "Octyl Dimethyl PABA",
+    "max_limit": 8
+  },
+  {
+    "id": 128,
+    "korean_name": "파라-아미노벤조익애씨드",
+    "inci_name": "p-Aminobenzoic Acid",
+    "max_limit": 5
+  },
+  {
+    "id": 129,
+    "korean_name": "디이소프로필메칠신나메이트",
+    "inci_name": "Diisopropyl Methyl Cinnamate",
+    "max_limit": 2
+  },
+  {
+    "id": 130,
+    "korean_name": "벤조페논-1",
+    "inci_name": "Benzophenone-1",
+    "max_limit": 5
+  },
+  {
+    "id": 131,
+    "korean_name": "벤조페논-2",
+    "inci_name": "Benzophenone-2",
+    "max_limit": 3
+  },
+  {
+    "id": 132,
+    "korean_name": "벤조페논-6",
+    "inci_name": "Benzophenone-6",
+    "max_limit": 5
+  },
+  {
+    "id": 133,
+    "korean_name": "벤조페논-9",
+    "inci_name": "Benzophenone-9",
+    "max_limit": 5
+  },
+  {
+    "id": 134,
+    "korean_name": "비스-디소듐테레프탈릴리덴디캠퍼설포네이트",
+    "inci_name": "Bis-Disodium Terephthalylidene Dicamphor Sulfonate",
+    "max_limit": 3
+  },
+  {
+    "id": 135,
+    "korean_name": "옥틸트리아존",
+    "inci_name": "Octyl Triazone",
+    "max_limit": 5
+  },
+  {
+    "id": 136,
+    "korean_name": "알루미늄클로로하이드레이트",
+    "inci_name": "Aluminum Chlorohydrate",
+    "max_limit": 25
+  },
+  {
+    "id": 137,
+    "korean_name": "알루미늄지르코늄테트라클로로하이드렉스글라이",
+    "inci_name": "Aluminum Zirconium Tetrachlorohydrex GLY",
+    "max_limit": 20
+  },
+  {
+    "id": 138,
+    "korean_name": "디하이드록시아세톤",
+    "inci_name": "Dihydroxyacetone",
+    "max_limit": 10
+  },
+  {
+    "id": 139,
+    "korean_name": "포타슘하이드록사이드",
+    "inci_name": "Potassium Hydroxide",
+    "max_limit": 4.5
+  },
+  {
+    "id": 140,
+    "korean_name": "소듐하이드록사이드",
+    "inci_name": "Sodium Hydrox이드",
+    "max_limit": 4.5
+  },
+  {
+    "id": 141,
+    "korean_name": "트리에탄올아민",
+    "inci_name": "Triethanolamine",
+    "max_limit": 2.5
+  },
+  {
+    "id": 142,
+    "korean_name": "모노에탄올아민",
+    "inci_name": "Monoethanolamine",
+    "max_limit": 2.5
+  },
+  {
+    "id": 143,
+    "korean_name": "스트론튬클로라이드",
+    "inci_name": "Strontium Chloride",
+    "max_limit": 3.5
+  },
+  {
+    "id": 144,
+    "korean_name": "셀레늄디설파이드",
+    "inci_name": "Selenium Disulfide",
+    "max_limit": 1
+  },
+  {
+    "id": 145,
+    "korean_name": "살리실산메틸",
+    "inci_name": "Methyl Salicylate",
+    "max_limit": 0.5
+  },
+  {
+    "id": 146,
+    "korean_name": "암모늄티오글라이콜레이트",
+    "inci_name": "Ammonium Thioglycolate",
+    "max_limit": 11
+  },
+  {
+    "id": 147,
+    "korean_name": "에탄올아민티오글라이콜레이트",
+    "inci_name": "Ethanolamine Thioglycolate",
+    "max_limit": 11
+  },
+  {
+    "id": 148,
+    "korean_name": "과황산암모늄",
+    "inci_name": "Ammonium Persulfate",
+    "max_limit": 10
+  },
+  {
+    "id": 149,
+    "korean_name": "과황산칼륨",
+    "inci_name": "Potassium Persulfate",
+    "max_limit": 10
+  },
+  {
+    "id": 150,
+    "korean_name": "과황산나트륨",
+    "inci_name": "Sodium Persulfate",
+    "max_limit": 10
+  },
+  {
+    "id": 151,
+    "korean_name": "알란토인",
+    "inci_name": "Allantoin",
+    "max_limit": 2
+  },
+  {
+    "id": 152,
+    "korean_name": "코직애씨드",
+    "inci_name": "Kojic Acid",
+    "max_limit": 1
+  },
+  {
+    "id": 153,
+    "korean_name": "아젤라익애씨드",
+    "inci_name": "Azelaic Acid",
+    "max_limit": 10
+  },
+  {
+    "id": 154,
+    "korean_name": "페놀",
+    "inci_name": "Phenol",
+    "max_limit": 0.1
+  },
+  {
+    "id": 155,
+    "korean_name": "징크카보네이트",
+    "inci_name": "Zinc Carbonate",
+    "max_limit": 5
+  },
+  {
+    "id": 156,
+    "korean_name": "징크아세테이트",
+    "inci_name": "Zinc Acetate",
+    "max_limit": 1
+  },
+  {
+    "id": 157,
+    "korean_name": "징크글루코네이트",
+    "inci_name": "Zinc Gluconate",
+    "max_limit": 1
+  },
+  {
+    "id": 158,
+    "korean_name": "디소듐에디티에이",
+    "inci_name": "Disodium EDTA",
+    "max_limit": 0.2
+  },
+  {
+    "id": 159,
+    "korean_name": "알루미늄설페이트",
+    "inci_name": "Aluminum Sulfate",
+    "max_limit": 5
+  },
+  {
+    "id": 160,
+    "korean_name": "알루미늄아세테이트",
+    "inci_name": "Aluminum Acetate",
+    "max_limit": 5
+  },
+  {
+    "id": 161,
+    "korean_name": "p-페닐렌디아민",
+    "inci_name": "p-Phenylenediamine",
+    "max_limit": 2
+  },
+  {
+    "id": 162,
+    "korean_name": "톨루엔-2,5-디아민",
+    "inci_name": "Toluene-2,5-Diamine",
+    "max_limit": 4
+  },
+  {
+    "id": 163,
+    "korean_name": "m-아미노페놀",
+    "inci_name": "m-Aminophenol",
+    "max_limit": 1
+  },
+  {
+    "id": 164,
+    "korean_name": "p-아미노페놀",
+    "inci_name": "p-Aminophenol",
+    "max_limit": 0.9
+  },
+  {
+    "id": 165,
+    "korean_name": "니트로-p-페닐렌디아민",
+    "inci_name": "Nitro-p-Phenylenediamine",
+    "max_limit": 0.3
+  },
+  {
+    "id": 166,
+    "korean_name": "4-아미노-2-하이드록시톨루엔",
+    "inci_name": "4-Amino-2-Hydroxytoluene",
+    "max_limit": 1.5
+  },
+  {
+    "id": 167,
+    "korean_name": "2-메칠레조시놀",
+    "inci_name": "2-Methylresorcinol",
+    "max_limit": 1
+  },
+  {
+    "id": 168,
+    "korean_name": "피로갈롤",
+    "inci_name": "Pyrogallol",
+    "max_limit": 5
+  },
+  {
+    "id": 169,
+    "korean_name": "5-아미노-o-크레솔",
+    "inci_name": "5-Amino-o-Cresol",
+    "max_limit": 1
+  },
+  {
+    "id": 170,
+    "korean_name": "2-아미노-4-하이드록시에칠아미노아니솔설페이트",
+    "inci_name": "2-Amino-4-Hydroxyethylaminoanisole Sulfate",
+    "max_limit": 1.5
+  },
+  {
+    "id": 171,
+    "korean_name": "2,6-디하이드록시에칠아미노톨루엔",
+    "inci_name": "2,6-Dihydroxyethylaminotoluene",
+    "max_limit": 1
+  },
+  {
+    "id": 172,
+    "korean_name": "N,N-비스(2-하이드록시에칠)-p-페닐렌디아민설페이트",
+    "inci_name": "N,N-Bis(2-Hydroxyethyl)-p-Phenylenediamine Sulfate",
+    "max_limit": 1.5
+  },
+  {
+    "id": 173,
+    "korean_name": "1-나프톨",
+    "inci_name": "1-Naphthol",
+    "max_limit": 0.5
+  },
+  {
+    "id": 174,
+    "korean_name": "하이드록시에칠-p-페닐렌디아민설페이트",
+    "inci_name": "Hydroxyethyl-p-Phenylenediamine Sulfate",
+    "max_limit": 1.5
+  },
+  {
+    "id": 175,
+    "korean_name": "2-메칠-5-하이드록시에칠아미노페놀",
+    "inci_name": "2-Methyl-5-Hydroxyethylaminophenol",
+    "max_limit": 1.5
+  },
+  {
+    "id": 176,
+    "korean_name": "4-아미노-m-크레솔",
+    "inci_name": "4-Amino-m-Cresol",
+    "max_limit": 1.5
+  },
+  {
+    "id": 177,
+    "korean_name": "리모넨",
+    "inci_name": "Limonene",
+    "max_limit": 0.001
+  },
+  {
+    "id": 178,
+    "korean_name": "리날룰",
+    "inci_name": "Linalool",
+    "max_limit": 0.001
+  },
+  {
+    "id": 179,
+    "korean_name": "시트로넬올",
+    "inci_name": "Citronellol",
+    "max_limit": 0.001
+  },
+  {
+    "id": 180,
+    "korean_name": "제라니올",
+    "inci_name": "Geraniol",
+    "max_limit": 0.001
+  },
+  {
+    "id": 181,
+    "korean_name": "시트랄",
+    "inci_name": "Citral",
+    "max_limit": 0.001
+  },
+  {
+    "id": 182,
+    "korean_name": "벤질벤조에이트",
+    "inci_name": "Benzyl Benzoate",
+    "max_limit": 0.001
+  },
+  {
+    "id": 183,
+    "korean_name": "벤질살리실레이트",
+    "inci_name": "Benzyl Salicylate",
+    "max_limit": 0.001
+  },
+  {
+    "id": 184,
+    "korean_name": "유제놀",
+    "inci_name": "Eugenol",
+    "max_limit": 0.001
+  },
+  {
+    "id": 185,
+    "korean_name": "쿠마린",
+    "inci_name": "Coumarin",
+    "max_limit": 0.001
+  },
+  {
+    "id": 186,
+    "korean_name": "헥실신남알",
+    "inci_name": "Hexyl Cinnamal",
+    "max_limit": 0.001
+  },
+  {
+    "id": 187,
+    "korean_name": "부틸페닐메칠프로피오날",
+    "inci_name": "Butylphenyl Methylpropional",
+    "max_limit": 0.001
+  },
+  {
+    "id": 188,
+    "korean_name": "알파-이소메칠이오논",
+    "inci_name": "Alpha-Isomethyl Ionone",
+    "max_limit": 0.001
+  },
+  {
+    "id": 189,
+    "korean_name": "하이드록시시트로넬알",
+    "inci_name": "Hydroxycitronellal",
+    "max_limit": 0.001
+  },
+  {
+    "id": 190,
+    "korean_name": "이소유제놀",
+    "inci_name": "Isoeugenol",
+    "max_limit": 0.001
+  },
+  {
+    "id": 191,
+    "korean_name": "아니스알코올",
+    "inci_name": "Anise Alcohol",
+    "max_limit": 0.001
+  },
+  {
+    "id": 192,
+    "korean_name": "벤질신나메이트",
+    "inci_name": "Benzyl Cinnamate",
+    "max_limit": 0.001
+  },
+  {
+    "id": 193,
+    "korean_name": "신나밀알코올",
+    "inci_name": "Cinnamyl Alcohol",
+    "max_limit": 0.001
+  },
+  {
+    "id": 194,
+    "korean_name": "신남알",
+    "inci_name": "Cinnamal",
+    "max_limit": 0.001
+  },
+  {
+    "id": 195,
+    "korean_name": "파네솔",
+    "inci_name": "Farnesol",
+    "max_limit": 0.001
+  },
+  {
+    "id": 196,
+    "korean_name": "하이드록시이소헥실3-사이클로헥센카복스알데하이드",
+    "inci_name": "Hydroxyisohexyl 3-Cyclohexene Carboxaldehyde",
+    "max_limit": 0.001
+  },
+  {
+    "id": 197,
+    "korean_name": "메칠2-옥티노에이트",
+    "inci_name": "Methyl 2-Octynoate",
+    "max_limit": 0.001
+  },
+  {
+    "id": 198,
+    "korean_name": "참나무이끼추출물",
+    "inci_name": "Evernia Prunastri (Oakmoss) Extract",
+    "max_limit": 0.001
+  },
+  {
+    "id": 199,
+    "korean_name": "나무이끼추출물",
+    "inci_name": "Evernia Furfuracea (Treemoss) Extract",
+    "max_limit": 0.001
+  },
+  {
+    "id": 200,
+    "korean_name": "아밀신남알",
+    "inci_name": "Amyl Cinnamal",
+    "max_limit": 0.001
+  }
+];
+    let ingredientsTestList = [...DEFAULT_INGREDIENTS_TEST];
+
+    // 슈퍼베이스 실시간 ingredients_test 규제 성분 동기화 함수
+    async function syncIngredientsTestFromSupabase(isManual = false) {
+      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredients_test?select=*&order=id.asc';
+      const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
+
+      try {
+        const res = await fetch(SUPABASE_REST_URL, {
+          cache: 'no-store',
+          method: 'GET',
+          headers: {
+            'apikey': ANON_KEY,
+            'Authorization': 'Bearer ' + ANON_KEY,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Range': '0-1999'
+          }
+        });
+
+        if (!res.ok) {
+          console.warn('[SOCSOC] ingredients_test fetch status:', res.status);
+          return;
+        }
+
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          ingredientsTestList = data.map(r => ({
+            id: r.id,
+            korean_name: String(r.korean_name || r.name || r['성분명'] || '').trim(),
+            inci_name: String(r.inci_name || r.inci || r.english_name || '').trim(),
+            max_limit: r.max_limit !== null && r.max_limit !== undefined ? parseFloat(r.max_limit) : (r.limit !== undefined ? parseFloat(r.limit) : null)
+          }));
+          console.log('[SOCSOC] ingredients_test 실시간 동기화 완료: ' + ingredientsTestList.length + '개 성분');
+        }
+      } catch (err) {
+        console.warn('[SOCSOC] ingredients_test 실시간 동기화 경고:', err);
+      }
+    }
+
+    // ingredients_test 성분 정밀 매칭 헬퍼
+    function findMatchedTestIngredient(name) {
+      if (!name || !ingredientsTestList || ingredientsTestList.length === 0) return null;
+      // 괄호 농도 표기 (예: (1,000ppm), [5%], (487.5ppm) 등) 제거 및 정규화
+      const baseName = String(name).replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '').trim();
+      const cTarget = cleanIngStr(baseName);
+      if (!cTarget || cTarget.length < 2) return null;
+
+      // 1. 한국어 성분명 완전 일치 (공백/특수문자 정규화)
+      for (const item of ingredientsTestList) {
+        if (cleanIngStr(item.korean_name) === cTarget) return item;
+      }
+
+      // 2. INCI 영문명 완전 일치
+      for (const item of ingredientsTestList) {
+        if (item.inci_name && cleanIngStr(item.inci_name) === cTarget) return item;
+      }
+
+      // 3. 한국어 성분명 부분 일치 (단, 화학적 접두사 분리 보장)
+      for (const item of ingredientsTestList) {
+        const kClean = cleanIngStr(item.korean_name);
+        if (kClean && kClean.length >= 3 && (cTarget === kClean || (cTarget.length >= 4 && (cTarget.startsWith(kClean) || cTarget.endsWith(kClean))))) {
+          if (cTarget.includes('글리세린') && cTarget !== '글리세린' && kClean === '글리세린') continue;
+          if (cTarget.includes('프로필렌글라이콜') && cTarget !== '프로필렌글라이콜' && kClean === '프로필렌글라이콜') continue;
+          return item;
+        }
+      }
+
+      return null;
+    }
+
     // 슈퍼베이스 실시간 성분 규칙 동기화 함수 (브라우저 캐시 우회 & 100% 실시간 DB 직결)
     async function syncIngredientRulesFromSupabase(isManual = false) {
       const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=*&order=priority.asc';
@@ -9239,16 +10528,16 @@ function initAuth() {
       }
     }
 
-    // 브라우저 탭 포커스 복귀 시 슈퍼베이스 최신 규칙 즉시 재동기화
+    // 브라우저 탭 포커스 복귀 시 슈퍼베이스 최신 규칙 & 규제 DB 즉시 재동기화
     window.addEventListener('focus', () => {
-      if (typeof syncIngredientRulesFromSupabase === 'function') {
-        syncIngredientRulesFromSupabase();
-      }
+      if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
+      if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
     });
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && typeof syncIngredientRulesFromSupabase === 'function') {
-        syncIngredientRulesFromSupabase();
+      if (!document.hidden) {
+        if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
+        if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
       }
     });
 
@@ -9256,16 +10545,18 @@ function initAuth() {
     let lastUserSyncTime = 0;
     window.addEventListener('pointerdown', () => {
       const now = Date.now();
-      if (now - lastUserSyncTime > 3000 && typeof syncIngredientRulesFromSupabase === 'function') {
+      if (now - lastUserSyncTime > 3000) {
         lastUserSyncTime = now;
-        syncIngredientRulesFromSupabase();
+        if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
+        if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
       }
     });
 
     // 전성분 해체기 모드일 때 3초 주기 실시간 백그라운드 폴링 (슈퍼베이스 수정 즉시 자동 반영)
     setInterval(() => {
-      if (currentAppMode === 'analyzer' && typeof syncIngredientRulesFromSupabase === 'function') {
-        syncIngredientRulesFromSupabase();
+      if (currentAppMode === 'analyzer') {
+        if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
+        if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
       }
     }, 3000);
 
@@ -9415,15 +10706,39 @@ function initAuth() {
     }
 
     function checkIndicator(name) {
+      // [1순위] 슈퍼베이스 ingredients_test (식약처 고시 규제 DB) 기준 판정
+      const testMatch = findMatchedTestIngredient(name);
+      if (testMatch && testMatch.max_limit !== null && testMatch.max_limit !== undefined && !isNaN(parseFloat(testMatch.max_limit))) {
+        const limitVal = parseFloat(testMatch.max_limit);
+        if (limitVal <= 1.00) {
+          return {
+            isIndicator: true,
+            reason: `식약처 고시 배합한도 ${limitVal}% 이하 (${testMatch.korean_name})`,
+            source: 'ingredients_test',
+            rule: testMatch
+          };
+        } else {
+          // 규제 배합한도가 1%를 초과하는 성분(예: 알란토인 2%, 나이아신아마이드 5% 등)은 규제상 1% 지표가 아님
+          return {
+            isIndicator: false,
+            reason: `식약처 고시 한도 ${limitVal}% (1% 초과 사용 가능)`,
+            source: 'ingredients_test',
+            rule: testMatch
+          };
+        }
+      }
+
+      // [2순위] 슈퍼베이스 ingredient_rules 기준 판정
       const rule = findIngredientRule(name);
       if (rule) {
         if (rule.is_indicator) {
-          return { isIndicator: true, reason: rule.reason, rule: rule };
+          return { isIndicator: true, reason: rule.reason, source: 'ingredient_rules', rule: rule };
         }
-        if (rule.max_limit !== null && rule.max_limit !== undefined && !isNaN(parseFloat(rule.max_limit)) && parseFloat(rule.max_limit) <= 0.50) {
-          return { isIndicator: true, reason: (rule.reason || (rule.name + ' 배합한도 ' + rule.max_limit + '% (1% 이하 지표)')), rule: rule };
+        if (rule.max_limit !== null && rule.max_limit !== undefined && !isNaN(parseFloat(rule.max_limit)) && parseFloat(rule.max_limit) <= 1.00) {
+          return { isIndicator: true, reason: (rule.reason || (rule.name + ' 배합한도 ' + rule.max_limit + '% (1% 이하 지표)')), source: 'ingredient_rules', rule: rule };
         }
       }
+
       return { isIndicator: false };
     }
 
@@ -9491,33 +10806,54 @@ function initAuth() {
       return clean === '정제수' || clean === 'water' || clean === 'aqua';
     }
 
+    function formatConcentrationPercent(val) {
+      if (typeof val !== 'number' || isNaN(val)) return '';
+      if (val >= 1) return parseFloat(val.toFixed(2));
+      if (val >= 0.01) return parseFloat(val.toFixed(2));
+      if (val >= 0.001) return parseFloat(val.toFixed(4));
+      return parseFloat(val.toFixed(6));
+    }
+
     function extractExplicitConcentration(name) {
       if (!name) return null;
       const str = String(name);
       
-      const pctMatch = str.match(/\(\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\)/i);
+      // % 표기 감지: (5%), [5%], 5% 등
+      const pctMatch = str.match(/(?:\(|\[|\b)([0-9]+(?:\.[0-9]+)?)\s*%(?:\)|\]|\b)/i);
       if (pctMatch) {
         const val = parseFloat(pctMatch[1]);
         if (!isNaN(val)) return { type: 'percent', rawVal: val, percent: val, str: val + '%' };
       }
 
-      const ppmMatch = str.match(/\(\s*([0-9,]+(?:\.[0-9]+)?)\s*ppm\s*\)/i);
+      // PPM 표기 감지: (1,000ppm), [1,000ppm], 1000ppm, 487.5ppm 등 (10,000 ppm = 1.0%)
+      const ppmMatch = str.match(/(?:\(|\[|\b)([0-9,]+(?:\.[0-9]+)?)\s*ppm(?:\)|\]|\b)/i);
       if (ppmMatch) {
         const cleanNum = ppmMatch[1].replace(/,/g, '');
         const val = parseFloat(cleanNum);
         if (!isNaN(val)) {
           const pct = val / 10000;
-          return { type: 'ppm', rawVal: val, percent: pct, str: ppmMatch[1] + 'ppm (' + (pct < 0.01 ? pct.toFixed(4) : pct.toFixed(2)) + '%)' };
+          return {
+            type: 'ppm',
+            rawVal: val,
+            percent: pct,
+            str: ppmMatch[1] + 'ppm (' + (pct < 0.01 ? pct.toFixed(4) : pct.toFixed(2)) + '%)'
+          };
         }
       }
 
-      const ppbMatch = str.match(/\(\s*([0-9,]+(?:\.[0-9]+)?)\s*ppb\s*\)/i);
+      // PPB 표기 감지: (7,500ppb), 7500ppb, 150ppb 등 (10,000,000 ppb = 1.0%)
+      const ppbMatch = str.match(/(?:\(|\[|\b)([0-9,]+(?:\.[0-9]+)?)\s*ppb(?:\)|\]|\b)/i);
       if (ppbMatch) {
         const cleanNum = ppbMatch[1].replace(/,/g, '');
         const val = parseFloat(cleanNum);
         if (!isNaN(val)) {
           const pct = val / 10000000;
-          return { type: 'ppb', rawVal: val, percent: pct, str: ppbMatch[1] + 'ppb' };
+          return {
+            type: 'ppb',
+            rawVal: val,
+            percent: pct,
+            str: ppbMatch[1] + 'ppb (' + (pct < 0.001 ? pct.toFixed(6) : pct.toFixed(4)) + '%)'
+          };
         }
       }
 
@@ -9562,15 +10898,24 @@ function initAuth() {
           finalReason = '농도 직접 표기 (' + explicitConc.str + ' <= 1%)';
         }
 
+        // 원료명에 PPM 또는 % 농도가 기재된 경우 그 함량에 맞춰 % 값을 즉시 자동 환산 반영
+        let initPercentage = '';
+        let isUserEdited = false;
+        if (explicitConc) {
+          initPercentage = formatConcentrationPercent(explicitConc.percent);
+          isUserEdited = true;
+        }
+
         list.push({
           id: 'ing_' + Date.now() + '_' + idx,
           order: list.length + 1,
           name: cleanName,
-          percentage: '',
+          percentage: initPercentage,
           role: role,
           isIndicator: finalIsIndicator,
           indicatorReason: finalReason,
-          explicitConcentration: explicitConc
+          explicitConcentration: explicitConc,
+          userEditedPercentage: isUserEdited
         });
       });
 
@@ -9766,7 +11111,14 @@ function initAuth() {
         let recRate = (matchedRule && matchedRule.recommended_rate) ? matchedRule.recommended_rate.trim() : '';
 
         const hasPercentVal = item.percentage !== undefined && item.percentage !== null && item.percentage !== '';
-        const displayVal = hasPercentVal ? (typeof item.percentage === 'number' ? item.percentage.toFixed(2) : item.percentage) : '';
+        let displayVal = '';
+        if (hasPercentVal) {
+          if (typeof item.percentage === 'number') {
+            displayVal = item.percentage < 0.001 ? item.percentage.toFixed(6) : (item.percentage < 0.01 ? item.percentage.toFixed(4) : item.percentage.toFixed(2));
+          } else {
+            displayVal = item.percentage;
+          }
+        }
 
         tr.innerHTML = `
           <td class="py-2 px-2 text-center">
@@ -9780,6 +11132,8 @@ function initAuth() {
                 onchange="updateAnalyzerIngredientName('${item.id}', this.value)"
                 class="w-full bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-[#0f2137] rounded px-1.5 py-0.5 text-neutral-800 font-semibold text-xs focus:outline-none transition"
               />
+              ${item.explicitConcentration && item.explicitConcentration.type === 'ppm' ? `<span class="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold shadow-2xs font-mono" title="원료명 표기 함량: ${item.explicitConcentration.str}">${item.explicitConcentration.rawVal.toLocaleString()}ppm</span>` : ''}
+              ${item.explicitConcentration && item.explicitConcentration.type === 'ppb' ? `<span class="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold shadow-2xs font-mono" title="원료명 표기 함량: ${item.explicitConcentration.str}">${item.explicitConcentration.rawVal.toLocaleString()}ppb</span>` : ''}
               ${item.isIndicator ? `<span class="shrink-0 text-[10px] px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold shadow-2xs" title="${item.indicatorReason || '1% 이하 지표'}">1% 지표</span>` : ''}
             </div>
           </td>
@@ -9787,7 +11141,7 @@ function initAuth() {
             <div class="relative flex items-center justify-center">
               <input
                 type="number"
-                step="0.01"
+                step="any"
                 min="0"
                 max="100"
                 value="${displayVal}"
@@ -9865,9 +11219,17 @@ function initAuth() {
       if (typeof raw === 'string') raw = raw.replace(/[^0-9.]/g, '');
       const num = parseFloat(raw);
       if (!isNaN(num) && num >= 0) {
-        item.percentage = parseFloat(num.toFixed(2));
+        if (num < 0.001) {
+          item.percentage = parseFloat(num.toFixed(6));
+          if (el) el.value = num.toFixed(6);
+        } else if (num < 0.01) {
+          item.percentage = parseFloat(num.toFixed(4));
+          if (el) el.value = num.toFixed(4);
+        } else {
+          item.percentage = parseFloat(num.toFixed(2));
+          if (el) el.value = num.toFixed(2);
+        }
         item.userEditedPercentage = true;
-        if (el) el.value = item.percentage.toFixed(2);
       } else {
         item.percentage = '';
         if (el) el.value = '';
@@ -10110,8 +11472,10 @@ function initAuth() {
 
           let val = 0.15;
           if (item.explicitConcentration) {
-            val = Math.max(0.01, parseFloat(item.explicitConcentration.percent.toFixed(2)));
-            if (item.explicitConcentration.percent < 0.01) val = 0.01;
+            val = formatConcentrationPercent(item.explicitConcentration.percent);
+            item.percentage = val;
+            lowSum += val;
+            continue;
           } else if (parsed && parsed.max <= 1.00) {
             if (parsed.min === parsed.max) {
               val = parsed.min;
@@ -10140,6 +11504,10 @@ function initAuth() {
           lowSum = 0;
           for (let i = boundary; i < count; i++) {
             const item = analyzerState.ingredients[i];
+            if (item.explicitConcentration) {
+              lowSum += item.percentage;
+              continue;
+            }
             if (item.userEditedPercentage && typeof item.percentage === 'number') {
               lowSum += item.percentage;
               continue;
