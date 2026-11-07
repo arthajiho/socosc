@@ -9416,8 +9416,13 @@ function initAuth() {
 
     function checkIndicator(name) {
       const rule = findIngredientRule(name);
-      if (rule && rule.is_indicator) {
-        return { isIndicator: true, reason: rule.reason, rule: rule };
+      if (rule) {
+        if (rule.is_indicator) {
+          return { isIndicator: true, reason: rule.reason, rule: rule };
+        }
+        if (rule.max_limit !== null && rule.max_limit !== undefined && !isNaN(parseFloat(rule.max_limit)) && parseFloat(rule.max_limit) <= 0.50) {
+          return { isIndicator: true, reason: (rule.reason || (rule.name + ' 배합한도 ' + rule.max_limit + '% (1% 이하 지표)')), rule: rule };
+        }
       }
       return { isIndicator: false };
     }
@@ -9481,6 +9486,44 @@ function initAuth() {
     }
 
     // 전성분 텍스트 파싱 및 테이블 구성 함수
+        function isWaterIngredient(name) {
+      const clean = (name || '').toLowerCase().replace(/[\s\-_,\.\(\)]+/g, '');
+      return clean === '정제수' || clean === 'water' || clean === 'aqua';
+    }
+
+    function extractExplicitConcentration(name) {
+      if (!name) return null;
+      const str = String(name);
+      
+      const pctMatch = str.match(/\(\s*([0-9]+(?:\.[0-9]+)?)\s*%\s*\)/i);
+      if (pctMatch) {
+        const val = parseFloat(pctMatch[1]);
+        if (!isNaN(val)) return { type: 'percent', rawVal: val, percent: val, str: val + '%' };
+      }
+
+      const ppmMatch = str.match(/\(\s*([0-9,]+(?:\.[0-9]+)?)\s*ppm\s*\)/i);
+      if (ppmMatch) {
+        const cleanNum = ppmMatch[1].replace(/,/g, '');
+        const val = parseFloat(cleanNum);
+        if (!isNaN(val)) {
+          const pct = val / 10000;
+          return { type: 'ppm', rawVal: val, percent: pct, str: ppmMatch[1] + 'ppm (' + (pct < 0.01 ? pct.toFixed(4) : pct.toFixed(2)) + '%)' };
+        }
+      }
+
+      const ppbMatch = str.match(/\(\s*([0-9,]+(?:\.[0-9]+)?)\s*ppb\s*\)/i);
+      if (ppbMatch) {
+        const cleanNum = ppbMatch[1].replace(/,/g, '');
+        const val = parseFloat(cleanNum);
+        if (!isNaN(val)) {
+          const pct = val / 10000000;
+          return { type: 'ppb', rawVal: val, percent: pct, str: ppbMatch[1] + 'ppb' };
+        }
+      }
+
+      return null;
+    }
+
     function parseCurrentIngredients(isDecompose = false) {
       const txtArea = document.getElementById('rawTextarea');
       if (!txtArea) return;
@@ -9510,6 +9553,14 @@ function initAuth() {
 
         const { isIndicator, reason } = checkIndicator(cleanName);
         const role = matchRole(cleanName);
+        const explicitConc = extractExplicitConcentration(cleanName);
+        let finalIsIndicator = isIndicator;
+        let finalReason = reason;
+
+        if (explicitConc && explicitConc.percent <= 1.00) {
+          finalIsIndicator = true;
+          finalReason = '농도 직접 표기 (' + explicitConc.str + ' <= 1%)';
+        }
 
         list.push({
           id: 'ing_' + Date.now() + '_' + idx,
@@ -9517,18 +9568,25 @@ function initAuth() {
           name: cleanName,
           percentage: '',
           role: role,
-          isIndicator: isIndicator,
-          indicatorReason: reason
+          isIndicator: finalIsIndicator,
+          indicatorReason: finalReason,
+          explicitConcentration: explicitConc
         });
       });
 
       // 1% 지표 및 절취선 감지 로직
       // 헥산디올(통상 2% 처방)이 존재하는 경우, 화장품법상 헥산디올 앞의 모든 성분은 2% 이상이므로 1% 절취선은 헥산디올 이후에 위치해야 함
       const hexIdx = list.findIndex(item => isHexanediol(item.name));
+      let hasPriorLowIndicator = false;
       if (hexIdx !== -1) {
-        for (let i = 0; i <= hexIdx; i++) {
-          list[i].isIndicator = false;
-          list[i].indicatorReason = '';
+        hasPriorLowIndicator = list.slice(0, hexIdx).some(item => {
+          return (item.explicitConcentration && item.explicitConcentration.percent <= 1.00) || item.isIndicator;
+        });
+        if (!hasPriorLowIndicator) {
+          for (let i = 0; i <= hexIdx; i++) {
+            list[i].isIndicator = false;
+            list[i].indicatorReason = '';
+          }
         }
       }
 
@@ -9549,7 +9607,7 @@ function initAuth() {
         }
       }
 
-      const searchStart = (hexIdx !== -1) ? hexIdx + 1 : 0;
+      const searchStart = (hexIdx !== -1 && !hasPriorLowIndicator) ? hexIdx + 1 : 0;
       for (let i = searchStart; i < list.length; i++) {
         if (list[i].isIndicator) {
           detectedCutoff = i;
@@ -9990,7 +10048,10 @@ function initAuth() {
 
       // 2. 1% 절취선 경계(boundary) 산출
       let boundary = getEffectiveCutoff();
-      if (hexIdx !== -1 && analyzerState.manualCutoff === null) {
+      const hasPriorLowInEst = hexIdx !== -1 && analyzerState.ingredients.slice(0, hexIdx).some(it => {
+        return it.isIndicator || (it.explicitConcentration && it.explicitConcentration.percent <= 1.00);
+      });
+      if (hexIdx !== -1 && !hasPriorLowInEst && analyzerState.manualCutoff === null) {
         if (boundary === null || boundary <= hexIdx) {
           let nextIndicatorIdx = -1;
           for (let i = hexIdx + 1; i < count; i++) {
@@ -10048,20 +10109,21 @@ function initAuth() {
           const parsed = parseRecommendedRate(recStr);
 
           let val = 0.15;
-          if (parsed) {
+          if (item.explicitConcentration) {
+            val = Math.max(0.01, parseFloat(item.explicitConcentration.percent.toFixed(2)));
+            if (item.explicitConcentration.percent < 0.01) val = 0.01;
+          } else if (parsed && parsed.max <= 1.00) {
             if (parsed.min === parsed.max) {
               val = parsed.min;
             } else {
               const ratio = 0.20 + ((i % 5) * 0.15);
               val = parsed.min + (parsed.max - parsed.min) * ratio;
             }
-            // 1% 이하 구간이므로 최대 1.00% 상한선 준수
-            const upperLimit = Math.min(1.00, parsed.max);
-            val = Math.max(parsed.min, Math.min(upperLimit, val));
-          } else if (matchedRule && matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent))) {
-            val = Math.min(1.00, parseFloat(matchedRule.default_percent));
+            val = Math.max(parsed.min, Math.min(1.00, val));
+          } else if (matchedRule && matchedRule.default_percent !== null && matchedRule.default_percent !== undefined && !isNaN(parseFloat(matchedRule.default_percent)) && parseFloat(matchedRule.default_percent) <= 1.00) {
+            val = parseFloat(matchedRule.default_percent);
           } else {
-            const naturalVariations = [0.10, 0.15, 0.20, 0.05, 0.08, 0.12];
+            const naturalVariations = [0.10, 0.15, 0.05, 0.08, 0.20, 0.12];
             val = naturalVariations[i % naturalVariations.length];
           }
 
@@ -10084,9 +10146,8 @@ function initAuth() {
             }
             const parsed = parseRecommendedRate(findIngredientRule(item.name)?.recommended_rate);
             let scaledVal = parseFloat((item.percentage * scale).toFixed(2));
-            if (parsed) {
-              const upper = Math.min(1.00, parsed.max);
-              scaledVal = Math.max(parsed.min, Math.min(upper, scaledVal));
+            if (parsed && parsed.max <= 1.00) {
+              scaledVal = Math.max(parsed.min, Math.min(parsed.max, scaledVal));
             } else {
               scaledVal = Math.max(0.01, Math.min(1.00, scaledVal));
             }
@@ -10131,18 +10192,16 @@ function initAuth() {
 
           candidate = parseFloat(candidate.toFixed(2));
           if (candidate >= prevVal) {
-            let nextCandidate = parseFloat((prevVal - 0.05).toFixed(2));
-            if (parsed && nextCandidate < parsed.min) {
-              candidate = parsed.min;
-            } else {
-              candidate = nextCandidate;
-            }
+            candidate = parseFloat((prevVal - 0.05).toFixed(2));
           }
-          // 추천함량 범위 엄격 보장
-          if (parsed) {
-            candidate = Math.max(parsed.min, Math.min(parsed.max, candidate));
-          } else if (candidate < 1.00) {
+          if (parsed && candidate > parsed.max) {
+            candidate = parsed.max;
+          }
+          if (candidate < 1.00) {
             candidate = 1.00;
+          }
+          if (candidate >= prevVal) {
+            candidate = parseFloat((prevVal - 0.05).toFixed(2));
           }
           item.percentage = candidate;
           prevVal = candidate;
@@ -10172,6 +10231,8 @@ function initAuth() {
           if (secondParsed) {
             startVal = Math.max(secondParsed.min, Math.min(secondParsed.max, startVal));
           }
+          // 1번째 성분이 무조건 최대 함량(주요 베이스)이어야 하므로 2번째 성분은 가용 풀의 40%를 초과할 수 없음
+          startVal = Math.min(parseFloat((highPool * 0.40).toFixed(2)), startVal);
           startVal = parseFloat(startVal.toFixed(2));
 
           // (2) 초반부(0.5% 차등)와 나머지(자연스러운 감쇄) 구간 분할
@@ -10214,18 +10275,17 @@ function initAuth() {
                   curVal = parseFloat((prevVal - naturalStep).toFixed(2));
                 }
 
-                // 무조건 추천함량 범위 내 엄격 제한
+                // 무조건 추천함량 범위 내 엄격 제한 (단, 정제수가 베이스가 아닌 3번째 이후인 경우 용제 룰 제외)
                 if (itemParsed) {
-                  curVal = Math.max(itemParsed.min, Math.min(itemParsed.max, curVal));
+                  const isLateWater = isWaterIngredient(item.name) && i >= 2;
+                  if (!isLateWater) {
+                    curVal = Math.max(itemParsed.min, Math.min(itemParsed.max, curVal));
+                  }
                 }
 
                 if (curVal >= prevVal) {
                   let cand = parseFloat((prevVal - 0.10).toFixed(2));
-                  if (itemParsed && cand < itemParsed.min) {
-                    curVal = itemParsed.min;
-                  } else {
-                    curVal = cand;
-                  }
+                  curVal = Math.max(minFloorForThis, cand);
                 }
                 item.percentage = curVal;
                 prevVal = curVal;
@@ -10234,19 +10294,33 @@ function initAuth() {
           }
         }
 
-        // 4-C. 1번째 성분(정제수 등 주요 베이스 용제) 잔량 흡수
+        // 4-C. 1번째 성분(정제수 또는 분체 등 주요 베이스 원료) 잔량 흡수 및 안전 가드레일
         if (!analyzerState.ingredients[0].userEditedPercentage) {
-          const firstRule = findIngredientRule(analyzerState.ingredients[0].name);
-          const firstParsed = parseRecommendedRate(firstRule ? firstRule.recommended_rate : '');
           let sumOther = 0;
           for (let i = 1; i < count; i++) {
             sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
           }
 
-          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
-          if (firstParsed) {
-            c0 = Math.max(firstParsed.min, Math.min(firstParsed.max, c0));
+          const minBaseVal = Math.max(25.0, (analyzerState.ingredients[1]?.percentage || 10.0) + 1.0);
+          if (sumOther > (100.00 - minBaseVal)) {
+            const targetOthersSum = 100.00 - minBaseVal - lowSum;
+            let currentHighOthers = 0;
+            for (let i = 1; i < hexIdx; i++) currentHighOthers += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
+            if (currentHighOthers > 0 && targetOthersSum > 0) {
+              const sc = targetOthersSum / currentHighOthers;
+              let prevS = 999;
+              for (let i = 1; i < hexIdx; i++) {
+                let nv = parseFloat((analyzerState.ingredients[i].percentage * sc).toFixed(2));
+                nv = Math.max(targetHexVal + (hexIdx - i) * 0.1, Math.min(prevS - 0.05, nv));
+                analyzerState.ingredients[i].percentage = nv;
+                prevS = nv;
+              }
+            }
+            sumOther = 0;
+            for (let i = 1; i < count; i++) sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
           }
+
+          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
           analyzerState.ingredients[0].percentage = c0;
         }
 
@@ -10271,6 +10345,8 @@ function initAuth() {
           if (secondParsed) {
             startVal = Math.max(secondParsed.min, Math.min(secondParsed.max, startVal));
           }
+          // 1번째 성분이 무조건 최대 함량(주요 베이스)이어야 하므로 2번째 성분은 가용 풀의 40%를 초과할 수 없음
+          startVal = Math.min(parseFloat((highPool * 0.40).toFixed(2)), startVal);
           startVal = parseFloat(startVal.toFixed(2));
 
           let earlySteps = Math.min(countBeforeBoundary - 1, Math.max(1, Math.floor(countBeforeBoundary / 2)));
@@ -10310,13 +10386,15 @@ function initAuth() {
                 }
 
                 if (itemParsed) {
-                  curVal = Math.max(itemParsed.min, Math.min(itemParsed.max, curVal));
+                  const isLateWater = isWaterIngredient(item.name) && i >= 2;
+                  if (!isLateWater) {
+                    curVal = Math.max(itemParsed.min, Math.min(itemParsed.max, curVal));
+                  }
                 }
 
                 if (curVal >= prevVal) {
                   let cand = parseFloat((prevVal - 0.10).toFixed(2));
-                  if (itemParsed && cand < itemParsed.min) curVal = itemParsed.min;
-                  else curVal = cand;
+                  curVal = Math.max(minFloorForThis, cand);
                 }
                 item.percentage = curVal;
                 prevVal = curVal;
@@ -10325,29 +10403,54 @@ function initAuth() {
           }
         }
         if (!analyzerState.ingredients[0].userEditedPercentage) {
-          const firstRule = findIngredientRule(analyzerState.ingredients[0].name);
-          const firstParsed = parseRecommendedRate(firstRule ? firstRule.recommended_rate : '');
           let sumOther = 0;
           for (let i = 1; i < count; i++) {
             sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
           }
-          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
-          if (firstParsed) {
-            c0 = Math.max(firstParsed.min, Math.min(firstParsed.max, c0));
+          const minBaseVal = Math.max(25.0, (analyzerState.ingredients[1]?.percentage || 10.0) + 1.0);
+          if (sumOther > (100.00 - minBaseVal)) {
+            const targetOthersSum = 100.00 - minBaseVal - lowSum;
+            let currentHighOthers = 0;
+            for (let i = 1; i < boundary; i++) currentHighOthers += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
+            if (currentHighOthers > 0 && targetOthersSum > 0) {
+              const sc = targetOthersSum / currentHighOthers;
+              let prevS = 999;
+              for (let i = 1; i < boundary; i++) {
+                let nv = parseFloat((analyzerState.ingredients[i].percentage * sc).toFixed(2));
+                nv = Math.max(1.00 + (boundary - i) * 0.05, Math.min(prevS - 0.05, nv));
+                analyzerState.ingredients[i].percentage = nv;
+                prevS = nv;
+              }
+            }
+            sumOther = 0;
+            for (let i = 1; i < count; i++) sumOther += (parseFloat(analyzerState.ingredients[i].percentage) || 0);
           }
+          let c0 = parseFloat((100.00 - sumOther).toFixed(2));
           analyzerState.ingredients[0].percentage = c0;
         }
       }
 
-      // 5. 최종 전수 검증: 슈퍼베이스 추천함량이 존재하는 모든 성분은 "무조건 추천함량 이내 범위([min, max])"에 100% 엄격 고정
+      // 5. 최종 전수 검증: 슈퍼베이스 추천함량 반영 시 화장품법 1% 기준선 및 내림차순 원칙 엄격 준수
       analyzerState.ingredients.forEach((it, idx) => {
         if (it.userEditedPercentage) return;
         const rule = findIngredientRule(it.name);
         const parsed = parseRecommendedRate(rule ? rule.recommended_rate : '');
         if (parsed && typeof it.percentage === 'number' && !isNaN(it.percentage)) {
           let p = it.percentage;
-          if (p < parsed.min) p = parsed.min;
-          if (p > parsed.max) p = parsed.max;
+          if (idx >= boundary) {
+            p = Math.min(1.00, p);
+            if (parsed && parsed.max < 1.00 && p > parsed.max) p = parsed.max;
+          } else if (idx > 0) {
+            const prevP = analyzerState.ingredients[idx - 1]?.percentage;
+            if (typeof prevP === 'number' && parsed.min < prevP) {
+              if (p < parsed.min) p = parsed.min;
+            }
+            p = Math.max(1.00, p);
+            if (p > parsed.max && parsed.max >= 1.00) p = parsed.max;
+            if (typeof prevP === 'number' && p >= prevP) {
+              p = parseFloat((prevP - 0.05).toFixed(2));
+            }
+          }
           it.percentage = parseFloat(p.toFixed(2));
         }
       });
@@ -10361,11 +10464,6 @@ function initAuth() {
         totalCurrent = parseFloat(totalCurrent.toFixed(2));
         const diff = parseFloat((100.00 - totalCurrent).toFixed(2));
         let c0 = parseFloat(((parseFloat(analyzerState.ingredients[0].percentage) || 0) + diff).toFixed(2));
-        const firstRule = findIngredientRule(analyzerState.ingredients[0].name);
-        const firstParsed = parseRecommendedRate(firstRule ? firstRule.recommended_rate : '');
-        if (firstParsed) {
-          c0 = Math.max(firstParsed.min, Math.min(firstParsed.max, c0));
-        }
         analyzerState.ingredients[0].percentage = parseFloat(c0.toFixed(2));
       }
 
