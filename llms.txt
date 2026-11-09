@@ -1,12 +1,12 @@
-# 속속노트 | 화장품 배합비 계산기 & 전성분 해체기 & 가이드 처방
+# 속속노트 | 화장품 배합비 계산기 & 전성분 분석기 & 가이드 처방
 
-> 속속(https://thesocsoc.com)은 화장품 연구원과 제형 개발자를 위한 코스메틱 연구노트입니다. 500개 이상의 원료사 가이드 처방, 100% 정밀 배합비 계산기, 1% 전성분 해체기 도구를 제공합니다.
+> 속속(https://thesocsoc.com)은 화장품 연구원과 제형 개발자를 위한 코스메틱 연구노트입니다. 500개 이상의 원료사 가이드 처방, 100% 정밀 배합비 계산기, 화장품 전성분 분석기 도구를 제공합니다.
 
 ## 핵심 기능 (Core Capabilities)
 
 - **가이드 처방 도서관 (Guide Recipe Library)**: 글로벌 주요 원료사(선진뷰티사이언스 등)의 검증된 가이드 처방 500여 종 이상을 스킨케어, 선케어, 헤어케어, 메이크업 카테고리별로 열람하고 연구 레퍼런스로 활용할 수 있습니다.
 - **실시간 배합비 계산기 (Real-time Formulation Calculator)**: Phase A, Phase B, Phase C 등 상별 원료 배합 비율의 합계 100.00%를 실시간으로 자동 검증하고 오차를 보정합니다.
-- **화장품 전성분 해체기 (Cosmetic Reverse-Engineering Engine)**: 시판 화장품의 전성분 텍스트를 붙여넣으면 대한민국 화장품법 1% 이하 성분 규정(자유 표기) 절취선을 자동 감지하고, 예상 배합 비율(%)을 역공학 추정 시뮬레이션하여 계산기 연동 및 엑셀 파일로 내보낼 수 있습니다.
+- **화장품 전성분 분석기 (Cosmetic Reverse-Engineering Engine)**: 시판 화장품의 전성분 텍스트를 붙여넣으면 대한민국 화장품법 1% 이하 성분 규정(자유 표기) 절취선을 자동 감지하고, 예상 배합 비율(%)을 역공학 추정 시뮬레이션하여 계산기 연동 및 엑셀 파일로 내보낼 수 있습니다.
 - **배치 사이즈(Batch Size) 자동 환산**: 연구실 비커 샘플(100g)부터 파일럿 및 대량 양산 배치(kg)까지 원하는 목표 중량을 입력하면 모든 원료의 투입 그램(g) 수를 1초 만에 자동 계산합니다.
 - **클라우드 & 로컬 보관함**: 연구 중인 맞춤형 처방을 개인 계정 및 로컬 스토리지에 안전하게 저장하고 언제든지 다시 불러와 수정할 수 있습니다.
 - **INCI & 원료 규격 정보**: 전성분(INCI) 명칭, 원료 공급사 사양, 권장 제조 공정 및 적합성 규격을 체계적으로 제공합니다.
@@ -15,7 +15,7 @@
 
 - [속속 공식 홈페이지 (SOCSOC Home)](https://thesocsoc.com/): 메인 대시보드 및 서비스 소개
 - [속속 전체 심층 기술 명세서 (Full Documentation)](https://thesocsoc.com/llms-full.txt): 500개 처방 세부 카테고리, 1% 역공학 알고리즘 및 규제 기준 심층 명세
-- [화장품 전성분 해체기 (Ingredient Analyzer)](https://thesocsoc.com/?mode=analyzer): 1% 절취선 감지 및 배합비 역공학 추정 도구
+- [화장품 전성분 분석기 (Ingredient Analyzer)](https://thesocsoc.com/?mode=analyzer): 1% 절취선 감지 및 배합비 역공학 추정 도구
 - [화장품 처방 도서관 (Recipe Explorer)](https://thesocsoc.com/?mode=explorer): 500여 종 이상 원료사 공식 가이드 처방 검색 및 열람
 - [배합비 계산기 (Formulation Calculator)](https://thesocsoc.com/?mode=calculator): 원료 Phase별 100% 합계 검증 및 배치 환산 도구
 - [스킨케어 가이드 처방](https://thesocsoc.com/?category=skincare): 토너, 앰플, 세럼, 에멀전, 크림 등 기초 화장품 처방

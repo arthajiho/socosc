@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>속속노트 | 화장품 배합비 계산기 &amp; 전성분 해체기 &amp; 가이드 처방</title>
+    <title>속속노트 | 화장품 배합비 계산기 &amp; 전성분 분석기 &amp; 가이드 처방</title>
     <link>https://thesocsoc.com/</link>
-    <description>화장품 연구원과 제형 개발자를 위한 코스메틱 연구노트. 500개 이상의 원료사 가이드 처방, 100% 정밀 배합비 계산기, 1% 전성분 해체기</description>
+    <description>화장품 연구원과 제형 개발자를 위한 코스메틱 연구노트. 500개 이상의 원료사 가이드 처방, 100% 정밀 배합비 계산기, 화장품 전성분 분석기</description>
     <language>ko</language>
     <pubDate>Sun, 25 Oct 2026 15:45:00 +0900</pubDate>
     <lastBuildDate>Sun, 25 Oct 2026 15:45:00 +0900</lastBuildDate>
 
     <item>
-      <title>화장품 전성분 해체기 - 1% 추정 절취선 탐지 및 배합비 역공학 시뮬레이션</title>
+      <title>화장품 전성분 분석기 - 1% 추정 절취선 탐지 및 배합비 역공학 시뮬레이션</title>
       <link>https://thesocsoc.com/?mode=analyzer</link>
       <description>시판 화장품의 전성분 텍스트를 분석하여 대한민국 화장품법 1% 규정 절취선을 자동 감지하고, 예상 배합 비율(%)을 역공학 분석하여 계산기 연동 및 엑셀 다운로드를 지원하는 전문 R&amp;D 도구</description>
       <pubDate>Sun, 25 Oct 2026 15:45:00 +0900</pubDate>
