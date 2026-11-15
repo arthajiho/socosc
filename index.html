@@ -3252,7 +3252,7 @@
             .channel('ingredient_rules_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredient_rules' }, (payload) => {
               console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 변경 감지 이벤트 수신:', payload);
-              syncIngredientRulesFromSupabase();
+              syncIngredientRulesFromSupabase(true);
             })
             .subscribe((status) => {
               console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 구독 상태:', status);
@@ -3263,7 +3263,7 @@
             .channel('ingredients_test_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients_test' }, (payload) => {
               console.log('[SOCSOC] 슈퍼베이스 ingredients_test 실시간 변경 감지 이벤트 수신:', payload);
-              syncIngredientsTestFromSupabase();
+              syncIngredientsTestFromSupabase(true);
             })
             .subscribe((status) => {
               console.log('[SOCSOC] 슈퍼베이스 ingredients_test 실시간 구독 상태:', status);
@@ -3274,13 +3274,36 @@
       }
 
       try {
-        // 1. Cloud Recipes 불러오기 (모든 사용자가 등록한 신규 가이드 처방 실시간 공유)
-        const { data: cloudRecipes, error: recErr } = await sbClient
-          .from('recipes')
-          .select('*')
-          .order('created_at', { ascending: false });
+        // 1. Cloud Recipes 불러오기 (최신 100개 제한 및 5분 세션 캐시로 트래픽 최적화)
+        const RECIPES_CACHE_KEY = 'socsoc_cloud_recipes_cache';
+        const RECIPES_TIME_KEY = 'socsoc_cloud_recipes_time';
+        const cachedRecStr = sessionStorage.getItem(RECIPES_CACHE_KEY);
+        const cachedRecTime = sessionStorage.getItem(RECIPES_TIME_KEY);
 
-        if (!recErr && Array.isArray(cloudRecipes) && cloudRecipes.length > 0) {
+        let cloudRecipes = null;
+        if (cachedRecStr && cachedRecTime && (Date.now() - Number(cachedRecTime) < 5 * 60 * 1000)) {
+          try {
+            cloudRecipes = JSON.parse(cachedRecStr);
+          } catch (_) {}
+        }
+
+        if (!cloudRecipes) {
+          const { data, error: recErr } = await sbClient
+            .from('recipes')
+            .select('uid, title, category, supplier, formula_code, email, description, ingredients, procedure, specification, etc, content_html, source_url, author_nickname, created_at')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+          if (!recErr && Array.isArray(data)) {
+            cloudRecipes = data;
+            try {
+              sessionStorage.setItem(RECIPES_CACHE_KEY, JSON.stringify(cloudRecipes));
+              sessionStorage.setItem(RECIPES_TIME_KEY, String(Date.now()));
+            } catch (_) {}
+          }
+        }
+
+        if (Array.isArray(cloudRecipes) && cloudRecipes.length > 0) {
           let hasNew = false;
           cloudRecipes.forEach(r => {
             const recObj = {
@@ -3322,23 +3345,23 @@
 
           // 프로필 조회 및 다중 후보 UID 매핑 (레거시/통합 UID 처방 모두 로드)
           let profData = null;
-          const { data: p1 } = await sbClient.from('profiles').select('*').eq('id', user.id).maybeSingle();
+          const { data: p1 } = await sbClient.from('profiles').select('id, username, name, nickname, email, phone, company_type, role').eq('id', user.id).maybeSingle();
           if (p1) profData = p1;
           else if (user.user_metadata?.username) {
-            const { data: p2 } = await sbClient.from('profiles').select('*').eq('username', user.user_metadata.username).maybeSingle();
+            const { data: p2 } = await sbClient.from('profiles').select('id, username, name, nickname, email, phone, company_type, role').eq('username', user.user_metadata.username).maybeSingle();
             if (p2) profData = p2;
           }
 
           const isSocsoc1User = (user.email === 'jiho909@naver.com') || ((profData?.username || '').toLowerCase() === 'socsoc1');
           const fetchSyncIds = Array.from(new Set([user.id, profData?.id, isSocsoc1User ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
           const [guidesRes, formulasRes] = await Promise.all([
-            sbClient.from('saved_guides').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false }),
-            sbClient.from('saved_formulas').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false })
+            sbClient.from('saved_guides').select('id, recipe_uid, title, category, formula_code, supplier, saved_at, created_at').in('user_id', fetchSyncIds).order('saved_at', { ascending: false }).limit(100),
+            sbClient.from('saved_formulas').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false }).limit(100)
           ]);
 
           let dbAnalyzers = [];
           try {
-            const { data: aData, error: aErr } = await sbClient.from('saved_analyzers').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false });
+            const { data: aData, error: aErr } = await sbClient.from('saved_analyzers').select('*').in('user_id', fetchSyncIds).order('saved_at', { ascending: false }).limit(100);
             if (!aErr && Array.isArray(aData)) dbAnalyzers = aData;
           } catch (_) {}
 
@@ -4936,13 +4959,20 @@ function initAuth() {
     // 화장품 배합기 실시간 한도 체크 시스템 (SUPABASE INGREDIENTS_TEST 실시간 연동)
     // ==========================================
     async function fetchIngredientsLimitDb() {
+      // 1. 이미 메모리에 규제 성분이 로드되어 있다면 Supabase 재요청 없이 즉시 반환 (Egress 0 byte)
+      if (Array.isArray(ingredientsTestList) && ingredientsTestList.length > 0) {
+        return ingredientsTestList;
+      }
       if (!sbClient) {
+        if (typeof DEFAULT_INGREDIENTS_TEST !== 'undefined' && Array.isArray(DEFAULT_INGREDIENTS_TEST)) {
+          return DEFAULT_INGREDIENTS_TEST;
+        }
         throw new Error('Supabase 클라이언트가 초기화되지 않았습니다. 네트워크 연결 및 설정을 확인해 주세요.');
       }
 
       const { data, error } = await sbClient
         .from('ingredients_test')
-        .select('*');
+        .select('id, korean_name, inci_name, max_limit');
 
       if (error) {
         console.error('Supabase ingredients_test 실시간 조회 오류:', error);
@@ -6210,9 +6240,9 @@ function initAuth() {
         const isSocsoc1User = (unameLower === 'socsoc1') || (user.id === 'dda0abc7-87e1-4234-89a2-bef62288e4fb');
         const fetchUserIds = Array.from(new Set([user.id, profile.id, isSocsoc1User ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
         const [guidesRes, formulasRes, analyzersRes] = await Promise.all([
-          sbClient.from('saved_guides').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }),
-          sbClient.from('saved_formulas').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }),
-          sbClient.from('saved_analyzers').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false })
+          sbClient.from('saved_guides').select('id, recipe_uid, title, category, formula_code, supplier, saved_at, created_at').in('user_id', fetchUserIds).order('saved_at', { ascending: false }).limit(100),
+          sbClient.from('saved_formulas').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }).limit(100),
+          sbClient.from('saved_analyzers').select('*').in('user_id', fetchUserIds).order('saved_at', { ascending: false }).limit(100)
         ]);
 
         const dbGuides = guidesRes.data || [];
@@ -8290,9 +8320,10 @@ function initAuth() {
         const fetchIds = Array.from(new Set([targetUserId, currentUser.id, isSocsoc1 ? 'dda0abc7-87e1-4234-89a2-bef62288e4fb' : null])).filter(Boolean);
         const { data, error } = await sbClient
           .from('saved_guides')
-          .select('*')
+          .select('id, recipe_uid, title, category, formula_code, supplier, saved_at, created_at')
           .in('user_id', fetchIds)
-          .order('saved_at', { ascending: false });
+          .order('saved_at', { ascending: false })
+          .limit(100);
 
         if (!error && Array.isArray(data)) {
           if (data.length > 0 || (currentUser.savedGuides && currentUser.savedGuides.length === 0)) {
@@ -8469,7 +8500,8 @@ function initAuth() {
           .from('saved_formulas')
           .select('*')
           .in('user_id', fetchIds)
-          .order('saved_at', { ascending: false });
+          .order('saved_at', { ascending: false })
+          .limit(100);
 
         if (!error && Array.isArray(data)) {
           if (data.length > 0 || (currentUser.savedFormulas && currentUser.savedFormulas.length === 0)) {
@@ -8587,7 +8619,8 @@ function initAuth() {
           .from('saved_analyzers')
           .select('*')
           .in('user_id', fetchIds)
-          .order('saved_at', { ascending: false });
+          .order('saved_at', { ascending: false })
+          .limit(100);
 
         if (!error && Array.isArray(data)) {
           if (data.length > 0 || (currentUser.savedAnalyzers && currentUser.savedAnalyzers.length === 0)) {
@@ -8684,17 +8717,6 @@ function initAuth() {
 
       document.getElementById('savedItemsModal').classList.remove('hidden');
       switchVaultTab(defaultTab);
-
-      // 클라우드와 실시간 양방향 동기화: 항상 최신 Supabase 데이터 보장
-      if (sbClient && currentUser) {
-        if (currentVaultTab === 'guide') {
-          cloudFetchSavedGuides().then(() => renderSavedGuides());
-        } else if (currentVaultTab === 'custom') {
-          cloudFetchSavedFormulas().then(() => renderSavedCustomFormulas());
-        } else if (currentVaultTab === 'analyzer') {
-          cloudFetchSavedAnalyzers().then(() => renderSavedAnalyzers());
-        }
-      }
     }
 
     function closeSavedItemsModal() {
@@ -10365,20 +10387,34 @@ function initAuth() {
 ];
     let ingredientsTestList = [...DEFAULT_INGREDIENTS_TEST];
 
-    // 슈퍼베이스 실시간 ingredients_test 규제 성분 동기화 함수
+    // 슈퍼베이스 실시간 ingredients_test 규제 성분 동기화 함수 (5분 세션 캐시 및 컬럼 최소화로 Egress 최적화)
     async function syncIngredientsTestFromSupabase(isManual = false) {
-      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredients_test?select=*&order=id.asc';
+      const CACHE_KEY = 'socsoc_ingredients_test_cache';
+      const CACHE_TIME_KEY = 'socsoc_ingredients_test_time';
+
+      if (!isManual) {
+        const cachedStr = sessionStorage.getItem(CACHE_KEY);
+        const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+        if (cachedStr && cachedTime && (Date.now() - Number(cachedTime) < 5 * 60 * 1000)) {
+          try {
+            const parsed = JSON.parse(cachedStr);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              ingredientsTestList = parsed;
+              return;
+            }
+          } catch (_) {}
+        }
+      }
+
+      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredients_test?select=id,korean_name,inci_name,max_limit&order=id.asc';
       const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
 
       try {
         const res = await fetch(SUPABASE_REST_URL, {
-          cache: 'no-store',
           method: 'GET',
           headers: {
             'apikey': ANON_KEY,
             'Authorization': 'Bearer ' + ANON_KEY,
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
             'Range': '0-1999'
           }
         });
@@ -10396,6 +10432,10 @@ function initAuth() {
             inci_name: String(r.inci_name || r.inci || r.english_name || '').trim(),
             max_limit: r.max_limit !== null && r.max_limit !== undefined ? parseFloat(r.max_limit) : (r.limit !== undefined ? parseFloat(r.limit) : null)
           }));
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(ingredientsTestList));
+            sessionStorage.setItem(CACHE_TIME_KEY, String(Date.now()));
+          } catch (_) {}
           console.log('[SOCSOC] ingredients_test 실시간 동기화 완료: ' + ingredientsTestList.length + '개 성분');
         }
       } catch (err) {
@@ -10434,21 +10474,34 @@ function initAuth() {
       return null;
     }
 
-    // 슈퍼베이스 실시간 성분 규칙 동기화 함수 (브라우저 캐시 우회 & 100% 실시간 DB 직결)
+    // 슈퍼베이스 실시간 성분 규칙 동기화 함수 (5분 세션 캐시 및 컬럼 최소화로 Egress 최적화)
     async function syncIngredientRulesFromSupabase(isManual = false) {
-      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=*&order=priority.asc';
+      const CACHE_KEY = 'socsoc_ingredient_rules_cache';
+      const CACHE_TIME_KEY = 'socsoc_ingredient_rules_time';
+
+      if (!isManual) {
+        const cachedStr = sessionStorage.getItem(CACHE_KEY);
+        const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+        if (cachedStr && cachedTime && (Date.now() - Number(cachedTime) < 5 * 60 * 1000)) {
+          try {
+            const parsed = JSON.parse(cachedStr);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              ingredientRules = parsed;
+              return;
+            }
+          } catch (_) {}
+        }
+      }
+
+      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=id,name,en_name,aliases,default_percent,max_limit,is_indicator,role,recommended_rate,reason,priority,is_sample_active,sample_active&order=priority.asc';
       const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
 
       try {
-        // 캐시 방지(Cache-Busting): _t 타임스탬프와 no-cache 헤더로 브라우저 메모리/디스크 캐시를 강제 무효화
         const res = await fetch(SUPABASE_REST_URL, {
-          cache: 'no-store',
           method: 'GET',
           headers: {
             'apikey': ANON_KEY,
             'Authorization': 'Bearer ' + ANON_KEY,
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
             'Range': '0-1999'
           }
         });
@@ -10483,6 +10536,12 @@ function initAuth() {
                               (r.sample_active === true || r.sample_active === 'true' || r.sample_active === 1) ||
                               (r['sample active'] === true || r['sample active'] === 'true' || r['sample active'] === 1)
           }));
+
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(ingredientRules));
+            sessionStorage.setItem(CACHE_TIME_KEY, String(Date.now()));
+          } catch (_) {}
+
           console.log('[SOCSOC] 슈퍼베이스 ingredient_rules 실시간 동기화 완료:', ingredientRules.length, '개 성분');
 
           // 현재 시트에 있는 성분들의 메타데이터(역할, 1% 지표, 추천함량)를 최신 슈퍼베이스 규칙으로 즉시 갱신
@@ -10528,37 +10587,21 @@ function initAuth() {
       }
     }
 
-    // 브라우저 탭 포커스 복귀 시 슈퍼베이스 최신 규칙 & 규제 DB 즉시 재동기화
-    window.addEventListener('focus', () => {
-      if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
-      if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
-        if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
-      }
-    });
-
-    // 사용자가 화면을 클릭할 때마다 3초 쿨다운으로 최신 데이터 즉시 확인
-    let lastUserSyncTime = 0;
-    window.addEventListener('pointerdown', () => {
+    // 브라우저 탭 포커스 복귀 시 5분 간격 스로틀링 체크 (무한 반복 재요청 및 3초 폴링 완전 제거)
+    let lastTabReturnSyncTime = Date.now();
+    function throttleTabReturnSync() {
       const now = Date.now();
-      if (now - lastUserSyncTime > 3000) {
-        lastUserSyncTime = now;
+      if (now - lastTabReturnSyncTime > 5 * 60 * 1000) {
+        lastTabReturnSyncTime = now;
         if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
         if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
       }
-    });
+    }
 
-    // 전성분 분석기 모드일 때 3초 주기 실시간 백그라운드 폴링 (슈퍼베이스 수정 즉시 자동 반영)
-    setInterval(() => {
-      if (currentAppMode === 'analyzer') {
-        if (typeof syncIngredientRulesFromSupabase === 'function') syncIngredientRulesFromSupabase();
-        if (typeof syncIngredientsTestFromSupabase === 'function') syncIngredientsTestFromSupabase();
-      }
-    }, 3000);
+    window.addEventListener('focus', throttleTabReturnSync);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) throttleTabReturnSync();
+    });
 
     // 추천함량 텍스트 파싱 헬퍼 (min, max, mid)
     function parseRecommendedRate(recStr) {
