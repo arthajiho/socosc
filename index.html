@@ -10493,7 +10493,7 @@ function initAuth() {
         }
       }
 
-      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=id,name,en_name,aliases,default_percent,max_limit,is_indicator,role,recommended_rate,reason,priority,is_sample_active,sample_active&order=priority.asc';
+      const SUPABASE_REST_URL = 'https://yrnjvofldzkznxdvqdjv.supabase.co/rest/v1/ingredient_rules?select=id,name,en_name,aliases,default_percent,max_limit,is_indicator,role,recommended_rate,reason,priority,is_sample_active&order=priority.asc';
       const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlybmp2b2ZsZHprem54ZHZxZGp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzODU0MTksImV4cCI6MjEwNTk2MTQxOX0.1AVlENxLeYuG8IEf7wT6RSiykfVZNbmuOEdjp-80hMM';
 
       try {
@@ -10514,7 +10514,7 @@ function initAuth() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           // 캐시 시그니처 비교: 규칙 데이터에 변경사항이 없는 경우 워크시트와 DOM 조작을 완전히 건너뜀
-          const rulesSignature = JSON.stringify(data.map(r => [r.id, r.name, r.role, r.is_indicator, r.recommended_rate, r.default_percent, r.is_sample_active, r.sample_active]));
+          const rulesSignature = JSON.stringify(data.map(r => [r.id, r.name, r.role, r.is_indicator, r.recommended_rate, r.default_percent, r.is_sample_active]));
           if (rulesSignature === window._lastIngredientRulesSignature && !isManual) {
             return;
           }
@@ -10532,9 +10532,7 @@ function initAuth() {
             recommended_rate: (r.recommended_rate || '').trim(),
             reason: r.reason || '',
             priority: r.priority || 100,
-            is_sample_active: (r.is_sample_active === true || r.is_sample_active === 'true' || r.is_sample_active === 1) ||
-                              (r.sample_active === true || r.sample_active === 'true' || r.sample_active === 1) ||
-                              (r['sample active'] === true || r['sample active'] === 'true' || r['sample active'] === 1)
+            is_sample_active: (r.is_sample_active === true || r.is_sample_active === 'true' || r.is_sample_active === 1)
           }));
 
           try {
