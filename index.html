@@ -269,7 +269,16 @@
         overflow-x: hidden !important;
       }
       .custom-scrollbar, .overflow-x-auto, .overflow-y-auto {
-        -webkit-overflow-scrolling: touch;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-x pan-y !important;
+      }
+      .overflow-x-auto table,
+      .overflow-x-auto td,
+      .overflow-x-auto th,
+      .overflow-x-auto tr,
+      .overflow-x-auto input,
+      .overflow-x-auto select {
+        touch-action: pan-x pan-y !important;
       }
     }
 
@@ -1408,7 +1417,7 @@
             <span class="text-xs text-neutral-400 print-hide hidden sm:inline">행 추가 버튼으로 원료를 계속 추가할 수 있습니다.</span>
           </div>
 
-          <div class="overflow-x-auto w-full custom-scrollbar touch-pan-x" style="-webkit-overflow-scrolling: touch;">
+          <div class="overflow-x-auto w-full custom-scrollbar" style="-webkit-overflow-scrolling: touch; touch-action: pan-x pan-y;">
             <table class="w-full min-w-[680px] sm:min-w-[760px] text-left text-xs border-collapse">
               <thead>
                 <tr class="bg-neutral-100/70 text-neutral-600 font-bold border-b border-neutral-200/80">
@@ -1776,7 +1785,7 @@
                   <span class="sm:hidden text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full flex items-center gap-1 self-start shrink-0"><i class="fa-solid fa-arrows-left-right text-[9px]"></i> 좌우 스크롤</span>
                 </div>
 
-                <div class="overflow-x-auto w-full custom-scrollbar touch-pan-x" style="-webkit-overflow-scrolling: touch;">
+                <div class="overflow-x-auto w-full custom-scrollbar" style="-webkit-overflow-scrolling: touch; touch-action: pan-x pan-y;">
                   <table class="w-full min-w-[700px] sm:min-w-[760px] text-left border-collapse text-sm">
                     <thead>
                       <tr class="bg-neutral-100/70 border-b border-neutral-200/80 text-neutral-600 text-xs font-bold uppercase tracking-wider">
@@ -3614,9 +3623,12 @@ function initAuth() {
         filterRecipes();
       }
       if (currentFilteredRecipes && currentFilteredRecipes.length > 0) {
-        showRecipeOriginalArticle(currentFilteredRecipes[0]);
+        showRecipeOriginalArticle(currentFilteredRecipes[0], false);
       } else if (allRecipes.length > 0) {
-        showRecipeOriginalArticle(allRecipes[0]);
+        showRecipeOriginalArticle(allRecipes[0], false);
+      }
+      if (window.innerWidth < 768) {
+        showMobileRecipeList();
       }
       renderCalculatorTable();
       updateCalculationsOnly();
@@ -3634,7 +3646,7 @@ function initAuth() {
       if (mainPane) mainPane.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function setAppMode(mode) {
+    function setAppMode(mode, fromCardClick = false) {
       currentAppMode = mode;
       const mExplorer = document.getElementById('modeExplorer');
       const mCalc = document.getElementById('modeCalculator');
@@ -3661,6 +3673,11 @@ function initAuth() {
         mExplorer.classList.remove('hidden');
         if (floatingBtn) floatingBtn.classList.remove('hidden');
         btnExp.className = activeBtnClass;
+
+        // 모바일 화면에서 가이드 처방 진입 시 처음에는 항상 처방 목록(Sidebar)이 먼저 보이도록 설정
+        if (window.innerWidth < 768 && !fromCardClick) {
+          showMobileRecipeList();
+        }
       } else if (mode === 'analyzer') {
         document.body.classList.add('mode-analyzer');
         if (mAnalyzer) mAnalyzer.classList.remove('hidden');
@@ -3964,6 +3981,8 @@ function initAuth() {
         main.classList.add('hidden');
         main.classList.remove('flex');
       }
+      const asideList = document.getElementById('recipeListContainer');
+      if (asideList) asideList.scrollTop = 0;
     }
 
     function showMobileRecipeArticle() {
@@ -3977,13 +3996,15 @@ function initAuth() {
         main.classList.remove('hidden');
         main.classList.add('flex');
       }
+      const mainPane = document.getElementById('explorerMain') || document.querySelector('#modeExplorer main');
+      if (mainPane) mainPane.scrollTop = 0;
     }
 
-    function showRecipeOriginalArticle(recipe) {
+    function showRecipeOriginalArticle(recipe, shouldSwitchMobileView = false) {
       currentRecipe = recipe;
       updateSaveGuideRecipeBtnState(recipe);
 
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 768 && shouldSwitchMobileView) {
         showMobileRecipeArticle();
       }
 
@@ -4134,8 +4155,8 @@ function initAuth() {
         const meta = extractRecipeMetadata(r);
 
         card.onclick = () => {
-          showRecipeOriginalArticle(r);
-          setAppMode('explorer');
+          showRecipeOriginalArticle(r, true);
+          setAppMode('explorer', true);
         };
 
         card.innerHTML = `
@@ -4186,9 +4207,12 @@ function initAuth() {
       });
       filterRecipes();
 
-      // 카테고리 클릭 시 항상 해당 카테고리의 최상단 첫 번째 처방을 표시
+      // 카테고리 클릭 시 항상 해당 카테고리의 최상단 첫 번째 처방을 표시 (모바일에서는 처방 목록 유지)
       if (currentFilteredRecipes && currentFilteredRecipes.length > 0) {
-        showRecipeOriginalArticle(currentFilteredRecipes[0]);
+        showRecipeOriginalArticle(currentFilteredRecipes[0], false);
+      }
+      if (window.innerWidth < 768) {
+        showMobileRecipeList();
       }
 
       // 좌측 처방 목록 및 우측 처방 본문 스크롤을 항상 최상단으로 이동
@@ -7960,10 +7984,10 @@ function initAuth() {
 
       updateCategoryPillCounts();
       filterRecipes();
-      showRecipeOriginalArticle(newRec);
+      showRecipeOriginalArticle(newRec, true);
       renderAuthHeader();
       updateSaveGuideRecipeBtnState(newRec);
-      setAppMode('explorer');
+      setAppMode('explorer', true);
 
       closeNewRecipeModal();
       showToast(`신규 처방 [${title}]이 가이드 처방에 바로 등록 및 저장되었습니다!`);
@@ -8189,7 +8213,7 @@ function initAuth() {
       // 5. Re-render UI
       updateCategoryPillCounts();
       filterRecipes();
-      showRecipeOriginalArticle(currentRecipe);
+      showRecipeOriginalArticle(currentRecipe, true);
       closeEditRecipeModal();
       showToast(`처방 글 [${title}] 내용이 성공적으로 수정 및 저장되었습니다!`);
     }
@@ -8960,8 +8984,8 @@ function initAuth() {
         } catch (_) {}
       }
       if (found) {
-        showRecipeOriginalArticle(found);
-        setAppMode('explorer');
+        showRecipeOriginalArticle(found, true);
+        setAppMode('explorer', true);
         closeSavedItemsModal();
         showToast(`가이드 처방 "${found.title}"을(를) 열었습니다.`);
       } else {
