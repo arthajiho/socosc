@@ -261,6 +261,18 @@
       color: #0f172a;
     }
 
+    /* Mobile Responsive Layout Enhancements */
+    @media screen and (max-width: 768px) {
+      html, body {
+        width: 100% !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+      }
+      .custom-scrollbar, .overflow-x-auto, .overflow-y-auto {
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
     
 
     /* Restored Status Badges (Vivid Red Warning, Warm Amber Caution, Crisp Emerald Clean) */
@@ -1073,52 +1085,53 @@
     }
   </style>
 </head>
-<body class="bg-white text-slate-900 antialiased h-screen flex flex-col overflow-hidden mode-analyzer">
+<body class="bg-white text-slate-900 antialiased h-screen h-[100dvh] flex flex-col overflow-hidden mode-analyzer">
 
   <!-- Top Global Navbar -->
-  <header class="bg-white border-b border-slate-200 px-6 py-2.5 shrink-0 flex items-center justify-between shadow-[0_1px_4px_rgba(15,33,55,0.03)] z-20">
-    <div onclick="goHome()" class="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition" title="홈으로 이동">
-      <div class="w-9 h-9 rounded-2xl bg-[#0f2137] flex items-center justify-center text-white font-black text-lg shadow-[0_2px_8px_rgba(15,33,55,0.25)]">
+  <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-2.5 shrink-0 grid grid-cols-[1fr_auto] md:flex md:flex-row md:items-center md:justify-between gap-x-2 gap-y-2 shadow-[0_1px_4px_rgba(15,33,55,0.03)] z-20">
+    <!-- Brand / Logo (Mobile: Col 1 Row 1, Desktop: Order 1) -->
+    <div onclick="goHome()" class="flex items-center gap-2 sm:gap-3 cursor-pointer select-none hover:opacity-90 transition shrink-0 md:order-1" title="홈으로 이동">
+      <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-[#0f2137] flex items-center justify-center text-white font-black text-base sm:text-lg shadow-[0_2px_8px_rgba(15,33,55,0.25)] shrink-0">
         S
       </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="text-base font-black text-slate-900 tracking-tight">속속 <span class="text-[#0f2137] font-extrabold">(SOCSOC)</span></span>
-          <span class="bg-slate-100 text-[#0f2137] text-[10px] font-black px-2 py-0.5 rounded-md border border-slate-200">R&D LAB</span>
+      <div class="min-w-0">
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <span class="text-sm sm:text-base font-black text-slate-900 tracking-tight whitespace-nowrap">속속 <span class="text-[#0f2137] font-extrabold">(SOCSOC)</span></span>
+          <span class="bg-slate-100 text-[#0f2137] text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-200 shrink-0">R&D LAB</span>
         </div>
-        <p class="text-[11px] text-slate-400 font-medium">화장품 가이드 처방 & 전성분 분석 플랫폼</p>
+        <p class="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate hidden sm:block">화장품 가이드 처방 & 전성분 분석 플랫폼</p>
       </div>
     </div>
 
-    <!-- Center Navigation Tabs -->
-    <nav class="flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80 shadow-inner">
-      <a href="/?mode=explorer" id="navBtnExplorer" onclick="event.preventDefault(); setAppMode('explorer')" class="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition cursor-pointer">
-        가이드 처방 도서관
-      </a>
-      <a href="/?mode=calculator" id="navBtnCalculator" onclick="event.preventDefault(); setAppMode('calculator')" class="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition cursor-pointer">
-        제형 개발 계산기 (연구원 워크벤치)
-      </a>
-      <a href="/?mode=analyzer" id="navBtnAnalyzer" onclick="event.preventDefault(); setAppMode('analyzer')" class="flex items-center gap-2 px-4 py-2 text-sm font-black rounded-lg bg-[#0f2137] text-white shadow-sm transition cursor-pointer">
-        화장품 전성분 분석기
-      </a>
-    </nav>
-
-    <!-- Top Right Actions -->
-    <div class="flex items-center gap-2">
+    <!-- Top Right Actions (Mobile: Col 2 Row 1, Desktop: Order 3) -->
+    <div class="flex items-center gap-1.5 sm:gap-2 justify-self-end md:order-3 shrink-0">
       <!-- Auth Header Area (인쇄 좌측 로그인 아이콘 / 프로필) -->
-      <div id="authHeaderArea" class="flex items-center gap-2">
-        <button onclick="openAuthModal('login')" class="px-4 py-2 text-xs font-bold bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer" title="로그인 / 회원가입">
+      <div id="authHeaderArea" class="flex items-center gap-1.5 sm:gap-2">
+        <button onclick="openAuthModal('login')" class="px-2.5 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1 sm:gap-1.5 active:scale-95 cursor-pointer" title="로그인 / 회원가입">
           <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
           <span>로그인</span>
         </button>
       </div>
 
       <!-- Print Button (로그인 우측) -->
-      <button onclick="handlePrint()" class="px-3.5 py-2 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg shadow-2xs transition flex items-center gap-1.5" title="화면 인쇄">
+      <button onclick="handlePrint()" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg shadow-2xs transition flex items-center gap-1 sm:gap-1.5 shrink-0" title="화면 인쇄">
         <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"></path></svg>
-        <span>인쇄</span>
+        <span class="hidden xs:inline sm:inline">인쇄</span>
       </button>
     </div>
+
+    <!-- Center Navigation Tabs (Mobile: Col-span-2 Row 2, Desktop: Order 2) -->
+    <nav class="col-span-2 md:col-span-1 md:order-2 flex items-center gap-1 sm:gap-1.5 bg-slate-100/90 p-1 sm:p-1.5 rounded-xl border border-slate-200/80 shadow-inner w-full md:w-auto overflow-x-auto no-scrollbar justify-between sm:justify-start">
+      <a href="/?mode=explorer" id="navBtnExplorer" onclick="event.preventDefault(); setAppMode('explorer')" class="flex-1 md:flex-initial text-center justify-center flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition cursor-pointer whitespace-nowrap">
+        <span>가이드 처방</span><span class="hidden sm:inline"> 도서관</span>
+      </a>
+      <a href="/?mode=calculator" id="navBtnCalculator" onclick="event.preventDefault(); setAppMode('calculator')" class="flex-1 md:flex-initial text-center justify-center flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition cursor-pointer whitespace-nowrap">
+        <span>제형 개발 계산기</span><span class="hidden md:inline"> (연구원 워크벤치)</span>
+      </a>
+      <a href="/?mode=analyzer" id="navBtnAnalyzer" onclick="event.preventDefault(); setAppMode('analyzer')" class="flex-1 md:flex-initial text-center justify-center flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-black rounded-lg bg-[#0f2137] text-white shadow-sm transition cursor-pointer whitespace-nowrap">
+        <span>전성분 분석기</span>
+      </a>
+    </nav>
   </header>
 
   <!-- Main Container -->
@@ -1130,10 +1143,10 @@
     <div id="modeExplorer" class="hidden flex-1 flex overflow-hidden w-full">
       
       <!-- Left Sidebar: Curated 25 Recipe Catalog (5 per category) -->
-      <aside class="w-full md:w-[380px] lg:w-[420px] bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden">
+      <aside id="explorerSidebar" class="w-full md:w-[380px] lg:w-[420px] bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-hidden">
         
         <!-- Search & Filter Controls -->
-        <div class="p-4 border-b border-slate-200 space-y-3 bg-slate-50/50">
+        <div class="p-3 sm:p-4 border-b border-slate-200 space-y-3 bg-slate-50/50">
           <div class="relative">
             <input type="text" id="searchInput" oninput="filterRecipes()" placeholder="처방명, 원료명, 처방번호, 공급사 검색..."
               class="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
@@ -1171,9 +1184,17 @@
       </aside>
 
       <!-- Main Reading Pane: Exact Original Article Content -->
-      <main class="flex-1 bg-slate-50 flex flex-col overflow-y-auto custom-scrollbar p-6 md:p-8">
-        <div class="max-w-4xl mx-auto w-full space-y-6">
+      <main id="explorerMain" class="hidden md:flex flex-1 bg-slate-50 flex-col overflow-y-auto custom-scrollbar p-3 sm:p-6 md:p-8">
+        <div class="max-w-4xl mx-auto w-full space-y-4 sm:space-y-6">
           
+          <!-- Mobile Back to List Button (Shown only on small screens) -->
+          <div class="md:hidden flex items-center justify-between pb-1">
+            <button onclick="showMobileRecipeList()" class="px-3 py-1.5 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer">
+              <i class="fa-solid fa-arrow-left text-[11px]"></i>
+              <span>처방 목록으로</span>
+            </button>
+          </div>
+
           <!-- Print Brand Header (상단) -->
           <div class="print-brand-header print-only">
             <div class="print-brand-title">속속(SOCSOC) | 화장품 처방 포털 & 제형 개발 워크벤치</div>
@@ -1181,7 +1202,7 @@
           </div>
 
           <!-- Article Header Card -->
-          <div class="guide-article-header-card bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="guide-article-header-card bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-3 sm:space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <div class="flex items-center gap-2">
                 <span id="articleCategoryBadge" class="px-2.5 py-0.5 rounded text-xs font-bold uppercase bg-blue-100 text-blue-800">
@@ -1293,8 +1314,8 @@
     <!-- ======================================================== -->
     <!-- MODE 2: ZERO-BASE FORMULATION CALCULATOR (독립 계산기) -->
     <div id="modeCalculator" class="hidden flex-1 bg-white flex flex-col overflow-hidden relative">
-      <div class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
-        <div class="max-w-5xl mx-auto space-y-6 pb-6">
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 md:p-8">
+        <div class="max-w-5xl mx-auto space-y-4 sm:space-y-6 pb-6">
         
           <!-- Print Brand Header (상단) -->
           <div class="print-brand-header print-only">
@@ -1304,27 +1325,27 @@
           </div>
 
           <!-- Calculator Header -->
-          <div class="bg-white rounded-2xl border border-neutral-200/80 p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4 print-hide">
+          <div class="bg-white rounded-2xl border border-neutral-200/80 p-3.5 sm:p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 print-hide">
             <div class="space-y-1">
               <div class="flex items-center gap-2">
                 <span class="bg-[#0f2137] text-white text-xs font-black px-2.5 py-0.5 rounded-md shadow-sm">R&D LAB</span>
-                <h1 class="text-2xl font-black text-neutral-900 tracking-tight">제형 개발 & 배치 계산기</h1>
+                <h1 class="text-xl sm:text-2xl font-black text-neutral-900 tracking-tight">제형 개발 & 배치 계산기</h1>
               </div>
-              <p class="text-sm text-neutral-500 mt-1">배합비 소수점 2자리(0.00%) 정밀 계산 및 비커 계량값(g)을 즉시 산출합니다.</p>
+              <p class="text-xs sm:text-sm text-neutral-500 mt-1">배합비 소수점 2자리(0.00%) 정밀 계산 및 비커 계량값(g)을 즉시 산출합니다.</p>
             </div>
             <div class="flex flex-col items-start md:items-end gap-1.5 print-hide">
-              <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="startFreshZeroCalculator()" class="px-3.5 py-2 text-xs font-bold bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95">
+              <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <button onclick="startFreshZeroCalculator()" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95">
                   <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                  <span>빈 시트로 초기화</span>
+                  <span>빈 시트</span><span class="hidden sm:inline">로 초기화</span>
                 </button>
-                <button onclick="exportCalculatorToExcel()" class="px-3.5 py-2 text-xs font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95" title="현재 작성된 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
+                <button onclick="exportCalculatorToExcel()" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95" title="현재 작성된 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
                   <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
                   <span>엑셀 내보내기</span>
                 </button>
-                <button onclick="saveCurrentCustomFormula()" class="px-3.5 py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                <button onclick="saveCurrentCustomFormula()" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95">
                   <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                  <span>내 처방으로 저장</span>
+                  <span>내 처방 저장</span>
                 </button>
               </div>
               <p class="text-[11px] text-neutral-400 mt-0.5">🔒 서버에 저장되지 않는 로컬 보안 툴. 저장된 처방은 본인만 볼 수 있습니다.</p>
@@ -1332,7 +1353,7 @@
           </div>
 
           <!-- Formula Title Custom Input -->
-          <div id="calcFormulaTitleCard" class="bg-white rounded-2xl border border-neutral-200/80 p-4 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center gap-3">
+          <div id="calcFormulaTitleCard" class="bg-white rounded-2xl border border-neutral-200/80 p-3 sm:p-4 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center gap-2 sm:gap-3">
             <label class="text-xs font-extrabold uppercase text-neutral-600 shrink-0 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-[#0f2137]"></span>
               <span>연구 처방명:</span>
@@ -1346,27 +1367,29 @@
           </div>
 
         <!-- Target Batch Size Setting -->
-        <div id="calcBatchSizeCard" class="bg-white p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex items-center gap-3 batch-size-left">
-            <label class="text-xs font-bold uppercase tracking-wider text-neutral-600 shrink-0">목표 배치 용량:</label>
-            <div class="relative w-36 print-hide">
-              <input type="number" id="batchSize" value="200" min="1" step="1" oninput="updateCalculationsOnly()"
-                class="w-full text-base font-bold text-neutral-900 bg-neutral-50/60 border border-neutral-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-[#0f2137] focus:bg-white outline-none">
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">g</span>
+        <div id="calcBatchSizeCard" class="bg-white p-3.5 sm:p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3 batch-size-left">
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-bold uppercase tracking-wider text-neutral-600 shrink-0">목표 배치 용량:</label>
+              <div class="relative w-28 sm:w-36 print-hide">
+                <input type="number" id="batchSize" value="200" min="1" step="1" oninput="updateCalculationsOnly()"
+                  class="w-full text-sm sm:text-base font-bold text-neutral-900 bg-neutral-50/60 border border-neutral-200 rounded-xl px-2.5 sm:px-3 py-1.5 focus:ring-2 focus:ring-[#0f2137] focus:bg-white outline-none">
+                <span class="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">g</span>
+              </div>
             </div>
             <div class="print-only font-black text-sm text-slate-900">
               <span id="printBatchSizeDisplay">200</span> g
             </div>
-            <div id="batchPresetBtns" class="flex gap-1.5 print-hide">
-              <button onclick="setBatch(50)" class="px-3 py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">50g</button>
-              <button onclick="setBatch(100)" class="px-3 py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">100g</button>
-              <button onclick="setBatch(200)" class="px-3 py-1.5 text-xs font-black bg-[#0f2137] text-white rounded-lg transition shadow-sm">200g</button>
-              <button onclick="setBatch(500)" class="px-3 py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">500g</button>
-              <button onclick="setBatch(1000)" class="px-3 py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">1kg</button>
+            <div id="batchPresetBtns" class="flex flex-wrap gap-1 sm:gap-1.5 print-hide">
+              <button onclick="setBatch(50)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">50g</button>
+              <button onclick="setBatch(100)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">100g</button>
+              <button onclick="setBatch(200)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-black bg-[#0f2137] text-white rounded-lg transition shadow-sm">200g</button>
+              <button onclick="setBatch(500)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">500g</button>
+              <button onclick="setBatch(1000)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition">1kg</button>
             </div>
           </div>
 
-          <div class="text-xs text-neutral-500 flex items-center gap-2 batch-size-right">
+          <div class="text-xs text-neutral-500 flex items-center justify-between sm:justify-start gap-2 batch-size-right pt-2 border-t border-neutral-100 md:border-t-0 md:pt-0">
             <span>총 계량 예상 무게:</span>
             <strong id="totalGramsDisplay" class="text-base font-black text-[#0f2137]">200.00 g</strong>
           </div>
@@ -1374,16 +1397,19 @@
 
         <!-- Editable Formulation Table Card (Strict 2 Decimals) -->
         <div id="calcTableCard" class="bg-white rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
-          <div class="px-5 py-3.5 border-b border-neutral-200/80 flex items-center justify-between bg-neutral-50/60 print-table-card-header">
+          <div class="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-neutral-200/80 flex flex-wrap items-center justify-between gap-1.5 bg-neutral-50/60 print-table-card-header">
             <div>
-              <h2 class="font-black text-neutral-900 text-sm">제형 배합 및 계량 워크시트</h2>
+              <div class="flex items-center gap-2">
+                <h2 class="font-black text-neutral-900 text-sm">제형 배합 및 계량 워크시트</h2>
+                <span class="sm:hidden text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0"><i class="fa-solid fa-arrows-left-right text-[9px]"></i> 좌우 스크롤</span>
+              </div>
               <p class="text-[11px] text-neutral-400 print-hide">배합비는 소수점 2자리(0.01% 단위)까지 정밀 수정됩니다.</p>
             </div>
-            <span class="text-xs text-neutral-400 print-hide">행 추가 버튼으로 원료를 계속 추가할 수 있습니다.</span>
+            <span class="text-xs text-neutral-400 print-hide hidden sm:inline">행 추가 버튼으로 원료를 계속 추가할 수 있습니다.</span>
           </div>
 
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
+          <div class="overflow-x-auto w-full custom-scrollbar touch-pan-x" style="-webkit-overflow-scrolling: touch;">
+            <table class="w-full min-w-[680px] sm:min-w-[760px] text-left text-xs border-collapse">
               <thead>
                 <tr class="bg-neutral-100/70 text-neutral-600 font-bold border-b border-neutral-200/80">
                   <th class="py-2 px-2 w-32 min-w-[115px] text-center whitespace-nowrap" title="더블클릭하여 Phase 변경 (A, B, C...) · 드래그하여 순서 이동">Phase</th>
@@ -1421,26 +1447,26 @@
           </div>
 
           <!-- Add Ingredient Controls & Limit Check Action -->
-          <div class="p-3 bg-neutral-50/50 border-t border-neutral-200/80 flex flex-wrap items-center justify-between gap-2 print-hide">
-            <div class="flex flex-wrap gap-2">
-              <button onclick="addIngredient('Phase A')" class="px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
-                + Phase A 원료 추가
+          <div class="p-2.5 sm:p-3 bg-neutral-50/50 border-t border-neutral-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 print-hide">
+            <div class="flex flex-wrap gap-1.5 sm:gap-2">
+              <button onclick="addIngredient('Phase A')" class="px-3 sm:px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
+                + Phase A 추가
               </button>
-              <button onclick="addIngredient('Phase B')" class="px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
-                + Phase B 원료 추가
+              <button onclick="addIngredient('Phase B')" class="px-3 sm:px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
+                + Phase B 추가
               </button>
-              <button onclick="addIngredient('Phase C')" class="px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
-                + Phase C 원료 추가
+              <button onclick="addIngredient('Phase C')" class="px-3 sm:px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
+                + Phase C 추가
               </button>
-              <button onclick="addIngredient('Phase D')" class="px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
-                + Phase D 원료 추가
+              <button onclick="addIngredient('Phase D')" class="px-3 sm:px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
+                + Phase D 추가
               </button>
-              <button onclick="addIngredient('Phase E')" class="px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
-                + Phase E 원료 추가
+              <button onclick="addIngredient('Phase E')" class="px-3 sm:px-3.5 py-1.5 text-xs font-bold bg-white border border-neutral-200 hover:bg-slate-50 hover:border-slate-300 hover:text-[#0f2137] text-neutral-700 rounded-full transition shadow-2xs">
+                + Phase E 추가
               </button>
             </div>
             <div class="flex items-center gap-2">
-              <button type="button" id="btnCheckLimits" onclick="checkIngredientLimits()" class="px-5 py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-xl shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer">
+              <button type="button" id="btnCheckLimits" onclick="checkIngredientLimits()" class="w-full sm:w-auto justify-center px-5 py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-xl shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer">
                 <i class="fa-solid fa-shield-halved"></i>
                 <span>한도 체크</span>
               </button>
@@ -1449,21 +1475,21 @@
         </div>
 
         <!-- 화장품 배합기 자동 경고 시스템 (배합 성분 한도 체크) -->
-        <div id="limitCheckCard" class="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] space-y-3.5 print-hide">
-          <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
+        <div id="limitCheckCard" class="bg-white rounded-2xl border border-neutral-200/80 p-3.5 sm:p-5 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] space-y-3 sm:space-y-3.5 print-hide">
+          <div class="flex items-center justify-between border-b border-neutral-100 pb-2.5 sm:pb-3">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-[#0f2137] animate-pulse"></span>
-              <h3 class="text-sm font-black text-neutral-900 flex items-center gap-2">
+              <h3 class="text-xs sm:text-sm font-black text-neutral-900 flex items-center gap-1.5 sm:gap-2">
                 <i class="fa-solid fa-shield-check text-[#0f2137]"></i>
-                <span>배합 성분 한도 체크 (자동 경고 시스템)</span>
-                <span class="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">test</span>
+                <span>배합 성분 한도 체크</span>
+                <span class="text-[10px] sm:text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">test</span>
               </h3>
             </div>
           </div>
 
           <!-- 동적 알림 결과 노출 컨테이너 -->
           <div id="limitCheckResultContainer">
-            <div class="p-4 bg-neutral-50/60 border border-dashed border-neutral-200 rounded-xl text-center text-xs text-neutral-500 flex items-center justify-center gap-2">
+            <div class="p-3 sm:p-4 bg-neutral-50/60 border border-dashed border-neutral-200 rounded-xl text-center text-xs text-neutral-500 flex items-center justify-center gap-2">
               <i class="fa-solid fa-shield-halved text-[#0f2137]"></i>
               <span>배합표 작성 후 상단의 <strong>[한도 체크]</strong> 버튼을 누르면 법적 배합 한도 초과 및 기능성 고함량을 실시간 검증합니다.</span>
             </div>
@@ -1471,19 +1497,19 @@
         </div>
 
         <!-- Manufacturing Procedure & Notes Section (원료 추가 탭 바로 밑) -->
-        <div id="calcProcedureCard" class="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col gap-2.5 print-empty-hide">
+        <div id="calcProcedureCard" class="bg-white rounded-2xl border border-neutral-200/80 p-3.5 sm:p-5 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col gap-2.5 print-empty-hide">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <label for="calcProcedureInput" class="text-xs font-black text-neutral-800 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-clipboard-list text-[#0f2137]"></i>
                 <span>제조공정 및 기타사항</span>
               </label>
-              <span class="text-[11px] text-neutral-400 print-hide">제조 방법, 교반 속도, 가온/냉각 온도 및 특이사항을 작성할 수 있습니다.</span>
+              <span class="text-[11px] text-neutral-400 print-hide hidden sm:inline">제조 방법, 교반 속도, 가온/냉각 온도 및 특이사항을 작성할 수 있습니다.</span>
             </div>
             <span class="text-[10px] text-neutral-400 font-medium print-hide" id="calcProcedureCharCount">0자</span>
           </div>
           <textarea id="calcProcedureInput" rows="8" oninput="syncCalcProcedure(this.value)"
-            class="w-full min-h-[180px] px-3.5 py-3 text-xs text-neutral-800 bg-neutral-50/60 border border-neutral-200 hover:border-neutral-300 focus:border-[#0f2137] focus:bg-white focus:ring-2 focus:ring-[#0f2137]/20 rounded-xl outline-none transition custom-scrollbar print-hide resize-y leading-relaxed font-normal"
+            class="w-full min-h-[160px] sm:min-h-[180px] px-3 sm:px-3.5 py-2.5 sm:py-3 text-xs text-neutral-800 bg-neutral-50/60 border border-neutral-200 hover:border-neutral-300 focus:border-[#0f2137] focus:bg-white focus:ring-2 focus:ring-[#0f2137]/20 rounded-xl outline-none transition custom-scrollbar print-hide resize-y leading-relaxed font-normal"
             placeholder="제형 제조 시 공정 순서(예: Phase A 가온 용해, Phase B 유화 교반, Phase C 후첨 등) 및 기타 보관/안정성 특이사항을 입력하세요."></textarea>
           
           <!-- Print-only View -->
@@ -1503,7 +1529,7 @@
         </div>
 
         <!-- Global Company Footer -->
-        <footer class="mt-12 pt-8 pb-10 border-t border-slate-200 text-xs text-slate-500 space-y-3 print-hide">
+        <footer class="mt-8 sm:mt-12 pt-6 sm:pt-8 pb-8 sm:pb-10 border-t border-slate-200 text-xs text-slate-500 space-y-3 print-hide">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="space-y-0.5">
               <div class="flex items-center gap-2">
@@ -1534,23 +1560,23 @@
     </div>
 
     <!-- Floating Docked Real-Time Bottom Bar -->
-    <div id="calcFloatingBottomBar" class="p-3 md:px-8 bg-white/95 backdrop-blur-md border-t border-neutral-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] shrink-0 z-30 print-hide">
+    <div id="calcFloatingBottomBar" class="p-2 sm:p-3 md:px-8 bg-white/95 backdrop-blur-md border-t border-neutral-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] shrink-0 z-30 print-hide">
       <div class="max-w-5xl mx-auto">
         <!-- 100% Status Banner (초과 vs 미달 vs 100% 적합) -->
-        <div id="statusBanner" class="p-3.5 rounded-2xl border transition-all duration-200 bg-[#f7fcee] border-[#d6ebb2] print-hide">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5 min-w-0 flex-1">
-              <div id="statusIconBg" class="w-9 h-9 rounded-full flex items-center justify-center text-xs bg-[#ecf7db] text-[#4d7c0f] font-black shrink-0 border border-[#d6ebb2]">
+        <div id="statusBanner" class="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border transition-all duration-200 bg-[#f7fcee] border-[#d6ebb2] print-hide">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
+            <div class="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+              <div id="statusIconBg" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs bg-[#ecf7db] text-[#4d7c0f] font-black shrink-0 border border-[#d6ebb2]">
                 OK
               </div>
-              <div class="flex items-center gap-2 flex-nowrap min-w-0 overflow-hidden text-xs">
-                <span id="statusBadge" class="px-3 py-1 rounded-full text-xs font-black uppercase whitespace-nowrap shrink-0 bg-[#7cb305] text-white shadow-2xs">
+              <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap min-w-0 overflow-hidden text-xs">
+                <span id="statusBadge" class="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-black uppercase whitespace-nowrap shrink-0 bg-[#7cb305] text-white shadow-2xs">
                   100.00% 적합
                 </span>
                 <span class="text-neutral-500 font-medium whitespace-nowrap shrink-0 hidden sm:inline">현재 배합비 합계:</span>
-                <span id="totalPercentNumber" class="text-base md:text-lg font-black text-[#65a30d] whitespace-nowrap shrink-0">100.00 %</span>
+                <span id="totalPercentNumber" class="text-sm sm:text-base md:text-lg font-black text-[#65a30d] whitespace-nowrap shrink-0">100.00 %</span>
                 <span class="text-neutral-300 shrink-0 hidden md:inline">|</span>
-                <span id="statusMessage" class="font-medium text-[#4d7c0f] whitespace-nowrap truncate">
+                <span id="statusMessage" class="font-medium text-[#4d7c0f] whitespace-normal sm:whitespace-nowrap truncate max-w-[180px] sm:max-w-none text-[11px] sm:text-xs">
                   배합비가 100.00%로 적합하여 계량 준비가 완료되었습니다.
                 </span>
               </div>
@@ -1558,12 +1584,12 @@
 
             <!-- Gauge & Auto Fill Button -->
             <div class="flex flex-col items-end gap-1.5 w-full md:w-64">
-              <div class="w-full flex justify-between text-[11px] font-semibold text-neutral-500">
+              <div class="w-full flex justify-between text-[10px] sm:text-[11px] font-semibold text-neutral-500">
                 <span>0.00%</span>
                 <span class="text-[#7cb305] font-bold">100.00% 기준</span>
                 <span id="gaugeStatusText" class="text-[#65a30d] font-bold">정상</span>
               </div>
-              <div class="w-full h-2.5 bg-neutral-200/80 rounded-full overflow-hidden relative">
+              <div class="w-full h-2 sm:h-2.5 bg-neutral-200/80 rounded-full overflow-hidden relative">
                 <div id="gaugeBar" class="h-full bg-[#7cb305] transition-all duration-300" style="width: 100%;"></div>
                 <div class="absolute top-0 bottom-0 left-[80%] w-0.5 bg-neutral-400"></div>
               </div>
@@ -1583,20 +1609,20 @@
     <!-- MODE 3: COSMETIC INGREDIENT ANALYZER (화장품 전성분 분석기) -->
     <!-- ======================================================== -->
     <div id="modeAnalyzer" class="flex-1 bg-white flex flex-col overflow-hidden relative">
-      <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8">
-        <div class="max-w-6xl mx-auto space-y-6 pb-8">
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 md:p-8">
+        <div class="max-w-6xl mx-auto space-y-4 sm:space-y-6 pb-8">
 
           <!-- 상단 대시보드 헤더 (인쇄 시 숨김) -->
-          <div class="no-print bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="no-print bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             <div class="space-y-1">
               <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-[#0f2137] rounded-full text-xs font-bold tracking-wide border border-slate-200 mb-1">
                 <span class="w-2 h-2 rounded-full bg-[#0f2137] animate-pulse"></span>
                 Cosmetic Reverse-Engineering Engine v2.4
               </div>
-              <h1 class="text-2xl font-black tracking-tight text-neutral-900">
+              <h1 class="text-xl sm:text-2xl font-black tracking-tight text-neutral-900">
                 화장품 전성분 분석기
               </h1>
-              <p class="text-sm text-neutral-500 mt-1">
+              <p class="text-xs sm:text-sm text-neutral-500 mt-1">
                 전성분 텍스트를 파싱하여 <strong>1% 이하 추정 절취선 자동 탐지</strong> 및 <strong>성분별 역할 태깅·배합비(%)</strong>를 브라우저 내에서 시뮬레이션합니다.
               </p>
             </div>
@@ -1605,7 +1631,7 @@
               <button
                 type="button"
                 onclick="saveCurrentAnalyzerFormula()"
-                class="px-3.5 py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                class="px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-black bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
                 title="전성분 분석 결과를 내 연구노트에 저장합니다"
               >
                 <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
@@ -1618,9 +1644,9 @@
           </div>
 
           <!-- 1. 입력 폼 섹션 (인쇄 시 숨김) -->
-          <section class="no-print bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <label for="rawTextarea" class="text-sm font-black text-neutral-800 flex items-center gap-2">
+          <section class="no-print bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-6 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] space-y-3 sm:space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+              <label for="rawTextarea" class="text-xs sm:text-sm font-black text-neutral-800 flex items-center gap-2">
                 <svg class="w-4 h-4 text-[#0f2137]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
                 </svg>
@@ -1628,15 +1654,15 @@
               </label>
 
               <!-- 샘플 프리셋 버튼 -->
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-xs text-neutral-400 font-bold">테스트 프리셋:</span>
-                <button type="button" onclick="loadSample('cream')" class="text-xs px-3 py-1 rounded-lg bg-neutral-100 hover:bg-slate-50 hover:text-[#0f2137] hover:border-slate-300 border border-transparent text-neutral-700 font-bold transition cursor-pointer">
+              <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span class="text-xs text-neutral-400 font-bold hidden xs:inline">테스트 프리셋:</span>
+                <button type="button" onclick="loadSample('cream')" class="text-xs px-2.5 sm:px-3 py-1 rounded-lg bg-neutral-100 hover:bg-slate-50 hover:text-[#0f2137] hover:border-slate-300 border border-transparent text-neutral-700 font-bold transition cursor-pointer">
                   수분크림
                 </button>
-                <button type="button" onclick="loadSample('toner')" class="text-xs px-3 py-1 rounded-lg bg-neutral-100 hover:bg-slate-50 hover:text-[#0f2137] hover:border-slate-300 border border-transparent text-neutral-700 font-bold transition cursor-pointer">
+                <button type="button" onclick="loadSample('toner')" class="text-xs px-2.5 sm:px-3 py-1 rounded-lg bg-neutral-100 hover:bg-slate-50 hover:text-[#0f2137] hover:border-slate-300 border border-transparent text-neutral-700 font-bold transition cursor-pointer">
                   진정토너
                 </button>
-                <button type="button" onclick="clearText()" class="text-xs px-3 py-1 rounded-lg text-rose-600 hover:bg-rose-50 font-black transition cursor-pointer">
+                <button type="button" onclick="clearText()" class="text-xs px-2.5 sm:px-3 py-1 rounded-lg text-rose-600 hover:bg-rose-50 font-black transition cursor-pointer">
                   초기화
                 </button>
               </div>
@@ -1648,7 +1674,7 @@
               rows="4"
               oninput="onAnalyzerTextareaInput()"
               placeholder="화장품의 전성분을 쉼표(,)나 줄바꿈으로 구분하여 입력하세요..."
-              class="w-full p-4 rounded-xl border border-neutral-200 bg-neutral-50/60 text-neutral-900 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0f2137] focus:bg-white transition resize-y font-mono"
+              class="w-full p-3 sm:p-4 rounded-xl border border-neutral-200 bg-neutral-50/60 text-neutral-900 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0f2137] focus:bg-white transition resize-y font-mono"
             ></textarea>
 
             <!-- 분석 시작 버튼 -->
@@ -1656,7 +1682,7 @@
               <button
                 type="button"
                 onclick="runAnalysis()"
-                class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#0f2137] hover:bg-[#1e3a5f] active:bg-[#0a1424] text-white font-black text-sm shadow-md transition-all transform active:scale-95 cursor-pointer shrink-0"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-[#0f2137] hover:bg-[#1e3a5f] active:bg-[#0a1424] text-white font-black text-sm shadow-md transition-all transform active:scale-95 cursor-pointer shrink-0"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -1667,65 +1693,65 @@
           </section>
 
           <!-- 2. 결과 대시보드 뷰 -->
-          <div id="resultsContainer" class="space-y-6">
+          <div id="resultsContainer" class="space-y-4 sm:space-y-6">
 
             <!-- 결과 대시보드 상단 툴바 -->
             <div class="no-print flex items-center justify-between border-b border-neutral-200/80 pb-2.5 mb-4">
               <div class="flex items-center gap-2">
                 <span class="text-lg">📋</span>
-                <h2 class="text-base font-black text-neutral-800 tracking-tight">성분 분석 및 배합비 시뮬레이션 워크시트</h2>
+                <h2 class="text-sm sm:text-base font-black text-neutral-800 tracking-tight">성분 분석 및 배합비 시뮬레이션 워크시트</h2>
               </div>
             </div>
 
             <!-- [에디터 탭 영역] -->
-            <div id="editorTabContent" class="no-print space-y-6">
+            <div id="editorTabContent" class="no-print space-y-4 sm:space-y-6">
               <!-- KPI 통계 카드 -->
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+                <div class="bg-white p-3 sm:p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
                   <span class="text-xs text-neutral-400 font-bold">총 검출 성분</span>
-                  <div class="text-2xl font-black text-neutral-800 mt-1" id="statTotalCount">0<span class="text-sm font-normal text-neutral-400 ml-1">종</span></div>
+                  <div class="text-xl sm:text-2xl font-black text-neutral-800 mt-1" id="statTotalCount">0<span class="text-sm font-normal text-neutral-400 ml-1">종</span></div>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
+                <div class="bg-white p-3 sm:p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
                   <span class="text-xs text-[#0f2137] font-bold">1% 초과 고함량 구간</span>
-                  <div class="text-2xl font-black text-[#0f2137] mt-1" id="statAboveCount">0<span class="text-sm font-normal text-neutral-400 ml-1">종 (함량순)</span></div>
+                  <div class="text-xl sm:text-2xl font-black text-[#0f2137] mt-1" id="statAboveCount">0<span class="text-sm font-normal text-neutral-400 ml-1">종 (함량순)</span></div>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
+                <div class="bg-white p-3 sm:p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
                   <span class="text-xs text-rose-600 font-bold">1% 이하 추정 구간</span>
-                  <div class="text-2xl font-black text-rose-600 mt-1" id="statBelowCount">0<span class="text-sm font-normal text-neutral-400 ml-1">종 (순서 무관)</span></div>
+                  <div class="text-xl sm:text-2xl font-black text-rose-600 mt-1" id="statBelowCount">0<span class="text-sm font-normal text-neutral-400 ml-1">종 (순서 무관)</span></div>
                 </div>
 
-                <div id="statSumCard" class="bg-white p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] transition">
+                <div id="statSumCard" class="bg-white p-3 sm:p-4 rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] transition">
                   <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-neutral-500">배합비 합계</span>
-                    <span id="statSumBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-neutral-100 font-bold text-neutral-600">100% 대기</span>
+                    <span id="statSumBadge" class="text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full bg-neutral-100 font-bold text-neutral-600">100% 대기</span>
                   </div>
-                  <div class="text-2xl font-black mt-1 text-neutral-800" id="statSumVal">0.00<span class="text-sm font-normal ml-1">%</span></div>
+                  <div class="text-xl sm:text-2xl font-black mt-1 text-neutral-800" id="statSumVal">0.00<span class="text-sm font-normal ml-1">%</span></div>
                 </div>
               </div>
 
               <!-- 상단 액션 툴바 -->
-              <div class="bg-white border border-neutral-200/80 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
+              <div class="bg-white border border-neutral-200/80 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)]">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs font-bold text-neutral-500">역할 필터:</span>
-                  <select id="roleFilterSelect" onchange="renderAnalyzerTable()" class="text-xs px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50/60 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#0f2137]">
+                  <span class="text-xs font-bold text-neutral-500 shrink-0">역할 필터:</span>
+                  <select id="roleFilterSelect" onchange="renderAnalyzerTable()" class="text-xs px-2.5 sm:px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50/60 text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#0f2137]">
                     <option value="all">전체 역할 보기</option>
                   </select>
 
                 </div>
 
-                <div class="flex items-center gap-2 flex-wrap">
-                  <button type="button" onclick="addNewIngredientRow()" class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 font-bold transition cursor-pointer">
+                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <button type="button" onclick="addNewIngredientRow()" class="inline-flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 font-bold transition cursor-pointer">
                     <span>➕</span> 성분 추가
                   </button>
-                  <button type="button" onclick="exportAnalyzerToExcel()" id="btnExportAnalyzerExcel" class="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold transition cursor-pointer shadow-2xs active:scale-95" title="전성분 분석 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
+                  <button type="button" onclick="exportAnalyzerToExcel()" id="btnExportAnalyzerExcel" class="inline-flex items-center gap-1.5 text-xs px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold transition cursor-pointer shadow-2xs active:scale-95" title="전성분 분석 시트를 엑셀 파일(.xlsx)로 내보내어 저장합니다">
                     <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i>
                     <span>엑셀 내보내기</span>
                   </button>
-                  <button type="button" onclick="transferAnalyzerToCalculator()" id="btnTransferToCalculator" class="inline-flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-[#0f2137] font-bold transition cursor-pointer shadow-2xs active:scale-95" title="분석된 성분들과 배합비를 제형 개발 계산기로 적용하여 이동합니다">
+                  <button type="button" onclick="transferAnalyzerToCalculator()" id="btnTransferToCalculator" class="inline-flex items-center gap-1.5 text-xs px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-[#0f2137] font-bold transition cursor-pointer shadow-2xs active:scale-95" title="분석된 성분들과 배합비를 제형 개발 계산기로 적용하여 이동합니다">
                     <i class="fa-solid fa-calculator text-blue-600 text-sm"></i>
-                    <span>제형 개발 계산기 이동</span>
+                    <span>계산기 이동</span>
                   </button>
                 </div>
               </div>
@@ -1733,22 +1759,25 @@
               <!-- 메인 분석 테이블 -->
               <div class="bg-white rounded-2xl border border-neutral-200/80 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.04)] overflow-hidden">
                 <!-- 표 바로 위: 전성분 분석 제목 입력 바 -->
-                <div class="p-3.5 sm:p-4 bg-neutral-50/60 border-b border-neutral-200/80 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  <label for="analyzerFormulaTitleInput" class="text-xs font-black uppercase text-neutral-700 shrink-0 flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-[#0f2137]"></span>
-                    <span>전성분 분석 제목:</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="analyzerFormulaTitleInput"
-                    placeholder="분석할 제품명 또는 처방 제목을 입력하세요 (예: 수분 진정 크림 전성분 분석)"
-                    value="신규 전성분 분석 처방"
-                    class="flex-1 font-bold text-sm text-neutral-900 bg-white border border-neutral-200 rounded-xl px-3.5 py-1.5 focus:ring-2 focus:ring-[#0f2137] focus:border-[#0f2137] outline-none transition shadow-2xs"
-                  >
+                <div class="p-3 sm:p-4 bg-neutral-50/60 border-b border-neutral-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                  <div class="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                    <label for="analyzerFormulaTitleInput" class="text-xs font-black uppercase text-neutral-700 shrink-0 flex items-center gap-1.5">
+                      <span class="w-2.5 h-2.5 rounded-full bg-[#0f2137]"></span>
+                      <span>전성분 분석 제목:</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="analyzerFormulaTitleInput"
+                      placeholder="분석할 제품명 또는 처방 제목을 입력하세요 (예: 수분 진정 크림 전성분 분석)"
+                      value="신규 전성분 분석 처방"
+                      class="flex-1 font-bold text-sm text-neutral-900 bg-white border border-neutral-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-[#0f2137] focus:border-[#0f2137] outline-none transition shadow-2xs"
+                    >
+                  </div>
+                  <span class="sm:hidden text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full flex items-center gap-1 self-start shrink-0"><i class="fa-solid fa-arrows-left-right text-[9px]"></i> 좌우 스크롤</span>
                 </div>
 
-                <div class="overflow-x-auto">
-                  <table class="w-full text-left border-collapse text-sm">
+                <div class="overflow-x-auto w-full custom-scrollbar touch-pan-x" style="-webkit-overflow-scrolling: touch;">
+                  <table class="w-full min-w-[700px] sm:min-w-[760px] text-left border-collapse text-sm">
                     <thead>
                       <tr class="bg-neutral-100/70 border-b border-neutral-200/80 text-neutral-600 text-xs font-bold uppercase tracking-wider">
                         <th class="py-2.5 px-3 w-14 text-center">순번</th>
@@ -3620,8 +3649,8 @@ function initAuth() {
       mCalc.classList.add('hidden');
       if (mAnalyzer) mAnalyzer.classList.add('hidden');
 
-      const activeBtnClass = 'flex items-center gap-2 px-4 py-2 text-sm font-black rounded-lg bg-[#0f2137] text-white shadow-sm transition';
-      const inactiveBtnClass = 'flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition';
+      const activeBtnClass = 'flex-1 md:flex-initial text-center justify-center flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-black rounded-lg bg-[#0f2137] text-white shadow-sm transition cursor-pointer whitespace-nowrap';
+      const inactiveBtnClass = 'flex-1 md:flex-initial text-center justify-center flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg text-slate-600 hover:text-[#0f2137] hover:bg-white/60 transition cursor-pointer whitespace-nowrap';
 
       btnExp.className = inactiveBtnClass;
       btnCalc.className = inactiveBtnClass;
@@ -3924,9 +3953,39 @@ function initAuth() {
       return ingCount <= 8 && postLen <= 750 && estHeight <= 720;
     }
 
+    function showMobileRecipeList() {
+      const aside = document.getElementById('explorerSidebar');
+      const main = document.getElementById('explorerMain');
+      if (aside) {
+        aside.classList.remove('hidden');
+        aside.classList.add('flex');
+      }
+      if (main) {
+        main.classList.add('hidden');
+        main.classList.remove('flex');
+      }
+    }
+
+    function showMobileRecipeArticle() {
+      const aside = document.getElementById('explorerSidebar');
+      const main = document.getElementById('explorerMain');
+      if (aside) {
+        aside.classList.add('hidden');
+        aside.classList.remove('flex');
+      }
+      if (main) {
+        main.classList.remove('hidden');
+        main.classList.add('flex');
+      }
+    }
+
     function showRecipeOriginalArticle(recipe) {
       currentRecipe = recipe;
       updateSaveGuideRecipeBtnState(recipe);
+
+      if (window.innerWidth < 768) {
+        showMobileRecipeArticle();
+      }
 
       const isShort = isShortGuideRecipe(recipe);
       if (isShort) {
@@ -5354,33 +5413,34 @@ function initAuth() {
           : 'text-[#0f2137] bg-slate-100 border-slate-200 font-bold';
 
         area.innerHTML = `
-          <button onclick="openSavedItemsModal('guide')" class="px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-slate-100 text-[#0f2137] border border-slate-200 rounded-lg shadow-2xs transition flex items-center gap-1.5 active:scale-95" title="${vaultButtonLabel} 열기">
-            <span>${vaultButtonLabel}</span>
+          <button onclick="openSavedItemsModal('guide')" class="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold bg-slate-50 hover:bg-slate-100 text-[#0f2137] border border-slate-200 rounded-lg shadow-2xs transition flex items-center gap-1 sm:gap-1.5 active:scale-95 whitespace-nowrap" title="${vaultButtonLabel} 열기">
+            <span class="hidden sm:inline">${vaultButtonLabel}</span>
+            <span class="sm:hidden">연구노트</span>
             <span class="bg-slate-200 text-[#0f2137] text-[10px] font-black px-1.5 py-0.2 rounded-md">${totalSaved}</span>
           </button>
-          <button onclick="openMyPageModal()" class="px-3 py-1.5 text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg shadow-2xs transition active:scale-95" title="마이페이지 열기">
-            마이페이지
+          <button onclick="openMyPageModal()" class="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg shadow-2xs transition active:scale-95 hidden xs:inline-flex" title="마이페이지 열기">
+            MY
           </button>
-          <div class="flex items-center gap-2 pl-1 border-l border-neutral-200">
-            <div class="flex items-center gap-1.5 text-xs">
-              <span class="w-6 h-6 rounded-full ${isAdminUser ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-[#0f2137]'} font-black flex items-center justify-center text-[11px] shadow-2xs">
+          <div class="flex items-center gap-1 sm:gap-2 pl-1 border-l border-neutral-200">
+            <div class="flex items-center gap-1 sm:gap-1.5 text-xs">
+              <span class="w-6 h-6 rounded-full ${isAdminUser ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-[#0f2137]'} font-black flex items-center justify-center text-[11px] shadow-2xs shrink-0">
                 ${displayName.charAt(0).toUpperCase()}
               </span>
               <span class="font-bold text-neutral-800 text-xs hidden sm:inline">
                 ${displayName}
               </span>
-              <span class="text-[10px] ${roleClass} px-2 py-0.5 rounded-md border hidden md:inline">
+              <span class="text-[10px] ${roleClass} px-1.5 sm:px-2 py-0.5 rounded-md border hidden md:inline">
                 ${roleBadge}
               </span>
             </div>
-            <button onclick="logoutUser()" class="px-2 py-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition" title="로그아웃">
+            <button onclick="logoutUser()" class="px-1.5 sm:px-2 py-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition whitespace-nowrap" title="로그아웃">
               로그아웃
             </button>
           </div>
         `;
       } else {
         area.innerHTML = `
-          <button onclick="openAuthModal('login')" class="px-4 py-2 text-xs font-bold bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1.5 active:scale-95 cursor-pointer" title="로그인 / 회원가입">
+          <button onclick="openAuthModal('login')" class="px-2.5 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold bg-[#0f2137] hover:bg-[#1e3a5f] text-white rounded-lg shadow-sm transition flex items-center gap-1 sm:gap-1.5 active:scale-95 cursor-pointer whitespace-nowrap" title="로그인 / 회원가입">
             <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
             <span>로그인</span>
           </button>
